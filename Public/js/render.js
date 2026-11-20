@@ -74,12 +74,13 @@ export function setActiveTab(id, options = {}) {
 }
 
 const TAB_META = {
-  overview: { title: 'Visão geral', subtitle: 'Estado do núcleo, diagnóstico e contexto da sessão atual.' },
+  overview: { title: 'Visão geral', subtitle: 'Estado do núcleo, diagnóstico, uso de ferramentas e contexto da sessão atual.' },
   resources: { title: 'Recursos e capacidades', subtitle: 'Capacidades do navegador, engines detectadas e provedores registrados/configurados.' },
   models: { title: 'Modelos (sessão)', subtitle: 'Modelos analisados/registrados nesta sessão e informações de suporte (análise ≠ inferência).' },
   generators: { title: 'Geradores e presets', subtitle: 'Geradores registrados, presets e templates disponíveis no projeto (execução real depende de runtime/provedor compatível).' },
   jobs: { title: 'Tarefas', subtitle: 'Fila e histórico de tarefas da sessão atual, com estados explícitos.' },
-  integration: { title: 'Integração e API', subtitle: 'Contrato lógico /api/v1, configuração de backend, payload de integração e exemplos.' },
+  integration: { title: 'Integração e API', subtitle: 'Contrato lógico /api/v1, utilitários WebSocket (cliente opcional), configuração de backend, payload e exemplos.' },
+  discord: { title: 'Discord Bot', subtitle: 'Configuração avançada e geração de templates discord.js (Node.js) para bots e conteúdos — execução fora do GitHub Pages.' },
   config: { title: 'Configurações e permissões', subtitle: 'Arquivos de configuração públicos, permissões de UI e notas de segurança em ambiente estático.' },
   docs: { title: 'Documentação e recursos', subtitle: 'Documentação, master prompt, manifests de exemplo e links úteis do repositório.' },
 };

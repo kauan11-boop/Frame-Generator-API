@@ -6,11 +6,17 @@ import {
   announce, setActiveTab, renderError, emptyState, loadingCard, codeBlock,
   table, copyText, downloadJson
 } from './render.js';
+import { recordToolUse, recordFeatureUse, getTopTools, getUsageStats } from './usage.js';
+import { donutChart } from './charts.js';
+import { WebSocketClient } from './websocket.js';
+import { generateDiscordFiles, getDiscordOptions } from './discord.js';
 
 let app = null;
 let staticData = {};
 let loadErrors = {};
 let masterPrompt = { text: '', url: '', error: null };
+let wsClient = null;
+let discordState = { form: null, generated: null };
 
 const CONFIG_FILES = [
   { key: 'api', name: 'configs/api.json', desc: 'Contrato lógico /api/v1, modo e backend.' },
@@ -736,6 +742,7 @@ function handleGotoClick(e) {
   const tab = btn.getAttribute('data-goto-tab');
   if (tab) {
     setActiveTab(tab, { focus: true });
+    recordFeatureUse('tab:' + tab, { label: `Aba: ${tab}`, category: 'navegação' });
     qs('#main-content')?.focus({ preventScroll: false });
   }
 }
@@ -758,6 +765,7 @@ function setupTabs() {
     const btn = e.target.closest('[role="tab"][data-tab]');
     if (!btn) return;
     setActiveTab(btn.dataset.tab, { focus: false });
+    recordFeatureUse('tab:' + btn.dataset.tab, { label: `Aba: ${btn.dataset.tab}`, category: 'navegação' });
   });
 
   tabsContainer.addEventListener('keydown', (e) => {
@@ -783,8 +791,10 @@ function setupTabs() {
 
 function applyInitialTabFromHash() {
   const hash = (location.hash || '').replace('#', '').trim();
-  const valid = ['overview', 'resources', 'models', 'generators', 'jobs', 'integration', 'config', 'docs'];
-  setActiveTab(valid.includes(hash) ? hash : 'overview');
+  const valid = ['overview', 'resources', 'models', 'generators', 'jobs', 'integration', 'discord', 'config', 'docs'];
+  const tab = valid.includes(hash) ? hash : 'overview';
+  setActiveTab(tab);
+  recordFeatureUse('tab:' + tab, { label: `Aba: ${tab}`, category: 'navegação' });
 }
 
 async function main() {
