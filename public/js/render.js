@@ -1,6 +1,6 @@
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const pill = (t) => `<span class="pill">${esc(t)}</span>`;
-export const pre = (o) => `<pre>${esc(JSON.stringify(o, null, 2))}</pre>`;
+export const pre = (o) => `<pre>${esc(typeof o === 'string' ? o : JSON.stringify(o, null, 2))}</pre>`;
 export const pills = (arr) => (arr || []).map(pill).join('');
 
 export function setActiveTab(id) {
@@ -11,8 +11,12 @@ export function setActiveTab(id) {
 export function renderError(container, err) {
   container.innerHTML = `
     <div class="card error-box">
-      <h3>Erro ao carregar dados</h3>
+      <h3>Erro ao carregar dashboard</h3>
       <pre>${esc(err.message || err)}</pre>
-      <p class="muted">Sirva o repositório com um servidor estático (ex.: <code>npx serve .</code>) e abra <code>/public/dashboard.html</code>. A interface consome a API em <code>src/api/v1</code>.</p>
+      <p class="muted">Sirva o repositório com um servidor estático (ex.: <code>npx serve .</code>) e abra <code>/Public/dashboard.html</code>. O dashboard inicializa o núcleo FGUA e consome conteúdos em <code>src/</code> e <code>configs/</code>.</p>
     </div>`;
+}
+
+export function boolPill(v, labelTrue='sim', labelFalse='não') {
+  return `<span class="pill">${esc(v ? labelTrue : labelFalse)}</span>`;
 }

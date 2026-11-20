@@ -3,11 +3,47 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="refresh" content="0; url=./public/" />
   <title>Frame-Generator-API</title>
-  <style>body{font-family:system-ui,Arial,sans-serif;background:#0b1020;color:#e8eefc;display:grid;place-items:center;height:100vh;margin:0}a{color:#6ea8fe}</style>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="stylesheet" href="./Public/css/main.css" />
+  <style>
+    .boot-wrap{min-height:100vh;display:grid;place-items:center;padding:24px;background:#f6f7f9;color:#111827;font-family:Inter,system-ui,Arial,sans-serif}
+    .boot-card{max-width:720px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px}
+    .boot-card h1{margin:0 0 8px;font-size:28px;letter-spacing:-.02em}
+    .boot-card p{margin:0 0 14px;color:#6b7280}
+    .boot-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .bbtn{display:inline-flex;padding:9px 14px;border-radius:8px;border:1px solid #d1d5db;background:#fff;color:#111827;text-decoration:none;font-weight:500;font-size:14px}
+    .bbtn.primary{background:#111827;color:#fff;border-color:#111827}
+    .boot-meta{margin-top:14px;font-size:13px;color:#6b7280}
+  </style>
 </head>
 <body>
-  <p>Redirecionando para <a href="./public/">./public/</a> (interface web)…</p>
+  <div class="boot-wrap">
+    <div class="boot-card">
+      <h1>Frame-Generator-API</h1>
+      <p>Plataforma universal de geração de quadros, processamento gráfico e gerenciamento de modelos de IA (FGUA). Inicializando núcleo modular no navegador…</p>
+      <div id="boot-status" class="boot-meta">Carregando módulos…</div>
+      <div class="boot-actions">
+        <a class="bbtn primary" href="./Public/dashboard.html">Abrir Dashboard</a>
+        <a class="bbtn" href="./Public/index.html">Interface</a>
+        <a class="bbtn" href="./src/03_API/v1/index.json" id="legacy-discovery">Discovery (legado)</a>
+      </div>
+      <div class="boot-meta">Hospedagem estática (GitHub Pages). Operações de inferência/execução pesada requerem runtime ou provedor externo compatível.</div>
+    </div>
+  </div>
+  <script type="module">
+    import { createApp } from './src/app.js';
+    const el = document.getElementById('boot-status');
+    try {
+      const app = await createApp();
+      const s = app.getStatus();
+      el.textContent = `Núcleo pronto: ${s.status} • módulos: ${s.modules.length} • engines: ${s.counts.engines} • provedores: ${s.counts.providers} • WebGPU: ${app.webgpuInfo?.available ? 'disponível' : 'indisponível'}`;
+      // mantém na página inicial; dashboard pode consumir window.FGUA se aberto no mesmo contexto não é garantido,
+      // mas app expõe estado e pode ser inicializado também pelo dashboard.
+    } catch (e) {
+      console.error(e);
+      el.textContent = 'Falha ao inicializar núcleo: ' + (e && e.message ? e.message : e);
+    }
+  </script>
 </body>
 </html>

@@ -1,0 +1,8 @@
+﻿{
+  "generators": [
+    { "id": "frame-generator", "name": "Universal Frame Generator", "category": "unified", "enabled": true },
+    { "id": "image-generator", "name": "Image Generator", "category": "image", "enabled": true },
+    { "id": "video-generator", "name": "Video Generator", "category": "video", "enabled": true },
+    { "id": "game-frame-generator", "name": "Game Frame Generator", "category": "game", "enabled": true }
+  ]
+}

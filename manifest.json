@@ -1,0 +1,9 @@
+{
+  "name": "Frame-Generator-API",
+  "short_name": "FGUA",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f6f7f9",
+  "theme_color": "#111827",
+  "description": "Plataforma universal de geração de quadros, processamento gráfico e gerenciamento de modelos de IA."
+}

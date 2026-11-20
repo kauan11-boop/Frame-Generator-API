@@ -9,9 +9,10 @@ export const CONFIG = {
 
 export function apiUrl(path) {
   if (/^https?:\/\//i.test(path)) return path;
+  if (/^\.\.?\//.test(path)) return path; // caminho relativo direto
   const clean = String(path).replace(/^\//, '');
   // mapeia caminhos lógicos/legados e novos para a estrutura atual
-  if (clean.startsWith('03_API/') || clean.startsWith('12_Validation/') || clean.startsWith('10_Storage/') || clean.startsWith('15_Integration/')) {
+  if (clean.startsWith('03_API/') || clean.startsWith('12_Validation/') || clean.startsWith('10_Storage/') || clean.startsWith('15_Integration/') || clean.startsWith('Legacy/')) {
     return `${CONFIG.API_ROOT}/${clean}`;
   }
   if (clean.startsWith('api/v1/')) return `${CONFIG.API_ROOT}/03_API/v1/${clean.slice('api/v1/'.length)}`;

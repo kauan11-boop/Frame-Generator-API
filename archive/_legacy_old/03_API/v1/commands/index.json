@@ -1,0 +1,31 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-11-19T00:00:00Z",
+  "etag": "cmd-20261119-01",
+  "protocol": "json-envelope",
+  "enforce": { "allowlist": true, "schema": "12_Validation/command.schema.json", "max_body_bytes": 1048576 },
+  "commands": [
+    { "name": "system.status", "scope": "read", "transport": ["static", "adapter"], "payload_schema": {}, "description": "Estado do sistema e componentes." },
+    { "name": "models.list", "scope": "read", "transport": ["static", "adapter"], "payload_schema": { "filter": "object?" }, "description": "Lista modelos e metadados." },
+    { "name": "models.get", "scope": "read", "transport": ["static", "adapter"], "payload_schema": { "id": "string" }, "description": "Detalhe de um modelo (inclui GGUF metadata/inspection)." },
+    { "name": "models.register", "scope": "admin-write", "transport": ["adapter"], "payload_schema": { "model": "object" }, "description": "Registra/atualiza metadados de modelo (via backend/CI)." },
+    { "name": "models.inspect_gguf", "scope": "tool", "transport": ["adapter", "wasm"], "payload_schema": { "source_uri": "string", "mode": "header|kv|tensors|full-index" }, "description": "Extrai metadados/índice de tensores de GGUF; não descompila pesos." },
+    { "name": "frames.create", "scope": "write", "transport": ["adapter"], "payload_schema_ref": "12_Validation/frame-job.schema.json", "description": "Cria job de geração de quadros." },
+    { "name": "frames.get", "scope": "read", "transport": ["adapter"], "payload_schema": { "job_id": "string" }, "description": "Consulta job." },
+    { "name": "frames.list", "scope": "read", "transport": ["adapter"], "payload_schema": { "limit": "number?" }, "description": "Lista jobs." },
+    { "name": "frames.cancel", "scope": "write", "transport": ["adapter"], "payload_schema": { "job_id": "string" }, "description": "Cancela job." },
+    { "name": "packages.list", "scope": "read", "transport": ["static", "adapter"], "payload_schema": {}, "description": "Lista pacotes/conteúdos." },
+    { "name": "packages.install", "scope": "admin-write", "transport": ["adapter"], "payload_schema": { "package_id": "string", "version": "string?" }, "description": "Instala/ativa pacote no registro (via backend/CI)." },
+    { "name": "packages.update", "scope": "admin-write", "transport": ["adapter"], "payload_schema": { "package_id": "string", "patch": "object" }, "description": "Atualiza conteúdo; clientes autoajustam por manifesto." },
+    { "name": "repack.plan", "scope": "write", "transport": ["adapter", "local"], "payload_schema": { "target": "string", "overlays": "array?", "strategy": "string?" }, "description": "Gera plano de repack (preenchimento/reconstrução) auditável." },
+    { "name": "repack.apply", "scope": "admin-write", "transport": ["adapter", "local"], "payload_schema": { "plan_id": "string", "approve": "boolean" }, "description": "Aplica plano aprovado gerando artefatos derivados/manifests." },
+    { "name": "repack.status", "scope": "read", "transport": ["static", "adapter"], "payload_schema": { "plan_id": "string?" }, "description": "Estado e logs do repack." },
+    { "name": "sync.manifest", "scope": "read", "transport": ["static"], "payload_schema": { "resources": "string[]" }, "description": "Retorna versões/etags para autoajuste do cliente." }
+  ],
+  "restrictions": {
+    "deny_unknown_commands": true,
+    "require_request_id": true,
+    "read_allowed_on_static": ["system.status", "models.list", "models.get", "packages.list", "repack.status", "sync.manifest"],
+    "write_requires_adapter": ["models.register", "models.inspect_gguf", "frames.create", "frames.get", "frames.list", "frames.cancel", "packages.install", "packages.update", "repack.plan", "repack.apply"]
+  }
+}
