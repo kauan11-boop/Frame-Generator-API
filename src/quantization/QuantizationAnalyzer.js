@@ -4,7 +4,13 @@ export class QuantizationAnalyzer {
   identify(modelMeta={}){
     const t = modelMeta?.metadata?.quantization?.tensorTypes || modelMeta?.tensorTypes || [];
     const fileType = modelMeta?.metadata?.model?.fileType ?? modelMeta?.metadata?.quantization?.fileType ?? null;
-    return { tensorTypes: t, fileType, quantized: Array.isArray(t)?t.some(x=>/Q|IQ/i.test(String(x))):null };
+    const types = Array.isArray(t) ? t.map(x=>String(x).toUpper()) : [];
+    const quantizedTypes = types.filter(x=>/^Q|^IQ/.test(x));
+    const fpTypes = types.filter(x=>/^F(16|32|64)$|^BF16$/.test(x));
+    const isQuantized = quantizedTypes.length > 0;
+    const isUnquantized = !isQuantized && fpTypes.length > 0;
+    const precision = isUnquantized ? (types.includes('F32') ? 'F32' : types.includes('BF16') ? 'BF16' : types.includes('F64') ? 'F64' : 'F16') : (isQuantized ? (quantizedTypes[0] || 'quantized') : null);
+    return { tensorTypes: t, fileType, quantized: types.length ? isQuantized : null, unquantized: types.length ? isUnquantized : null, precision, quantizedTypes, fpTypes };
   }
   estimate(modelMeta={}, target='Q4_K'){
     const size = modelMeta?.size || modelMeta?.file?.size || null;

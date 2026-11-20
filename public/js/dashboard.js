@@ -1,4 +1,4 @@
-import { bootCore, loadLegacy } from './api.js';
+import { bootCore } from './api.js';
 import { esc, pill, pre, pills, setActiveTab, renderError } from './render.js';
 
 document.getElementById('tabs').addEventListener('click', (e) => {
@@ -7,372 +7,336 @@ document.getElementById('tabs').addEventListener('click', (e) => {
 });
 
 async function copyText(text) {
-  try { await navigator.clipboard.writeText(text || ''); } catch {}
+  try { await navigator.clipboard.writeText(String(text ?? '')); } catch {}
 }
 
-function fmtBytes(n){ if(!Number.isFinite(n)) return '—'; const u=['B','KB','MB','GB','TB']; let i=0,v=n; while(v>=1024&&i<u.length-1){v/=1024;i++;} return `${v.toFixed(i?2:0)} ${u[i]}`; }
 function getStatus(app){ try { return app?.getStatus ? app.getStatus() : null; } catch { return null; } }
 
-function renderDashboard(app){
+function barChart(items, opts = {}) {
+  const data = (items || []).filter(d => (d.value ?? 0) >= 0);
+  const w = opts.width || 520, h = opts.height || 180, padL = 90, padR = 16, padT = 10, padB = 24;
+  if (!data.length) return `<div class="muted">Sem dados para gráfico.</div>`;
+  const max = Math.max(1, ...data.map(d => Number(d.value) || 0));
+  const innerW = w - padL - padR, innerH = h - padT - padB;
+  const barH = Math.max(10, Math.min(22, (innerH / data.length) - 6));
+  const colors = ['#111827','#374151','#6b7280','#2563eb','#059669','#d97706','#dc2626','#7c3aed'];
+  const rows = data.map((d, i) => {
+    const v = Number(d.value) || 0;
+    const bw = Math.round((v / max) * innerW);
+    const y = padT + i * (innerH / data.length) + ((innerH / data.length) - barH) / 2;
+    const color = d.color || colors[i % colors.length];
+    return `
+      <text x="${padL - 8}" y="${y + barH * 0.75}" text-anchor="end" font-size="11" fill="#6b7280">${esc(d.label)}</text>
+      <rect x="${padL}" y="${y}" width="${innerW}" height="${barH}" rx="4" fill="#f3f4f6"></rect>
+      <rect x="${padL}" y="${y}" width="${Math.max(v ? 2 : 0, bw)}" height="${barH}" rx="4" fill="${color}"></rect>
+      <text x="${padL + Math.max(v ? 2 : 0, bw) + 6}" y="${y + barH * 0.75}" font-size="11" fill="#374151">${esc(String(v))}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="${esc(opts.title||'Gráfico')}">${rows}</svg>`;
+}
+
+function donutChart(items, opts = {}) {
+  const data = (items || []).filter(d => (Number(d.value) || 0) > 0);
+  const size = opts.size || 180, cx = size / 2, cy = size / 2, r = 62, sw = 22;
+  const colors = ['#111827','#2563eb','#059669','#d97706','#dc2626','#7c3aed','#0891b2','#6b7280'];
+  if (!data.length) return `<div class="muted">Sem dados para gráfico.</div>`;
+  const total = data.reduce((a,d)=>a + (Number(d.value)||0), 0) || 1;
+  let offset = 0;
+  const circ = 2 * Math.PI * r;
+  const segs = data.map((d,i)=>{
+    const v = Number(d.value)||0; const frac = v/total; const dash = frac*circ; const gap = circ-dash;
+    const el = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color||colors[i%colors.length]}" stroke-width="${sw}" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"></circle>`;
+    offset += dash; return el;
+  }).join('');
+  const legend = data.map((d,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${d.color||colors[i%colors.length]}"></span>${esc(d.label)}: <b>${esc(String(d.value))}</b></span>`).join('');
+  return `<div class="chart-wrap"><svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="${esc(opts.title||'Gráfico')}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#f3f4f6" stroke-width="${sw}"></circle>
+    ${segs}
+    <text x="${cx}" y="${cy-2}" text-anchor="middle" font-size="18" font-weight="600" fill="#111827">${esc(String(total))}</text>
+    <text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="10" fill="#6b7280">${esc(opts.centerLabel||'total')}</text>
+  </svg><div class="chart-legend">${legend}</div></div>`;
+}
+
+function renderOverview(app){
   const s = getStatus(app); const caps = s?.capabilities || app?.caps || {}; const c = caps.capabilities || {};
   const counts = s?.counts || {};
-  const tasks = app?.tasks?.list ? app.tasks.list() : [];
-  const running = tasks.filter(t=>['Processing','Loading','Running','Queued'].includes(t.state)).length;
+  const tasks = app?.tasks?.list ? app.tasks.list() : (app?.jobs?.list ? app.jobs.list() : []);
+  const models = app?.modelRegistry?.list ? app.modelRegistry.list() : [];
+  const engines = app?.engines?.list ? app.engines.list() : [];
+  const providers = app?.providers?.list ? app.providers.list() : [];
+  const generators = app?.generatorRegistry?.list ? app.generatorRegistry.list() : [];
+
   document.getElementById('status-pill').textContent = s?.status || (app?.error ? 'erro' : 'indisponível');
   document.getElementById('status-pill').className = 'status ' + (s?.status === 'ready' ? 'ok' : (app?.error ? 'err' : ''));
   document.getElementById('mode-pill').textContent = app?.api?.mode || s?.mode || 'demo';
   document.getElementById('base').textContent = new URL('../', location.href).toString();
   document.getElementById('meta').textContent = s ? `v${s.version} • ${s.modules?.length||0} módulos • ${s.initialized ? 'inicializado' : 'não inicializado'}` : 'núcleo indisponível';
 
-  const engines = app?.engines?.list ? app.engines.list() : [];
-  document.getElementById('tab-dashboard').innerHTML = `
+  const countItems = [
+    { label: 'Modelos', value: counts.models ?? models.length },
+    { label: 'Geradores', value: counts.generators ?? generators.length },
+    { label: 'Engines', value: counts.engines ?? engines.length },
+    { label: 'Tarefas', value: counts.tasks ?? tasks.length },
+    { label: 'Provedores', value: counts.providers ?? providers.length },
+    { label: 'Repacks', value: counts.repacks ?? 0 },
+    { label: 'Ferramentas', value: counts.tools ?? 0 },
+  ];
+
+  const stateMap = {};
+  for (const t of tasks) { const k = t.state || 'Unknown'; stateMap[k] = (stateMap[k]||0)+1; }
+  const stateItems = Object.entries(stateMap).map(([k,v])=>({label:k, value:v}));
+  if (!stateItems.length) stateItems.push({label:'Sem tarefas', value:0, color:'#d1d5db'});
+
+  const capItems = [
+    { label:'WebGPU', value: c.webgpu ? 1 : 0 },
+    { label:'WebAssembly', value: c.wasm ? 1 : 0 },
+    { label:'WebCodecs', value: c.webcodecs ? 1 : 0 },
+    { label:'Workers', value: c.workers ? 1 : 0 },
+    { label:'IndexedDB', value: c.indexedDB ? 1 : 0 },
+    { label:'OffscreenCanvas', value: c.offscreenCanvas ? 1 : 0 },
+  ].map(i=>({ ...i, valueText: i.value ? 'disponível' : 'indisponível' }));
+
+  const engineItems = engines.length ? engines.map(e=>({ label: e.name || e.id, value: (e.available===true || e.state==='available' || e.state==='configured') ? 1 : 0, state: e.available===true?'disponível':(e.available===false?'indisponível':(e.state||'—')) })) : [];
+
+  const providerItems = providers.length ? providers.map(p=>({label:p.name||p.id, value:1, state:p.state||'—'})) : [];
+
+  document.getElementById('tab-overview').innerHTML = `
     <div class="grid">
       <div class="card"><h3>Estado do sistema</h3><div class="kv">
         <div>Status</div><div>${pill(s?.status||'n/d')}</div>
         <div>Modo</div><div>${pill(app?.api?.mode||'demo')}</div>
         <div>Hospedagem</div><div>${pill('GitHub Pages')} ${pill('estático')}</div>
+        <div>Backend API</div><div>${pill(app?.api?.baseUrl ? 'configurado' : 'não conectado')}</div>
         <div>Início</div><div class="muted">${esc(s?.startedAt||'—')}</div>
-        <div>Backend</div><div>${pill(app?.api?.baseUrl ? 'configurado' : 'não conectado')}</div>
       </div></div>
-      <div class="card"><h3>Recursos e contagens</h3><div class="kv">
-        <div>Modelos</div><div>${pill(counts.models??0)} <span class="muted">(carregados: ${counts.loadedModels??0})</span></div>
-        <div>Geradores</div><div>${pill(counts.generators??0)}</div>
-        <div>Engines</div><div>${pill(counts.engines??engines.length)}</div>
-        <div>Tarefas</div><div>${pill(counts.tasks??tasks.length)} <span class="muted">(ativas: ${running})</span></div>
-        <div>Repacks</div><div>${pill(counts.repacks??0)}</div>
-        <div>Ferramentas</div><div>${pill(counts.tools??0)}</div>
-        <div>Usuários</div><div>${pill(counts.users??0)}</div>
-      </div></div>
-      <div class="card"><h3>Compatibilidade / recursos</h3>
-        ${pills(Object.entries(c).filter(([,v])=>v).map(([k])=>k)) || '<span class="muted">n/d</span>'}
+      <div class="card"><h3>Resumo</h3><div class="kv">
+        <div>Modelos</div><div>${pill(counts.models ?? models.length)}</div>
+        <div>Geradores</div><div>${pill(counts.generators ?? generators.length)}</div>
+        <div>Engines</div><div>${pill(counts.engines ?? engines.length)}</div>
+        <div>Tarefas</div><div>${pill(counts.tasks ?? tasks.length)}</div>
+        <div>Provedores</div><div>${pill(counts.providers ?? providers.length)}</div>
+      </div><p class="section-note">Dados reais do núcleo FGUA (sessão atual no navegador).</p></div>
+      <div class="card"><h3>Recursos do navegador</h3>
+        <table><thead><tr><th>Capacidade</th><th>Estado</th></tr></thead><tbody>
+        ${capItems.map(i=>`<tr><td>${esc(i.label)}</td><td>${pill(i.value?'disponível':'indisponível')}</td></tr>`).join('')}
+        </tbody></table>
+        <div class="kv mt"><div>CPU cores</div><div>${pill(caps.hardware?.hardwareConcurrency ?? 'n/d')}</div>
+        <div>Memória</div><div>${pill(caps.hardware?.deviceMemoryGB ? caps.hardware.deviceMemoryGB+' GB' : 'n/d')}</div></div>
+      </div>
+    </div>
+
+    <div class="charts-grid mt">
+      <div class="card"><h3>Recursos registrados (contagem)</h3>
+        ${barChart(countItems, { title: 'Contagens', width: 520, height: 220 })}
+      </div>
+      <div class="card"><h3>Tarefas por estado</h3>
+        ${donutChart(stateItems, { title: 'Estados das tarefas', size: 180, centerLabel: 'tarefas' })}
+      </div>
+    </div>
+
+    <div class="grid mt">
+      <div class="card"><h3>Engines</h3>
+        ${engineItems.length ? `<table><thead><tr><th>Engine</th><th>Disponibilidade</th></tr></thead><tbody>${engineItems.map(e=>`<tr><td>${esc(e.label)}</td><td>${pill(e.state)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Nenhuma engine registrada.</p>'}
+      </div>
+      <div class="card"><h3>Provedores</h3>
+        ${providerItems.length ? `<table><thead><tr><th>Provedor</th><th>Estado</th></tr></thead><tbody>${providerItems.map(p=>`<tr><td>${esc(p.label)}</td><td>${pill(p.state)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Nenhum provedor registrado.</p>'}
+      </div>
+      <div class="card"><h3>Modelos registrados</h3>
+        ${models.length ? `<table><thead><tr><th>Nome</th><th>Formato</th><th>Estado</th></tr></thead><tbody>${models.slice(0,8).map(m=>`<tr><td>${esc(m.name||m.fileName||m.id)}</td><td>${pill(m.format||'—')}</td><td>${pill(m.state||'—')}</td></tr>`).join('')}</tbody></table>${models.length>8?`<p class="muted mt">+${models.length-8} outros (ver payload de integração).</p>`:''}` : '<p class="muted">Nenhum modelo analisado/registrado nesta sessão.</p>'}
+      </div>
+    </div>`;
+}
+
+function buildIntegrationPayload(app, siteBase) {
+  const s = getStatus(app) || {};
+  const models = app?.modelRegistry?.list ? app.modelRegistry.list().map(m=>({id:m.id,name:m.name||m.fileName,format:m.format,architecture:m.architecture,quantization:m.quantization,quantized:m.quantized,unquantized:m.unquantized,precision:m.precision,contextLength:m.contextLength,size:m.size,state:m.state,runtimeCompatible:m.runtimeCompatible||[]})) : [];
+  const engines = app?.engines?.list ? app.engines.list() : [];
+  const providers = app?.providers?.list ? app.providers.list() : [];
+  const generators = app?.generatorRegistry?.list ? app.generatorRegistry.list() : [];
+  const contract = app?.api?.getContract ? app.api.getContract() : { base:'/api/v1', namespaces: [] };
+  return {
+    project: 'Frame-Generator-API',
+    site: siteBase,
+    generatedAt: new Date().toISOString(),
+    mode: app?.api?.mode || 'demo',
+    backend: { baseUrl: app?.api?.baseUrl || null, configured: !!app?.api?.baseUrl },
+    contract,
+    status: { status: s.status, initialized: s.initialized, version: s.version, counts: s.counts || {} },
+    capabilities: s.capabilities || app?.caps || {},
+    models,
+    engines,
+    providers,
+    generators,
+    integration: {
+      masterPrompt: siteBase + 'Public/documentation/master-prompt.md',
+      commands: siteBase + 'Public/documentation/commands.md',
+      configs: {
+        api: siteBase + 'configs/api.json',
+        models: siteBase + 'configs/models.json',
+        generators: siteBase + 'configs/generators.json',
+        repacks: siteBase + 'configs/repacks.json',
+        permissions: siteBase + 'configs/permissions.json',
+        settings: siteBase + 'configs/settings.json'
+      },
+      license: { type: 'MIT', file: siteBase + 'LICENSE' }
+    },
+    notes: [
+      'Hospedagem estática: /api/v1 é contrato lógico; operações remotas requerem backend/provedor configurado.',
+      'Inferência/processamento pesado requer runtime/engine compatível; sem simulação de resultados.',
+      'GGUF: metadados analisados no cliente; modelos sem quantização (F32/F16/BF16) identificados quando aplicável. Execução requer runtime/provedor.',
+      'Use este payload para integrar informações e endpoints em modelos de IA ou em projetos externos.'
+    ]
+  };
+}
+
+async function renderIntegration(app){
+  const siteBase = new URL('../', location.href).toString();
+  const payload = buildIntegrationPayload(app, siteBase);
+  const contract = payload.contract || { base:'/api/v1', namespaces: [] };
+  const endpoints = [
+    'GET  /api/v1/models', 'POST /api/v1/models/load', 'POST /api/v1/models/unload', 'GET  /api/v1/models/metadata',
+    'GET  /api/v1/quantization/types', 'POST /api/v1/quantization/analyze', 'POST /api/v1/quantization/jobs',
+    'GET  /api/v1/generators', 'POST /api/v1/generators/execute', 'POST /api/v1/frames/interpolate', 'POST /api/v1/images/upscale',
+    'POST /api/v1/videos/process', 'GET  /api/v1/jobs', 'POST /api/v1/jobs/{id}/cancel',
+    'GET  /api/v1/engines', 'GET  /api/v1/repack', 'GET  /api/v1/tools', 'GET  /api/v1/config'
+  ];
+  const jsExample =
+`// Integração com Frame-Generator-API (contrato /api/v1)
+// Hospedagem estática: defina baseUrl de um backend compatível quando disponível.
+const API_BASE = '${(app?.api?.baseUrl || siteBase + 'api/v1').replace(/'/g, "\\'")}';
+
+async function api(path, options = {}) {
+  const res = await fetch(API_BASE.replace(/\\/$/, '') + path, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers||{}) },
+    ...options
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+// Exemplos (requerem backend/provedor compatível):
+// const models = await api('/models');
+// const job = await api('/generators/execute', { method:'POST', body: JSON.stringify({ generator:'image-generator', input:{...} }) });
+
+// Consumir informações/configurações estáticas publicadas:
+// fetch('${siteBase}configs/api.json').then(r=>r.json())
+// fetch('${siteBase}configs/models.json').then(r=>r.json())`;
+
+  const projectExample =
+`# Uso em projetos (ex.: pipelines de IA / orquestradores)
+# 1) Consuma o payload de integração (JSON) para descobrir modelos, engines, provedores e endpoints.
+# 2) Configure backend compatível (api.baseUrl) para execução real; sem backend, operações retornam indisponível.
+# 3) Envie requisições ao contrato /api/v1 com o gerador/modelo/engine adequados.
+# 4) Trate estados: ready, unavailable, requires-provider/runtime (sem resultados simulados).
+
+Payload: exportado por esta aba ("Baixar payload de integração").`;
+
+  let masterPrompt = 'Master prompt indisponível (abra ./documentation/master-prompt.md).';
+  try { const r = await fetch('./documentation/master-prompt.md', { cache: 'no-store' }); if (r.ok) masterPrompt = await r.text(); } catch {}
+  const commandsText = `npx serve .                      # servir localmente (GitHub Pages/estático)\n`+
+`# Configs JSON: configs/api.json, settings.json, models.json, generators.json, repacks.json, permissions.json\n`+
+`# API lógica: /api/v1/* (contrato; requer backend/provedor para execução remota)\n`+
+`# Exportar integração: Dashboard → Integração → Baixar payload (JSON)\n`+
+`# Master prompt: Public/documentation/master-prompt.md\n`+
+`# Licença: LICENSE (MIT)`;
+
+  document.getElementById('tab-integration').innerHTML = `
+    <div class="grid">
+      <div class="card"><h3>Integração de API e informações</h3>
+        <p class="muted">Aba dedicada para integrar informações e APIs do Frame-Generator-API em <b>modelos de IA</b> ou em <b>projetos</b> que a IA está desenvolvendo/operando. Exporte o payload e use o contrato <code>/api/v1</code> com um backend/provedor compatível quando necessário.</p>
         <div class="kv mt">
-          <div>WebGPU</div><div>${pill(app?.webgpuInfo?.available?'disponível':'indisponível')} <span class="muted">${esc(app?.webgpuInfo?.reason||'')}</span></div>
-          <div>WebCodecs</div><div>${pill(app?.codecsInfo?.available?'disponível':'indisponível')}</div>
-          <div>CPU cores</div><div>${pill(caps.hardware?.hardwareConcurrency ?? 'n/d')}</div>
-          <div>Memória (navegador)</div><div>${pill(caps.hardware?.deviceMemoryGB ? caps.hardware.deviceMemoryGB+' GB' : 'n/d')}</div>
+          <div>Modo</div><div>${pill(payload.mode)}</div>
+          <div>Contrato</div><div><code>${esc(contract.base||'/api/v1')}</code></div>
+          <div>Backend</div><div>${pill(payload.backend.configured?'configurado':'não conectado')} <span class="muted">${esc(payload.backend.baseUrl||'')}</span></div>
+          <div>Modelos</div><div>${pill(payload.models.length)}</div>
+          <div>Engines</div><div>${pill(payload.engines.length)}</div>
+          <div>Provedores</div><div>${pill(payload.providers.length)}</div>
+        </div>
+        <div class="integration-actions">
+          <button class="btn primary" id="dl-payload">Baixar payload de integração (JSON)</button>
+          <button class="btn" id="copy-payload">Copiar payload</button>
+          <a class="btn" href="./documentation/master-prompt.md" download>Baixar Master Prompt</a>
+        </div>
+      </div>
+      <div class="card"><h3>Conexão (backend/API)</h3>
+        <p class="muted">Configure a URL base de um backend compatível para executar operações remotas. Em modo estático/demo, chamadas sem backend retornam indisponibilidade explícita.</p>
+        <div class="form-row"><input id="api-base" placeholder="https://seu-backend.exemplo/api/v1" style="min-width:260px" value="${esc(app?.api?.baseUrl||'')}" />
+          <select id="api-mode"><option value="demo">demo</option><option value="local">local</option><option value="remote">remote</option></select>
+          <button class="btn primary" id="api-save">Aplicar</button></div>
+        <div class="muted" id="api-status" style="margin-top:8px">Configuração aplicada apenas nesta sessão do navegador.</div>
+        <div class="mt"><div class="chart-title">Namespaces</div>${pills(contract.namespaces||[])||'<span class="muted">—</span>'}</div>
+      </div>
+    </div>
+
+    <div class="grid mt">
+      <div class="card"><h3>Endpoints (contrato /api/v1)</h3>${pre(endpoints)}</div>
+      <div class="card"><h3>Recursos para integração</h3>
+        <table><thead><tr><th>Tipo</th><th>Itens</th><th>Exemplos</th></tr></thead><tbody>
+          <tr><td>Modelos</td><td>${pill(payload.models.length)}</td><td class="muted">${esc(payload.models.slice(0,3).map(m=>m.name||m.id).join(', ')||'—')}</td></tr>
+          <tr><td>Engines</td><td>${pill(payload.engines.length)}</td><td class="muted">${esc(payload.engines.slice(0,3).map(e=>e.name||e.id).join(', ')||'—')}</td></tr>
+          <tr><td>Provedores</td><td>${pill(payload.providers.length)}</td><td class="muted">${esc(payload.providers.slice(0,3).map(p=>p.name||p.id).join(', ')||'—')}</td></tr>
+          <tr><td>Geradores</td><td>${pill(payload.generators.length)}</td><td class="muted">${esc(payload.generators.slice(0,3).map(g=>g.name||g.id).join(', ')||'—')}</td></tr>
+        </tbody></table>
+        <div class="mt"><div class="chart-title">Configs públicas (estáticas)</div>
+          ${pills(['configs/api.json','configs/models.json','configs/generators.json','configs/repacks.json','configs/permissions.json','configs/settings.json'])}
         </div>
       </div>
     </div>
-    <div class="card mt"><h3>Engines registrados (resumo)</h3>
-      <table><thead><tr><th>Engine</th><th>ID</th><th>Disponível/Estado</th><th>Detalhes</th></tr></thead>
-      <tbody>${engines.map(e=>`<tr><td><b>${esc(e.name||e.id)}</b></td><td><code>${esc(e.id)}</code></td><td>${pill(e.available===true?'disponível':(e.available===false?'indisponível':(e.state||'—')))}</td><td class="muted">${esc(e.reason||e.runtime||e.type||'—')}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">—</td></tr>'}</tbody></table>
-    </div>
-    <div class="card mt"><h3>Histórico de tarefas</h3>${tasks.length?`<table><thead><tr><th>ID</th><th>Tipo</th><th>Engine</th><th>Estado</th><th>Progresso</th><th>Criado</th></tr></thead><tbody>${tasks.slice().reverse().slice(0,20).map(t=>`<tr><td><code>${esc(t.id)}</code></td><td>${pill(t.type||t.category||'—')}</td><td class="muted">${esc(t.engine||'—')}</td><td>${pill(t.state)}</td><td>${pill((t.progress??0)+'%')}</td><td class="muted">${esc(t.createdAt||'')}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">Nenhuma tarefa registrada.</p>'}</div>`;
-}
 
-function renderGeneratorSection(app, tabId, category, title, desc){
-  const gens = app?.generatorRegistry?.list ? app.generatorRegistry.list() : [];
-  const g = gens.find(x=>x.id===category || x.category===category) || null;
-  const presets = (app?.config?.get ? (app.config.get('settings')?.presets || []) : []).filter(p=>p.category===category || (category==='frame' && true));
-  const el = document.getElementById('tab-'+tabId);
-  const isGame = category==='game';
-  el.innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>${esc(title)}</h3>
-        <p class="muted">${esc(desc)}</p>
-        <div class="kv mt"><div>Gerador</div><div>${g?pill(g.id):pill('não registrado')}</div><div>Categoria</div><div>${pill(category)}</div><div>Estado</div><div>${pill(g?.enabled!==false?'habilitado':'desabilitado')}</div></div>
-        ${isGame ? '<p class="section-note">Jogos: requer imagens/frames recebidos por integração autorizada, captura fornecida pelo usuário ou backend especializado. Sem interceptação automática de pipeline gráfico.</p>' : ''}
+    <div class="grid mt">
+      <div class="card"><h3>Comandos necessários</h3>
+        <div class="code-block"><button class="btn copy-btn" id="copy-cmd">Copiar</button><pre id="code-cmd">${esc(commandsText)}</pre></div>
+        <p class="section-note">Mais detalhes: <a href="./documentation/commands.md">documentation/commands.md</a></p>
       </div>
-      <div class="card"><h3>Configuração / Presets</h3>
-        ${presets.length?`<table><thead><tr><th>ID</th><th>Nome</th><th>Config</th></tr></thead><tbody>${presets.slice(0,8).map(p=>`<tr><td><code>${esc(p.id)}</code></td><td>${esc(p.name)}</td><td><code>${esc(JSON.stringify(p.config||{}))}</code></td></tr>`).join('')}</tbody></table>`:'<p class="muted">Sem presets específicos (use os padrões em Settings/Presets).</p>'}
+      <div class="card"><h3>Licença</h3>
+        <div class="kv"><div>Tipo</div><div>${pill('MIT')}</div><div>Arquivo</div><div><a href="../LICENSE">LICENSE</a></div><div>Uso</div><div class="muted">Permite uso, cópia, modificação e distribuição conforme termos MIT (ver arquivo).</div></div>
+        <p class="section-note">Ao integrar em projetos/IA, mantenha aviso de copyright e licença.</p>
       </div>
     </div>
-    <div class="card mt"><h3>Planejar / Solicitar execução</h3>
-      <p class="muted">A execução real depende de engine/modelo/provedor compatível. O sistema retorna plano e estado explícito (sem simulação).</p>
-      <div class="form-row">
-        <label>Entrada (opcional): <input type="file" id="${tabId}-file" ${category==='image'?'accept="image/*"':(category==='video'?'accept="video/*"':'')}></label>
-        ${category!=='image'?'<label>FPS alvo: <input type="number" id="'+tabId+'-fps" value="60" min="1" style="width:90px"></label>':''}
-        ${category==='image'?'<label>Escala: <input type="number" id="'+tabId+'-scale" value="2" min="1" step="1" style="width:80px"></label>':''}
-        <button class="btn" id="${tabId}-plan">Gerar plano</button>
-        <button class="btn primary" id="${tabId}-run">Solicitar execução</button>
-      </div>
-      <pre id="${tabId}-out" class="mt">Aguardando ação.</pre>
+
+    <div class="card mt"><h3>Master Prompt (integração IA / projetos)</h3>
+      <p class="muted">Prompt para conectar/adaptar esta API e seus componentes em modelos de IA ou em projetos que a IA está criando.</p>
+      <div class="code-block"><button class="btn copy-btn" id="copy-master">Copiar</button><pre id="code-master">${esc(masterPrompt)}</pre></div>
+    </div>
+
+    <div class="card mt"><h3>Exemplo: integração em código (projetos / modelos de IA)</h3>
+      <div class="code-block"><button class="btn copy-btn" id="copy-js">Copiar</button><pre id="code-js">${esc(jsExample)}</pre></div>
+    </div>
+    <div class="card mt"><h3>Exemplo: uso em projetos de IA</h3>
+      <div class="code-block"><button class="btn copy-btn" id="copy-proj">Copiar</button><pre id="code-proj">${esc(projectExample)}</pre></div>
+    </div>
+    <div class="card mt"><h3>Payload de integração (prévia)</h3>
+      <pre id="payload-pre">${esc(JSON.stringify(payload, null, 2))}</pre>
     </div>`;
 
-  const out = ()=>document.getElementById(`${tabId}-out`);
-  const getInput = ()=>document.getElementById(`${tabId}-file`)?.files?.[0]||null;
-  document.getElementById(`${tabId}-plan`)?.addEventListener('click', async ()=>{
-    const req = { category, input: getInput(), targetFps: Number(document.getElementById(`${tabId}-fps`)?.value)||null, scale: Number(document.getElementById(`${tabId}-scale`)?.value)||null, interpolate: category!=='image', upscale: category==='image', enhance:true };
-    try { const plan = app?.frameGenerator?.plan ? app.frameGenerator.plan(req) : app?.universalGenerator?.plan?.(req); out().textContent = JSON.stringify({ ok:true, plan }, null, 2); }
-    catch(e){ out().textContent = JSON.stringify({ok:false,error:e.message},null,2); }
-  });
-  document.getElementById(`${tabId}-run`)?.addEventListener('click', async ()=>{
-    const input = getInput();
-    try {
-      let res;
-      if (category==='image' && app?.imageGenerator?.process) res = await app.imageGenerator.process({ input, scale: Number(document.getElementById(`${tabId}-scale`)?.value)||2, enhance:true });
-      else if (category==='video' && app?.videoGenerator?.process) res = await app.videoGenerator.process({ input, targetFps: Number(document.getElementById(`${tabId}-fps`)?.value)||60, interpolate:true });
-      else if (app?.frameGenerator?.execute) res = await app.frameGenerator.execute({ category, input, targetFps: Number(document.getElementById(`${tabId}-fps`)?.value)||60 });
-      else res = { ok:false, state:'unavailable', message:'Gerador indisponível.' };
-      out().textContent = JSON.stringify(res, null, 2);
-      // atualizar dashboard/tarefas se criadas externamente
-    } catch(e){ out().textContent = JSON.stringify({ok:false,error:e.message},null,2); }
-  });
-}
-
-function renderModelManager(app){
-  const reg = app?.modelRegistry?.list ? app.modelRegistry.list() : [];
-  const loaded = app?.modelLoader?.listLoaded ? app.modelLoader.listLoaded() : [];
-  const el = document.getElementById('tab-model-manager');
-  el.innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>Model Manager</h3><div class="kv">
-        <div>Registrados</div><div>${pill(reg.length)}</div>
-        <div>Carregados (sessão)</div><div>${pill(loaded.length)}</div>
-        <div>Formatos suportados (análise)</div><div>${pills(['gguf','onnx','safetensors*','bin/pt/pth*','json-manifest'])}</div>
-      </div><p class="section-note">* Análise binária completa no cliente disponível para GGUF; outros formatos podem ter análise parcial. Inferência requer runtime/provedor compatível.</p></div>
-      <div class="card"><h3>Ações</h3>
-        <p class="muted">Carregar/descarregar modelos de inferência depende de runtime conectado. Aqui: registro, inspeção e gerenciamento de estado.</p>
-        <div class="form-row"><button class="btn" id="mm-refresh">Atualizar lista</button></div>
-      </div>
-    </div>
-    <div class="card mt"><h3>Modelos registrados</h3>
-      ${reg.length?`<table><thead><tr><th>Nome/ID</th><th>Formato</th><th>Arquitetura</th><th>Quantização/Tipos</th><th>Tamanho</th><th>Estado</th><th>Ação</th></tr></thead><tbody>${reg.map(m=>`<tr><td><b>${esc(m.name||m.fileName||m.id)}</b><div class="muted"><code>${esc(m.id)}</code></div></td><td>${pill(m.format||'—')}</td><td>${pill(m.architecture||'—')}</td><td>${pill(m.quantization||'—')} ${pills((m.tensorTypes||[]).slice(0,3))}</td><td class="muted">${esc(m.sizeHuman||fmtBytes(m.size)||'—')}</td><td>${pill(m.state||'—')}</td><td><button class="btn" data-unload="${esc(m.id)}">Descarregar</button></td></tr>`).join('')}</tbody></table>`:'<p class="muted">Nenhum modelo. Use GGUF Loader ou analise um arquivo para registrar.</p>'}
-    </div>`;
-  el.querySelector('#mm-refresh')?.addEventListener('click', ()=>renderModelManager(app));
-  el.querySelectorAll('[data-unload]').forEach(btn=>btn.addEventListener('click', async ()=>{
-    await app?.modelLoader?.unloadModel?.(btn.getAttribute('data-unload')); renderModelManager(app);
-  }));
-}
-
-function renderGguf(app){
-  const el = document.getElementById('tab-gguf');
-  el.innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>GGUF Loader</h3>
-        <p class="muted">Leitura binária real: valida assinatura GGUF, versão, metadados KV e índice de tensores (tipos/dimensões/offsets). Não carrega pesos na memória; arquivo original não é modificado.</p>
-        <div class="form-row"><input type="file" id="gguf-file" accept=".gguf,application/octet-stream" /><button class="btn primary" id="gguf-analyze">Analisar GGUF</button></div>
-        <div class="muted" id="gguf-status" style="margin-top:8px"></div>
-      </div>
-      <div class="card"><h3>Compatibilidade / observações</h3>
-        <ul class="muted" style="margin:0;padding-left:18px;font-size:13px;line-height:1.6">
-          <li>Identifica arquitetura, quantização/tipos de tensor, contagens e metadados quando presentes.</li>
-          <li>Modelos F32/F16/BF16 (não quantizados) diferenciados pelos tipos de tensor quando disponíveis.</li>
-          <li>Execução de inferência GGUF no navegador requer runtime/provedor compatível (ex.: backend/serviço especializado).</li>
-        </ul>
-      </div>
-    </div>
-    <div class="card mt"><h3>Resultado da análise</h3><pre id="gguf-out">Nenhuma análise.</pre></div>`;
-  document.getElementById('gguf-analyze')?.addEventListener('click', async ()=>{
-    const file = document.getElementById('gguf-file')?.files?.[0]; const out=document.getElementById('gguf-out'); const st=document.getElementById('gguf-status');
-    if(!file){ st.textContent='Selecione um arquivo .gguf.'; return; }
-    if(!app?.modelLoader){ st.textContent='ModelLoader indisponível.'; return; }
-    st.textContent='Analisando…';
-    try{ const res = await app.modelLoader.analyzeFile(file); out.textContent = JSON.stringify(res,null,2); st.textContent = res.ok?'Análise concluída (modelo registrado quando aplicável).':'Concluído com avisos/erro.'; }
-    catch(e){ out.textContent=JSON.stringify({ok:false,error:e.message},null,2); st.textContent='Falha na análise.'; }
-  });
-}
-
-function renderMetadata(app){
-  const reg = app?.modelRegistry?.list ? app.modelRegistry.list() : [];
-  const el = document.getElementById('tab-metadata');
-  const options = reg.map(m=>`<option value="${esc(m.id)}">${esc((m.name||m.fileName||m.id)+' ['+(m.format||'?')+']')}</option>`).join('');
-  el.innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>Metadata Viewer</h3>
-        <p class="muted">Inspecione metadados extraídos de modelos registrados (incl. GGUF: KV, arquitetura, tensores). Campos desconhecidos preservados na leitura.</p>
-        <div class="form-row"><label>Modelo: <select id="meta-select"><option value="">— selecione —</option>${options}</select></label><button class="btn" id="meta-show">Exibir</button><button class="btn" id="meta-export">Exportar JSON</button></div>
-      </div>
-      <div class="card"><h3>Cache / informações</h3><div class="kv"><div>Modelos com metadados</div><div>${pill(reg.filter(m=>m.metadata).length)}</div><div>Cache em memória</div><div>${pill('ativo (sessão)')}</div></div>
-      <p class="section-note">Exportação gera download do JSON de metadados do modelo selecionado (somente leitura/inspeção).</p></div>
-    </div>
-    <div class="card mt"><h3>Metadados</h3><pre id="meta-out">Selecione um modelo para visualizar.</pre></div>`;
-  const getSel = ()=> app?.modelRegistry?.get?.(document.getElementById('meta-select')?.value);
-  document.getElementById('meta-show')?.addEventListener('click', ()=>{
-    const m=getSel(); document.getElementById('meta-out').textContent = m?JSON.stringify({id:m.id,name:m.name,format:m.format,architecture:m.architecture,quantization:m.quantization,contextLength:m.contextLength,size:m.size,sizeHuman:m.sizeHuman,tensorTypes:m.tensorTypes,state:m.state,metadata:m.metadata},null,2):'Modelo não encontrado.';
-  });
-  document.getElementById('meta-export')?.addEventListener('click', ()=>{
-    const m=getSel(); if(!m) return; const blob=new Blob([JSON.stringify(m.metadata||m,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`metadata-${(m.id||'model')}.json`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-  });
-}
-
-function renderQuantization(app){
-  const reg = app?.modelRegistry?.list ? app.modelRegistry.list() : [];
-  const profiles = app?.quantization?.getProfiles ? app.quantization.getProfiles() : [];
-  const jobs = app?.quantization?.listJobs ? app.quantization.listJobs() : [];
-  const options = reg.map(m=>`<option value="${esc(m.id)}">${esc((m.name||m.fileName||m.id))}</option>`).join('');
-  const pOpts = profiles.map(p=>`<option value="${esc(p.id)}">${esc(p.id)} (${esc(p.bits||'?')} bits)</option>`).join('');
-  document.getElementById('tab-quantization').innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>Quantization Manager</h3>
-        <p class="muted">Identificação, análise, estimativa e planejamento. Conversão real exige runtime/ferramenta externa compatível (arquivo original preservado). Sem conversão fictícia.</p>
-        <div class="form-row"><label>Modelo: <select id="q-model"><option value="">— selecione —</option>${options}</select></label><label>Alvo: <select id="q-target">${pOpts||'<option>Q4_K</option>'}</select></label><button class="btn" id="q-analyze">Analisar</button><button class="btn primary" id="q-plan">Gerar plano</button></div>
-      </div>
-      <div class="card"><h3>Perfis/tipos reconhecidos</h3>${pre(profiles)}</div>
-    </div>
-    <div class="card mt"><h3>Resultado</h3><pre id="q-out">Aguardando.</pre></div>
-    <div class="card mt"><h3>Jobs de quantização</h3>${jobs.length?pre(jobs):'<p class="muted">Nenhum job.</p>'}</div>`;
-  const getModel = ()=> app?.modelRegistry?.get?.(document.getElementById('q-model')?.value);
-  document.getElementById('q-analyze')?.addEventListener('click', async ()=>{
-    const m=getModel(); const t=document.getElementById('q-target')?.value||'Q4_K';
-    document.getElementById('q-out').textContent = m ? JSON.stringify(app.quantization.analyze(m,t),null,2) : 'Selecione um modelo registrado.';
-  });
-  document.getElementById('q-plan')?.addEventListener('click', async ()=>{
-    const m=getModel(); const t=document.getElementById('q-target')?.value||'Q4_K';
-    if(!m){ document.getElementById('q-out').textContent='Selecione um modelo registrado.'; return; }
-    const res = await app.quantization.plan(m,t,null);
-    document.getElementById('q-out').textContent = JSON.stringify(res,null,2);
-  });
-}
-
-function renderEngines(app){
-  const list = app?.engines?.list ? app.engines.list() : [];
-  const selDemo = app?.engines?.select ? app.engines.select({operation:'video', format:'onnx'}) : null;
-  document.getElementById('tab-engines').innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>Engine Manager</h3><p class="muted">Detecta suporte/disponibilidade e seleciona engine com base em formato, operação e recursos. Não seleciona por nome de GPU.</p>
-        <div class="kv"><div>Engines</div><div>${pill(list.length)}</div><div>Seleção (exemplo)</div><div>${selDemo?pill(selDemo.id||'nenhum'):'—'}</div></div>
-        ${selDemo?`<p class="section-note">Motivo: ${esc(selDemo.reason||'—')}</p>`:''}
-      </div>
-      <div class="card"><h3>Backend / adaptadores</h3><div class="kv">
-        <div>Backend URL</div><div class="muted">${esc(app?.backend?.baseUrl||'não configurado')}</div>
-        <div>Estado backend</div><div>${pill(app?.backend?.state||'unconfigured')}</div>
-        <div>ONNX Runtime Web</div><div>${pill(app?.onnx?.detect?.().available?'detectado':'não carregado')}</div>
-      </div><p class="section-note">Configure backend local/remoto em Settings/API Manager quando disponível.</p></div>
-    </div>
-    <div class="card mt"><h3>Engines detectadas</h3>
-      <table><thead><tr><th>Nome</th><th>ID</th><th>Disponível</th><th>Detalhes</th></tr></thead>
-      <tbody>${list.map(e=>`<tr><td><b>${esc(e.name||e.id)}</b></td><td><code>${esc(e.id)}</code></td><td>${pill(e.available===true?'sim':(e.available===false?'não':(e.state||'—')))}</td><td><code>${esc(JSON.stringify(e))}</code></td></tr>`).join('')}</tbody></table>
-    </div>`;
-}
-
-async function renderRepacks(app){
-  const repacks = app?.repacks?.list ? app.repacks.list() : [];
-  let sample = null; try{ const r = await fetch('./manifests/sample-repack.json',{cache:'no-store'}); if(r.ok) sample = await r.json(); }catch{}
-  document.getElementById('tab-repacks').innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>Repack Manager</h3><p class="muted">Carrega/valida manifests JSON, registra ferramentas e administra repacks. Não executa código arbitrário de manifests.</p>
-        <div class="form-row"><button class="btn primary" id="repack-import-sample">Importar manifesto de exemplo</button><button class="btn" id="repack-refresh">Atualizar</button></div>
-        <div class="muted" id="repack-status" style="margin-top:8px"></div>
-      </div>
-      <div class="card"><h3>Manifesto de exemplo</h3>${sample?pre(sample):'<p class="muted">Nenhum manifesto de exemplo encontrado.</p>'}</div>
-    </div>
-    <div class="card mt"><h3>Repacks registrados</h3>${repacks.length?`<table><thead><tr><th>ID</th><th>Nome</th><th>Versão</th><th>Habilitado</th><th>Módulos</th><th>Validação</th></tr></thead><tbody>${repacks.map(r=>{const v=app.repacks.validate(r.id); return `<tr><td><code>${esc(r.id)}</code></td><td>${esc(r.name)}</td><td>${pill(r.version||'—')}</td><td>${pill(String(r.enabled!==false))}</td><td>${pill((r.modules||[]).length)}</td><td>${pill(v?.ok?'ok':'inválido')}</td></tr>`;}).join('')}</tbody></table>`:'<p class="muted">Nenhum repack registrado.</p>'}</div>`;
-  document.getElementById('repack-refresh')?.addEventListener('click', ()=>renderRepacks(app));
-  document.getElementById('repack-import-sample')?.addEventListener('click', async ()=>{
-    const st=document.getElementById('repack-status'); if(!sample){ st.textContent='Manifesto de exemplo indisponível.'; return; }
-    try{ const res = app.repacks.import(JSON.parse(JSON.stringify(sample))); st.textContent = res.ok?'Manifesto importado e registrado.':'Falha: '+(res.errors||[]).join('; '); renderRepacks(app);}catch(e){ st.textContent='Erro: '+e.message; }
-  });
-}
-
-function renderTools(app){
-  const tools = app?.tools?.list ? app.tools.list() : [];
-  document.getElementById('tab-tools').innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>Tool Manager</h3><p class="muted">Registro e administração de ferramentas expostas por repacks/módulos. Execução depende de handler/provedor compatível.</p>
-        <div class="kv"><div>Ferramentas</div><div>${pill(tools.length)}</div></div>
-      </div>
-      <div class="card"><h3>Registrar ferramenta (metadado)</h3>
-        <div class="form-row"><input id="tool-id" placeholder="id (ex.: tool.demo)" /><input id="tool-name" placeholder="nome" /><button class="btn primary" id="tool-add">Registrar</button></div>
-        <div class="muted" id="tool-status" style="margin-top:8px"></div>
-      </div>
-    </div>
-    <div class="card mt"><h3>Ferramentas registradas</h3>${tools.length?`<table><thead><tr><th>ID</th><th>Nome</th><th>Habilitada</th><th>Handler</th><th>Estado</th></tr></thead><tbody>${tools.map(t=>`<tr><td><code>${esc(t.id)}</code></td><td>${esc(t.name||'—')}</td><td>${pill(String(t.enabled!==false))}</td><td>${pill(t.hasHandler?'sim':'não')}</td><td>${pill(t.status||'—')}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">Nenhuma ferramenta registrada.</p>'}</div>`;
-  document.getElementById('tool-add')?.addEventListener('click', ()=>{
-    const id=document.getElementById('tool-id')?.value?.trim(); const name=document.getElementById('tool-name')?.value?.trim();
-    const st=document.getElementById('tool-status'); if(!id){ st.textContent='Informe um id.'; return; }
-    try{ app.tools.register({id,name:name||id}); st.textContent='Ferramenta registrada.'; renderTools(app);}catch(e){ st.textContent='Erro: '+e.message; }
-  });
-}
-
-function renderApi(app){
-  const contract = app?.api?.getContract ? app.api.getContract() : {base:'/api/v1', namespaces:[]};
-  const endpoints = [
-    'GET /api/v1/models','POST /api/v1/models/load','POST /api/v1/models/unload','GET /api/v1/models/metadata','POST /api/v1/models/inspect',
-    'GET /api/v1/quantization/types','POST /api/v1/quantization/analyze','POST /api/v1/quantization/jobs',
-    'GET /api/v1/generators','POST /api/v1/generators/execute','GET /api/v1/generators/status',
-    'POST /api/v1/frames/interpolate','POST /api/v1/frames/enhance','POST /api/v1/images/upscale','POST /api/v1/images/enhance',
-    'POST /api/v1/videos/process','POST /api/v1/videos/interpolate','GET /api/v1/jobs','POST /api/v1/jobs/{id}/cancel',
-    'GET /api/v1/repack','POST /api/v1/repack/load','GET /api/v1/tools','GET /api/v1/users','GET /api/v1/permissions','GET /api/v1/config'
-  ];
-  document.getElementById('tab-api').innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>API Manager</h3>
-        <p class="muted">API lógica central (<code>/api/v1</code>). Em GitHub Pages (estático) o frontend usa ApiClient; chamadas sem backend retornam indisponibilidade explícita.</p>
-        <div class="kv"><div>Modo</div><div>${pill(app?.api?.mode||'demo')}</div><div>Base URL</div><div class="muted">${esc(app?.api?.baseUrl||'— (não conectado)')}</div><div>Contrato base</div><div><code>${esc(contract.base||'/api/v1')}</code></div></div>
-      </div>
-      <div class="card"><h3>Configurar backend</h3>
-        <div class="form-row"><input id="api-base" placeholder="https://backend.exemplo/api" style="min-width:260px" value="${esc(app?.api?.baseUrl||'')}" />
-          <select id="api-mode"><option value="demo">demo</option><option value="local">local</option><option value="remote">remote</option></select>
-          <button class="btn primary" id="api-save">Aplicar</button></div>
-        <div class="muted" id="api-status" style="margin-top:8px">Altera apenas a sessão atual no navegador (UI).</div>
-      </div>
-    </div>
-    <div class="card mt"><h3>Namespaces</h3>${pills(contract.namespaces||[])}</div>
-    <div class="card mt"><h3>Endpoints (contrato)</h3>${pre(endpoints)}</div>`;
   const modeSel = document.getElementById('api-mode'); if(modeSel) modeSel.value = app?.api?.mode||'demo';
-  document.getElementById('api-save')?.addEventListener('click', ()=>{
+  document.getElementById('api-save')?.addEventListener('click', async ()=>{
     const base = document.getElementById('api-base')?.value?.trim() || null;
     const mode = document.getElementById('api-mode')?.value || 'demo';
     const r = app?.api?.configure?.({ baseUrl: base, mode });
     document.getElementById('api-status').textContent = 'Configuração aplicada: ' + JSON.stringify(r||{});
     document.getElementById('mode-pill').textContent = app?.api?.mode || mode;
+    await renderIntegration(app); // re-render com payload atualizado
   });
-}
-
-function renderUsers(app){
-  const users = app?.auth?.listUsers ? app.auth.listUsers() : (app?.users?.list ? app.users.list() : []);
-  const roles = (app?.permissions?.roles) ? Object.keys(app.permissions.roles) : (app?.config?.get ? Object.keys(app.config.get('permissions')?.roles||{}) : ['Administrator','Developer','User','Viewer']);
-  document.getElementById('tab-users').innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>User Manager (UI)</h3>
-        <p class="muted">Administração de perfis/preferências no cliente. Autenticação/autorização confiáveis devem ser validadas no backend. Sem credenciais em arquivos públicos.</p>
-        <div class="kv"><div>Usuário atual</div><div>${pill(app?.auth?.me?.()?.name||'—')}</div><div>Total</div><div>${pill(users.length)}</div></div>
-      </div>
-      <div class="card"><h3>Adicionar usuário (local/UI)</h3>
-        <div class="form-row"><input id="u-name" placeholder="Nome" /><select id="u-role">${roles.map(r=>`<option>${esc(r)}</option>`).join('')}</select><button class="btn primary" id="u-add">Adicionar</button></div>
-        <div class="muted" id="u-status" style="margin-top:8px"></div>
-      </div>
-    </div>
-    <div class="card mt"><h3>Usuários</h3><table><thead><tr><th>ID</th><th>Nome</th><th>Papel</th><th>Ativo</th></tr></thead><tbody>${users.map(u=>`<tr><td><code>${esc(u.id)}</code></td><td>${esc(u.name)}</td><td>${pill(u.role)}</td><td>${pill(String(u.active!==false))}</td></tr>`).join('')}</tbody></table></div>
-    <div class="card mt"><h3>Permissões (config)</h3>${pre(app?.config?.get ? app.config.get('permissions') : app?.permissions?.roles || {})}</div>`;
-  document.getElementById('u-add')?.addEventListener('click', ()=>{
-    const name=document.getElementById('u-name')?.value?.trim()||'Usuário'; const role=document.getElementById('u-role')?.value||'Viewer';
-    try{ app?.auth?.createUser?.({name,role}); document.getElementById('u-status').textContent='Usuário adicionado (sessão local).'; renderUsers(app);}catch(e){ document.getElementById('u-status').textContent='Erro: '+e.message; }
+  document.getElementById('dl-payload')?.addEventListener('click', ()=>{
+    const data = buildIntegrationPayload(app, siteBase);
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'frame-generator-api-integration.json'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
   });
-}
-
-async function renderSettings(app){
-  const cfgs = app?.config?.list ? app.config.list() : (app?.settings?.list ? app.settings.list() : []);
-  let presets = null, locales = null;
-  try{ const r=await fetch('./presets/default-presets.json',{cache:'no-store'}); if(r.ok) presets=await r.json(); }catch{}
-  try{ const r=await fetch('./locales/pt-BR.json',{cache:'no-store'}); if(r.ok) locales=await r.json(); }catch{}
-  const logs = app?.logger?.getRecent ? app.logger.getRecent(60) : [];
-  document.getElementById('tab-settings').innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>Configurações carregadas</h3>
-        <div class="kv"><div>Arquivos/configs</div><div>${pill(cfgs.length)}</div><div>Tema</div><div>${pill('claro / minimalista')}</div></div>
-        <div class="mt">${pills(cfgs)}</div>
-      </div>
-      <div class="card"><h3>Presets</h3>${presets?pre(presets):'<p class="muted">Presets padrão não encontrados.</p>'}</div>
-    </div>
-    <div class="card mt"><h3>Config: api.json</h3>${pre(app?.config?.get?app.config.get('api'):app?.settings?.get?.('api'))}</div>
-    <div class="card mt"><h3>Config: settings.json</h3>${pre(app?.config?.get?app.config.get('settings'):app?.settings?.get?.('settings'))}</div>
-    <div class="card mt"><h3>Localidade (exemplo)</h3>${locales?pre(locales):'<p class="muted">—</p>'}</div>
-    <div class="card mt"><h3>Logs recentes</h3>${logs.length?pre(logs):'<p class="muted">Sem logs.</p>'}</div>`;
+  document.getElementById('copy-payload')?.addEventListener('click', ()=>copyText(JSON.stringify(buildIntegrationPayload(app, siteBase), null, 2)));
+  document.getElementById('copy-js')?.addEventListener('click', ()=>copyText(document.getElementById('code-js')?.textContent||''));
+  document.getElementById('copy-proj')?.addEventListener('click', ()=>copyText(document.getElementById('code-proj')?.textContent||''));
+  document.getElementById('copy-master')?.addEventListener('click', ()=>copyText(document.getElementById('code-master')?.textContent||''));
+  document.getElementById('copy-cmd')?.addEventListener('click', ()=>copyText(document.getElementById('code-cmd')?.textContent||''));
 }
 
 (async () => {
-  const overview = document.getElementById('tab-dashboard');
+  const overview = document.getElementById('tab-overview');
   try {
-    const [app, legacy] = await Promise.all([bootCore(), loadLegacy()]);
+    const app = await bootCore();
     window.FGUA = app && !app.error ? app : window.FGUA;
-
-    renderDashboard(app);
-    renderGeneratorSection(app, 'frame', 'frame', 'Universal Frame Generator', 'Ponto de entrada unificado para operações de quadros/imagem/vídeo com seleção de engine e planejamento.');
-    renderGeneratorSection(app, 'game', 'game', 'Game Frame Generator', 'Interpolação/geração de quadros para jogos a partir de frames recebidos por integração autorizada.');
-    renderGeneratorSection(app, 'image', 'image', 'Image Generator', 'Aprimoramento de imagens (upscale, denoise, nitidez, restauração) via modelos/engines compatíveis.');
-    renderGeneratorSection(app, 'video', 'video', 'Video Generator', 'Processamento de vídeo (interpolação, upscale, aprimoramento) com pipeline de mídia e engine compatível.');
-    renderModelManager(app);
-    renderGguf(app);
-    renderMetadata(app);
-    renderQuantization(app);
-    renderEngines(app);
-    await renderRepacks(app);
-    renderTools(app);
-    renderApi(app);
-    renderUsers(app);
-    await renderSettings(app);
+    renderOverview(app);
+    await renderIntegration(app);
   } catch (e) {
     document.getElementById('status-pill').textContent = 'erro';
     document.getElementById('status-pill').classList.add('err');
