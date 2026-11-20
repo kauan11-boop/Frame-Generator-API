@@ -7,7 +7,7 @@
   "engines": { "node": ">=20.19.0" },
   "scripts": {
     "mcp": "node server/index.js",
-    "mcp:http": "FGUA_MCP_TRANSPORT=http node server/index.js",
+    "mcp:http": "node server/index.js --http",
     "test": "node --test",
     "check": "node --check server/index.js && node --check server/mcp-server.js && node --check server/http.js && node --check server/client.js && node --check server/runtime.js"
   },

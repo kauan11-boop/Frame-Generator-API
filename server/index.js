@@ -4,7 +4,9 @@ import { createFguaMcpServer } from './mcp-server.js';
 import { createRuntime } from './runtime.js';
 import { startHttpServer } from './http.js';
 
-const transport = (process.env.FGUA_MCP_TRANSPORT || 'stdio').toLowerCase();
+const transport = process.argv.includes('--http')
+  ? 'http'
+  : (process.env.FGUA_MCP_TRANSPORT || 'stdio').toLowerCase();
 
 if (transport === 'stdio') {
   const runtime = await createRuntime();
@@ -12,6 +14,6 @@ if (transport === 'stdio') {
 } else if (transport === 'http') {
   await startHttpServer();
 } else {
-  console.error('FGUA_MCP_TRANSPORT deve ser stdio ou http.');
+  console.error('Transporte deve ser stdio ou http.');
   process.exitCode = 2;
 }
