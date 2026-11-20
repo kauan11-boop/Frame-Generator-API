@@ -6,43 +6,56 @@
   <title>Dashboard — Frame-Generator-API</title>
   <link rel="stylesheet" href="./css/main.css" />
 </head>
-<body>
-  <header class="topbar">
-    <div class="brand">
-      <a href="./index.html" class="brand-link">Frame-Generator-API</a>
-      <span class="sub">Dashboard · API estática <code>src/api/v1</code></span>
+<body class="dashboard-body">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="./index.html" class="brand-link">Frame-Generator-API</a>
+        <span class="sub">Administração & controle</span>
+      </div>
+
+      <nav class="tabs sidebar-nav" id="tabs" aria-label="Seções">
+        <button data-tab="overview" class="active"><span>Visão geral</span></button>
+        <button data-tab="models"><span>Modelos & GGUF</span></button>
+        <button data-tab="frames"><span>Geração de quadros</span></button>
+        <button data-tab="packages"><span>Pacotes</span></button>
+        <button data-tab="commands"><span>Comandos JSON</span></button>
+        <button data-tab="repack"><span>Repack</span></button>
+        <button data-tab="adapters"><span>Adaptadores</span></button>
+        <button data-tab="integration"><span>Integração IA</span></button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-row"><span class="label">Status</span><div class="status" id="status-pill">carregando…</div></div>
+        <a class="sidebar-link" href="../src/03_API/v1/index.json">Discovery JSON</a>
+      </div>
+    </aside>
+
+    <div class="main-area">
+      <header class="main-header">
+        <div>
+          <h1 class="page-title">Dashboard do sistema</h1>
+          <p class="sub">Conteúdos controlados, API estática <code>src/03_API/v1</code> e administração por manifesto</p>
+        </div>
+      </header>
+
+      <main class="container">
+        <section id="tab-overview" class="tab active"></section>
+        <section id="tab-models" class="tab"></section>
+        <section id="tab-frames" class="tab"></section>
+        <section id="tab-packages" class="tab"></section>
+        <section id="tab-commands" class="tab"></section>
+        <section id="tab-repack" class="tab"></section>
+        <section id="tab-adapters" class="tab"></section>
+        <section id="tab-integration" class="tab"></section>
+      </main>
+
+      <footer class="footer">
+        <span id="meta"></span>
+        <span>API base: <code id="base"></code></span>
+      </footer>
     </div>
-    <div class="topbar-right">
-      <div class="status" id="status-pill">carregando…</div>
-    </div>
-  </header>
-
-  <nav class="tabs" id="tabs" aria-label="Seções">
-    <button data-tab="overview" class="active">Visão geral</button>
-    <button data-tab="models">Modelos</button>
-    <button data-tab="frames">Quadros</button>
-    <button data-tab="packages">Pacotes</button>
-    <button data-tab="commands">Comandos</button>
-    <button data-tab="repack">Repack</button>
-    <button data-tab="adapters">Adaptadores</button>
-    <button data-tab="integration">Integração IA</button>
-  </nav>
-
-  <main class="container">
-    <section id="tab-overview" class="tab active"></section>
-    <section id="tab-models" class="tab"></section>
-    <section id="tab-frames" class="tab"></section>
-    <section id="tab-packages" class="tab"></section>
-    <section id="tab-commands" class="tab"></section>
-    <section id="tab-repack" class="tab"></section>
-    <section id="tab-adapters" class="tab"></section>
-    <section id="tab-integration" class="tab"></section>
-  </main>
-
-  <footer class="footer">
-    <span id="meta"></span>
-    <span>API base: <code id="base"></code></span>
-  </footer>
+  </div>
 
   <script type="module" src="./js/dashboard.js"></script>
 </body>

@@ -20,9 +20,9 @@
     { "stage": "verify", "output": "verify-report.json", "desc": "Valida integridade, etags e compatibilidade dos consumidores." }
   ],
   "artifacts": {
-    "plans": "data/repack/plans/",
-    "logs": "data/repack/logs/",
-    "overlays": "data/repack/overlays/"
+    "plans": "10_Storage/repack/plans/",
+    "logs": "10_Storage/repack/logs/",
+    "overlays": "10_Storage/repack/overlays/"
   },
   "current_plan": null,
   "last_run": null,

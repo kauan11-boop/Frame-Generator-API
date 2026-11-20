@@ -5,6 +5,6 @@
   "id": "integration-default",
   "title": "Prompt de integração IA — Frame-Generator-API",
   "format": "text/markdown",
-  "source": "prompts/integration.md",
+  "source": "02_Configuration/prompts/integration.md",
   "content": "Você é um engenheiro de integração. Integre meu projeto à Frame-Generator-API (estática, GitHub Pages).\n1) Descoberta: GET {BASE_URL}/api/v1/index.json. Polling por version/updated_at/etag em models, frames, packages, commands, repack, adapters; ao mudar, recarregue só o afetado.\n2) Contratos: request=schemas/command.schema.json (command, request_id, payload), response=schemas/response.schema.json. Respeite allowlist em api/v1/commands/index.json; escrita/execução via adapter.\n3) Modelos: api/v1/models/index.json com metadados GGUF completos; modos A runner externo, B wasm experimental, C catálogo. GGUF=inspeção de metadados/índice de tensores (sem descompilar pesos).\n4) Quadros: api/v1/frames/index.json e templates.json; modos storyboard, video_frames, data_panels, composite; validar com schemas/frame-job.schema.json; despachar via adapter.\n5) Pacotes/Repack: manifests autoajustáveis; Repack auditável scan→diff→plan→simulate→apply→verify com aprovação.\n6) Entregue cliente com baseUrl, cache por etag, dispatcher, validação leve e erros. Não assuma servidor no Pages.\nContexto: [PREENCHER]. BASE_URL: [PREENCHER]."
 }

@@ -1,8 +1,16 @@
 {
   "name": "Frame-Generator-API",
   "version": "1.0.0",
-  "etag": "idx-20261119-01",
+  "updated_at": "2026-11-19T00:00:00Z",
+  "etag": "idx-20261119-03",
   "kind": "static-unified-api",
+  "deployment": {
+    "provider": "github-pages",
+    "site": "https://kauan11-boop.github.io/Frame-Generator-API/",
+    "interface": "https://kauan11-boop.github.io/Frame-Generator-API/Public/dashboard.html",
+    "api_base": "https://kauan11-boop.github.io/Frame-Generator-API/src",
+    "discovery": "https://kauan11-boop.github.io/Frame-Generator-API/src/03_API/v1/index.json"
+  },
   "hosting": {
     "mode": "hybrid-configurable",
     "options": {
@@ -35,8 +43,8 @@
   },
   "protocol": {
     "format": "application/json",
-    "request_envelope": "schemas/command.schema.json",
-    "response_envelope": "schemas/response.schema.json",
+    "request_envelope": "12_Validation/command.schema.json",
+    "response_envelope": "12_Validation/response.schema.json",
     "restrictions": {
       "max_body_bytes": 1048576,
       "allowlisted_commands": true,
@@ -45,20 +53,20 @@
     }
   },
   "endpoints": {
-    "self": "api/v1/index.json",
-    "models": "api/v1/models/index.json",
-    "frames": "api/v1/frames/index.json",
-    "frame_templates": "api/v1/frames/templates.json",
-    "packages": "api/v1/packages/index.json",
-    "commands": "api/v1/commands/index.json",
-    "repack": "api/v1/repack/index.json",
-    "adapters": "api/v1/adapters/index.json",
-    "system_status": "api/v1/system/status.json",
-    "integration_prompt": "api/v1/prompts/integration.json",
-    "content": "api/v1/content/index.json",
-    "schemas": "schemas/",
-    "sdk": "sdk/frame-api.js",
-    "interface": "../../public/dashboard.html"
+    "self": "03_API/v1/index.json",
+    "models": "03_API/v1/models/index.json",
+    "frames": "03_API/v1/frames/index.json",
+    "frame_templates": "03_API/v1/frames/templates.json",
+    "packages": "03_API/v1/packages/index.json",
+    "commands": "03_API/v1/commands/index.json",
+    "repack": "03_API/v1/repack/index.json",
+    "adapters": "03_API/v1/adapters/index.json",
+    "system_status": "03_API/v1/system/status.json",
+    "integration_prompt": "03_API/v1/prompts/integration.json",
+    "content": "03_API/v1/content/index.json",
+    "schemas": "12_Validation/",
+    "sdk": "15_Integration/sdk/frame-api.js",
+    "interface": "../../Public/dashboard.html"
   },
   "sync": {
     "strategy": "manifest-polling",

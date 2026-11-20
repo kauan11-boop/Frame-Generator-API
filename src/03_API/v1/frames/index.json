@@ -6,7 +6,7 @@
   "modes": ["storyboard", "video_frames", "data_panels", "composite"],
   "job_states": ["queued", "planning", "rendering", "assembling", "completed", "failed", "cancelled"],
   "control": {
-    "create": { "command": "frames.create", "transport": "adapter", "schema": "schemas/frame-job.schema.json" },
+    "create": { "command": "frames.create", "transport": "adapter", "schema": "12_Validation/frame-job.schema.json" },
     "get": { "command": "frames.get", "transport": "adapter" },
     "list": { "command": "frames.list", "transport": "adapter" },
     "cancel": { "command": "frames.cancel", "transport": "adapter" },
@@ -19,5 +19,5 @@
     "composite": { "frames": 8, "output": "mixed+json" }
   },
   "active_jobs": [],
-  "recent_results_ref": "data/frames/results.index.json"
+  "recent_results_ref": "10_Storage/frames/results.index.json"
 }

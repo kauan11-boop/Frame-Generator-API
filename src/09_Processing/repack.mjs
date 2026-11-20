@@ -1,26 +1,29 @@
 #!/usr/bin/env node
 /**
  * Repack — pipeline auditável de reconstrução/aprimoramento por manifesto.
- * Transparente: gera planos e relatórios em data/repack/; NÃO altera código-fonte.
+ * Transparente: gera planos e relatórios em 10_Storage/repack/; NÃO altera código-fonte.
  * Uso:
- *   node scripts/repack.mjs scan
- *   node scripts/repack.mjs plan [--target api/v1] [--strategy fill-missing]
- *   node scripts/repack.mjs simulate --plan <plan_id>
- *   node scripts/repack.mjs apply --plan <plan_id> --approve   (gera artefatos derivados em data/repack/derived)
- *   node scripts/repack.mjs verify
+ *   node src/09_Processing/repack.mjs scan
+ *   node src/09_Processing/repack.mjs plan [--target 03_API/v1] [--strategy fill-missing]
+ *   node src/09_Processing/repack.mjs simulate --plan <plan_id>
+ *   node src/09_Processing/repack.mjs apply --plan <plan_id> --approve   (gera artefatos derivados em 10_Storage/repack/derived)
+ *   node src/09_Processing/repack.mjs verify
  */
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
-// Raiz dos manifests: se executado de src/scripts, usa src/; se de repo root com src/, detecta src/
+// Raiz dos manifests: detecta src/ na arquitetura 01_Core..15_Integration
 function resolveRoot() {
   const cwd = process.cwd();
   const scriptDir = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
   const fromScript = path.resolve(scriptDir, '..'); // src/
+  if (fs.existsSync(path.join(fromScript, '03_API/v1/index.json'))) return fromScript;
+  if (fs.existsSync(path.join(cwd, 'src/03_API/v1/index.json'))) return path.join(cwd, 'src');
+  if (fs.existsSync(path.join(cwd, '03_API/v1/index.json'))) return cwd;
+  // fallback legado
   if (fs.existsSync(path.join(fromScript, 'api/v1/index.json'))) return fromScript;
   if (fs.existsSync(path.join(cwd, 'src/api/v1/index.json'))) return path.join(cwd, 'src');
-  if (fs.existsSync(path.join(cwd, 'api/v1/index.json'))) return cwd;
   return cwd;
 }
 const ROOT = resolveRoot();
@@ -30,10 +33,12 @@ const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 const writeJson = (p, obj) => { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(obj, null, 2) + '\n'); };
 const exists = (p) => fs.existsSync(p);
 
+const DATA_REPACK = '10_Storage/repack';
+const API_V1 = '03_API/v1';
 const MANIFESTS = [
-  'api/v1/index.json','api/v1/models/index.json','api/v1/frames/index.json','api/v1/frames/templates.json',
-  'api/v1/packages/index.json','api/v1/commands/index.json','api/v1/repack/index.json','api/v1/adapters/index.json',
-  'api/v1/system/status.json','api/v1/prompts/integration.json','api/v1/content/index.json'
+  `${API_V1}/index.json`,`${API_V1}/models/index.json`,`${API_V1}/frames/index.json`,`${API_V1}/frames/templates.json`,
+  `${API_V1}/packages/index.json`,`${API_V1}/commands/index.json`,`${API_V1}/repack/index.json`,`${API_V1}/adapters/index.json`,
+  `${API_V1}/system/status.json`,`${API_V1}/prompts/integration.json`,`${API_V1}/content/index.json`
 ];
 
 function scan() {
@@ -47,7 +52,7 @@ function scan() {
     } catch (e) { return { path: p, ok: false, error: e.message }; }
   });
   const inv = { generated_at: now(), root: ROOT, items, ok: items.every(i => i.ok) };
-  writeJson(path.join(ROOT, 'data/repack/inventory.json'), inv);
+  writeJson(path.join(ROOT, `${DATA_REPACK}/inventory.json`), inv);
   return inv;
 }
 
@@ -59,7 +64,7 @@ function diff(inv) {
     if (it.ok && !it.version) gaps.push({ resource: it.path, issue: 'missing-version', action: 'fill-missing' });
   }
   // checks específicos
-  const modelsP = path.join(ROOT, 'api/v1/models/index.json');
+  const modelsP = path.join(ROOT, `${API_V1}/models/index.json`);
   if (exists(modelsP)) {
     const m = readJson(modelsP);
     (m.models||[]).forEach((mod,i) => {
@@ -68,17 +73,17 @@ function diff(inv) {
       if (!mod.capabilities) gaps.push({ resource: 'models', issue: 'missing-capabilities', path: `models[${i}]`, action: 'fill-missing' });
     });
   }
-  const cmdP = path.join(ROOT, 'api/v1/commands/index.json');
+  const cmdP = path.join(ROOT, `${API_V1}/commands/index.json`);
   if (exists(cmdP)) {
     const c = readJson(cmdP);
     if (c.enforce?.allowlist !== true) gaps.push({ resource: 'commands', issue: 'allowlist-not-enforced', action: 'normalize' });
   }
   const g = { generated_at: now(), gaps, count: gaps.length };
-  writeJson(path.join(ROOT, 'data/repack/gaps.json'), g);
+  writeJson(path.join(ROOT, `${DATA_REPACK}/gaps.json`), g);
   return g;
 }
 
-function plan(strategy = 'fill-missing', target = 'api/v1') {
+function plan(strategy = 'fill-missing', target = API_V1) {
   const inv = scan();
   const gaps = diff(inv);
   const planId = `plan-${Date.now().toString(36)}-${rid()}`;
@@ -90,9 +95,9 @@ function plan(strategy = 'fill-missing', target = 'api/v1') {
     gaps: gaps.gaps, actions,
     approval: { required: true, approved: false, approved_by: null }
   };
-  writeJson(path.join(ROOT, `data/repack/plans/${planId}.json`), p);
+  writeJson(path.join(ROOT, `${DATA_REPACK}/plans/${planId}.json`), p);
   // atualiza índice repack
-  const repackIdx = path.join(ROOT, 'api/v1/repack/index.json');
+  const repackIdx = path.join(ROOT, `${API_V1}/repack/index.json`);
   if (exists(repackIdx)) { const r = readJson(repackIdx); r.current_plan = planId; r.updated_at = now(); writeJson(repackIdx, r); }
   return p;
 }
@@ -113,14 +118,14 @@ function simulate(planId) {
   p.status = report.schema_valid ? 'simulated' : 'invalid';
   p.simulation = report;
   writeJson(planPath(p.plan_id), p);
-  writeJson(path.join(ROOT, 'data/repack/simulation-report.json'), report);
+  writeJson(path.join(ROOT, `${DATA_REPACK}/simulation-report.json`), report);
   return report;
 }
 
-function planPath(id){ return path.join(ROOT, `data/repack/plans/${id}.json`); }
+function planPath(id){ return path.join(ROOT, `${DATA_REPACK}/plans/${id}.json`); }
 function loadPlan(id){
   if (!id) {
-    const r = readJson(path.join(ROOT,'api/v1/repack/index.json'));
+    const r = readJson(path.join(ROOT, `${API_V1}/repack/index.json`));
     id = r.current_plan;
   }
   if (!id) throw new Error('Nenhum plan_id informado e nenhum current_plan definido.');
@@ -133,7 +138,7 @@ function apply(planId, approved) {
   if (!approved) throw new Error('Aplicação requer aprovação explícita (--approve). Repack não altera nada sem aprovação.');
   const p = loadPlan(planId);
   if (p.status !== 'simulated' && p.status !== 'planned') console.warn('Aviso: aplicando plano não simulado.');
-  const outDir = path.join(ROOT, 'data/repack/derived', p.plan_id);
+  const outDir = path.join(ROOT, `${DATA_REPACK}/derived`, p.plan_id);
   fs.mkdirSync(outDir, { recursive: true });
   // gera artefatos derivados (cópias normalizadas + relatório), sem tocar fontes
   const derived = [];
@@ -153,7 +158,7 @@ function apply(planId, approved) {
   p.apply_report = report;
   writeJson(planPath(p.plan_id), p);
   const log = { run_id: `repack-run-${rid()}`, plan_id: p.plan_id, started_at: p.created_at, finished_at: now(), status: 'applied-derived', stages: ['scan','diff','plan','simulate','apply','verify-pending'], artifacts: derived, audit: { transparent: true, hidden_mutations: false } };
-  writeJson(path.join(ROOT,'data/repack/logs/latest.json'), log);
+  writeJson(path.join(ROOT, `${DATA_REPACK}/logs/latest.json`), log);
   return report;
 }
 
@@ -161,7 +166,7 @@ function verify() {
   const inv = scan();
   const gaps = diff(inv);
   const rep = { verified_at: now(), ok: inv.ok && gaps.count === 0, manifests: inv.items.length, gaps: gaps.count };
-  writeJson(path.join(ROOT,'data/repack/verify-report.json'), rep);
+  writeJson(path.join(ROOT, `${DATA_REPACK}/verify-report.json`), rep);
   return rep;
 }
 

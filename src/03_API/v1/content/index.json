@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-11-19T00:00:00Z",
+  "etag": "cnt-20261119-01",
+  "description": "Catálogo de conteúdos e capacidades integradas (expansível via pacotes/Repack).",
+  "categories": [
+    { "id": "models", "title": "Modelos de IA", "count": 4, "ref": "03_API/v1/models/index.json", "features": ["metadados GGUF completos", "carregador por modo A/B/C", "inspeção de estrutura/tensores (índice)", "registro e controle"] },
+    { "id": "frames-storyboard", "title": "Quadros — Storyboard", "count": 1, "ref": "03_API/v1/frames/templates.json#storyboard-basic", "features": ["cenas", "prompts", "câmera", "transições", "narração"] },
+    { "id": "frames-video", "title": "Quadros — Sequência de vídeo", "count": 1, "ref": "03_API/v1/frames/templates.json#video-sequence-basic", "features": ["fps", "keyframes", "motion", "intervalos"] },
+    { "id": "frames-datapanel", "title": "Quadros — Dados/UI", "count": 1, "ref": "03_API/v1/frames/templates.json#data-panels-basic", "features": ["métricas", "charts", "tabelas", "cards", "layout"] },
+    { "id": "packages", "title": "Pacotes & Conteúdos", "count": 7, "ref": "03_API/v1/packages/index.json", "features": ["instalação/atualização por manifesto", "autoajuste por etag/version", "dependências"] },
+    { "id": "commands", "title": "Comandos & Protocolo", "count": 16, "ref": "03_API/v1/commands/index.json", "features": ["envelope JSON", "allowlist", "restrições", "idempotência", "dry-run"] },
+    { "id": "repack", "title": "Sistema Repack", "count": 1, "ref": "03_API/v1/repack/index.json", "features": ["scan/diff/plan/simulate/apply/verify", "auditável", "derivados", "overlays"] },
+    { "id": "adapters", "title": "Adaptadores & Servidores", "count": 5, "ref": "03_API/v1/adapters/index.json", "features": ["http externo", "OpenAI-compatible", "Cloudflare Worker", "WASM browser", "static readonly"] },
+    { "id": "integration", "title": "Integração IA", "count": 1, "ref": "03_API/v1/prompts/integration.json", "features": ["prompt pronto", "aba dedicada", "copiar/colar"] }
+  ],
+  "extensibility": {
+    "how_to_add_content": [
+      "Adicione/atualize entradas nos manifests em src/03_API/v1/* e/ou src/10_Storage/*",
+      "Incremente version/updated_at/etag do recurso alterado",
+      "Execute `node src/09_Processing/repack.mjs scan && node src/09_Processing/repack.mjs plan && node src/09_Processing/repack.mjs simulate` para validar",
+      "Com aprovação, gere derivados com `node src/09_Processing/repack.mjs apply --plan <id> --approve`",
+      "Clientes conectados detectam mudança de etag/version e se autoajustam"
+    ],
+    "scaling": "Para milhares de itens, pagine em arquivos (ex.: src/03_API/v1/models/page-*.json) e referencie no índice; mantenha etag por página."
+  },
+  "organization": {
+    "root": "src/",
+    "folders": [
+      "01_Core", "02_Configuration", "03_API", "04_FrameEngine", "05_FrameGeneration",
+      "06_Interpolation", "07_Rendering", "08_Queue", "09_Processing", "10_Storage",
+      "11_Models", "12_Validation", "13_Logging", "14_Security", "15_Integration"
+    ],
+    "public_interface": "Public/"
+  }
+}
