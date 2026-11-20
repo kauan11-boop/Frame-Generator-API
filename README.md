@@ -1,13 +1,76 @@
 # Frame-Generator-API
 
-Plataforma web modular para **carregamento/análise de modelos de IA**, **geração e aprimoramento de quadros** (imagem/vídeo/jogo) e **administração unificada** (API lógica, geradores, engines, repacks, ferramentas, usuários e tarefas), projetada para execução estática no navegador e hospedagem no **GitHub Pages**.
+**FGUA — Frame Generator Universal Architecture** é uma plataforma modular para análise de modelos de IA, geração e aprimoramento de quadros, processamento de mídia, administração de engines/provedores e integração universal via API e MCP.
 
-- **Domínio:** https://kauan11-boop.github.io/Frame-Generator-API/
-- **Interface/Dashboard:** https://kauan11-boop.github.io/Frame-Generator-API/Public/dashboard.html
+- **Frontend:** https://kauan11-boop.github.io/Frame-Generator-API/
+- **Dashboard:** https://kauan11-boop.github.io/Frame-Generator-API/public/dashboard.html
+- **MCP Universal:** https://kauan11-boop.github.io/Frame-Generator-API/public/mcp.html
+- **Licença:** MIT
 
-> **Hospedagem estática:** não há servidor REST no GitHub Pages. O frontend expõe uma **API lógica central** (`/api/v1/*` como contrato), opera em **modo demonstração/local** e pode ser conectado a **backend local/remoto** configurável. Processamento pesado/inferência real depende de engines, runtimes ou provedores compatíveis; operações indisponíveis retornam estado explícito (**sem simulação**).
+## Arquitetura
 
-## Estrutura
+O projeto é dividido em duas partes independentes:
+
+1. **Frontend estático:** HTML, CSS e JavaScript executados no navegador e hospedados no GitHub Pages.
+2. **Runtime Node.js:** processo local ou serviço próprio que hospeda MCP Server e MCP Client.
+
+GitHub Pages não executa processos Node.js, endpoints REST dinâmicos nem servidores MCP. O contrato `/api/v1` do frontend continua sendo uma API lógica até que um backend real seja configurado.
+
+## MCP Universal
+
+O runtime implementa MCP com o SDK TypeScript oficial v2 e disponibiliza:
+
+- **Servidor stdio:** integração com hosts MCP que iniciam um processo local.
+- **Servidor HTTP:** endpoint Streamable HTTP em `/mcp`, com bind local por padrão.
+- **Cliente MCP:** conexão com servidores remotos via HTTPS para descoberta/listagem e chamadas explícitas.
+- **Tools:** status, contrato, módulos, catálogos, configuração de IA e validação de pipelines.
+- **Resources:** `fgua://system/status`, `fgua://api/contract`, `fgua://catalog/models`, `fgua://catalog/generators`.
+- **Prompt:** `fgua_pipeline_design`, que propõe uma estrutura para revisão humana.
+
+### Ferramentas
+
+| Tool | Finalidade |
+|---|---|
+| `fgua_system_status` | Diagnóstico do runtime |
+| `fgua_api_contract` | Contrato lógico da API |
+| `fgua_modules_list` | Inventário dos módulos |
+| `fgua_catalog_read` | Leitura de catálogos JSON |
+| `fgua_ai_status` | Verifica configuração de provedores sem revelar segredos |
+| `fgua_pipeline_validate` | Valida a estrutura de um pipeline sem executá-lo |
+
+### Executar localmente
+
+Requer Node.js 20.19+.
+
+```bash
+npm install
+npm run check
+npm test
+npm run mcp
+```
+
+O comando `npm run mcp` inicia o servidor stdio. Para HTTP local:
+
+```bash
+npm run mcp:http
+```
+
+- MCP: `http://127.0.0.1:3333/mcp`
+- Health: `http://127.0.0.1:3333/health`
+
+Consulte [server/README.md](server/README.md) para configuração de clientes, segurança e implantação.
+
+## IA opcional
+
+O MCP e o runtime funcionam sem LM Studio, chave de API ou modelo de linguagem. Quando desejado, o projeto pode receber configurações de endpoint compatíveis:
+
+- `LM_STUDIO_BASE_URL`
+- `OPENAI_BASE_URL`
+- `OPENAI_API_KEY`
+
+O estado de configuração é exposto sem retornar valores secretos. A presença de um endpoint não significa que o provedor foi testado ou que inferência está funcional.
+
+## Estrutura principal
 
 ```text
 Frame-Generator-API/
@@ -15,61 +78,70 @@ Frame-Generator-API/
 ├── README.md
 ├── LICENSE
 ├── manifest.json
-├── src/                         (10 pastas)
-│   ├── core/                    ApiController.js, ModuleRegistry.js, EventBus.js, LifecycleManager.js
-│   ├── configuration/           JsonManager.js, SettingsManager.js
-│   ├── models/                  ModelLoader.js, MetadataLoader.js, ModelRegistry.js, ModelCompatibility.js
-│   ├── quantization/            QuantizationManager.js, QuantizationAnalyzer.js
-│   ├── generators/              FrameGenerator.js, ImageGenerator.js, VideoGenerator.js, GeneratorRegistry.js
-│   ├── processing/              ImageProcessor.js, VideoProcessor.js, FrameProcessor.js
-│   ├── engines/                 WebGPUEngine.js, WebCodecsEngine.js, ONNXEngine.js, BackendAdapter.js
-│   ├── repacks/                 RepackManager.js, ToolRegistry.js, ManifestLoader.js
-│   ├── security/                AuthenticationManager.js, PermissionManager.js, ValidationManager.js
-│   └── storage/                 IndexedDBManager.js, CacheManager.js, HistoryManager.js
-├── Public/                      (interface e recursos)
-│   ├── css/ js/ images/ icons/ components/ dashboard/ models/ generators/ tools/
-│   ├── repacks/ themes/ templates/ workers/ manifests/ presets/ documentation/
-│   └── locales/ assets/
-└── configs/
-    ├── api.json
-    ├── models.json
-    ├── generators.json
-    ├── repacks.json
-    ├── permissions.json
-    └── settings.json
+├── package.json
+├── src/
+│   ├── core/
+│   ├── configuration/
+│   ├── models/
+│   ├── quantization/
+│   ├── generators/
+│   ├── processing/
+│   ├── engines/
+│   ├── repacks/
+│   ├── security/
+│   └── storage/
+├── public/
+│   ├── dashboard.html
+│   ├── mcp.html
+│   ├── css/
+│   ├── js/
+│   └── documentation/
+├── configs/
+├── server/
+│   ├── index.js
+│   ├── mcp-server.js
+│   ├── http.js
+│   ├── client.js
+│   ├── runtime.js
+│   └── README.md
+└── tests/
+    └── runtime.test.js
 ```
 
-## Implementado (base funcional)
+## Componentes existentes do frontend
 
-- **Core unificado:** `EventBus`, `ModuleRegistry`, `LifecycleManager`, `ApiController` (contrato `/api/v1`, modos demo/local/remoto, adaptadores).
-- **Modelos:** detecção de formato, **parser GGUF real** no navegador (assinatura/cabeçalho, versão, metadados KV e índice de tensores/tipos/dimensões/offsets), registro, compatibilidade e carregamento condicionado a runtime/provedor.
-- **Quantização:** identificação, análise, estimativa e planejamento; conversão delegada a runtime/provedor compatível (arquivo original preservado, sem conversão fictícia).
-- **Geradores/Processamento:** `FrameGenerator`, `ImageGenerator`, `VideoGenerator`, processadores de imagem/vídeo/quadros, planejamento e análise local; execução de inferência/processamento avançado requer engine/provedor compatível.
-- **Engines:** detecção/estado de `WebGPU`, `WebCodecs`, adaptador `ONNX Runtime Web` (quando runtime carregado) e `BackendAdapter` configurável.
-- **Repacks/Ferramentas:** `ManifestLoader` (validação), `ToolRegistry`, `RepackManager` (importação/registro/validação).
-- **Segurança/Usuários (UI):** `AuthenticationManager`, `PermissionManager`, `ValidationManager` (validação de arquivos/JSON/endpoints; controle de UI em ambiente estático).
-- **Storage/Jobs:** `IndexedDBManager`, `CacheManager`, `HistoryManager` e gerenciador de tarefas/estados no núcleo.
-- **Dashboard (sidebar):** **Visão geral** com gráficos de informações do sistema (contagens, estados de tarefas, capacidades, engines/provedores/modelos) e **Integração** (aba dedicada para integrar informações e APIs em modelos de IA/projetos: contrato `/api/v1`, configuração de backend, exemplos, exportação/cópia de payload JSON).
+- Core: `EventBus`, `ModuleRegistry`, `LifecycleManager`, `ApiController`.
+- Modelos: `ModelLoader`, `MetadataLoader`, `ModelRegistry`, `ModelCompatibility`.
+- Quantização: análise, perfis e planejamento.
+- Geradores: quadros, imagens e vídeos.
+- Engines: WebGPU, WebCodecs, ONNX Runtime Web e adaptador de backend.
+- Repacks e ferramentas: manifests, registro e validação.
+- Segurança: autenticação e permissões da interface.
+- Storage: IndexedDB, cache e histórico.
 
-## Desenvolvimento local
+## Limitações explícitas
+
+- O runtime MCP inicial expõe ferramentas de diagnóstico, descoberta e validação; não afirma que os geradores do navegador estejam executando dentro do processo Node.
+- A análise de metadados GGUF ocorre no frontend. Inferência depende de runtime compatível.
+- Quantização é analisada/planejada; conversão real requer provedor implementado.
+- Geração de quadros, interpolação, upscale e processamento de vídeo exigem engines/provedores reais.
+- Não existe interceptação automática do pipeline gráfico de jogos.
+- Autenticação remota de produção deve ser fornecida por OAuth/gateway TLS; o token opcional do runtime é uma camada simples para ambientes controlados.
+- Nenhum resultado de IA ou processamento é simulado.
+
+## Desenvolvimento
+
+Para servir o frontend localmente:
 
 ```bash
 npx serve .
 ```
-- Abrir `http://localhost:3000/` (bootstrap) ou `http://localhost:3000/Public/dashboard.html`.
 
-## Configuração e integração
+Abra `http://localhost:3000/` ou `http://localhost:3000/public/dashboard.html`.
 
-- Ajuste `configs/api.json` e `configs/settings.json` para apontar backend local/remoto quando disponível.
-- `/api/v1/*` representa o **contrato lógico** da plataforma; em GitHub Pages, sem backend, o cliente retorna estado indisponível explícito para operações remotas.
-- Modelos GGUF: análise/metadados no cliente; pesos/inferência dependem de runtime compatível. Arquivos originais não são modificados na inspeção.
+## Referências técnicas
 
-## Limites e segurança
-
-- Não há interceptação automática de pipeline gráfico de jogos, nem inferência/quantização “mágica” no navegador sem runtime compatível.
-- Resultados de IA/processamento pesado não são simulados; quando indisponíveis, o sistema informa requisito/provedor.
-- Autenticação/autorização confiáveis exigem backend; não armazenar credenciais/segredos em arquivos públicos. Arquivos de modelo são tratados como dados (não executáveis).
-
-## Licença
-
-MIT — ver `LICENSE`.
+- [MCP Specification](https://modelcontextprotocol.io/specification/2026-07-28)
+- [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
+- [GitHub Pages](https://docs.github.com/pages)
+- [Git Trees REST API](https://docs.github.com/en/rest/git/trees)

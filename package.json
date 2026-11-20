@@ -1,0 +1,19 @@
+{
+  "name": "frame-generator-api",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "FGUA - Universal Frame Generator and MCP runtime",
+  "engines": { "node": ">=20.19.0" },
+  "scripts": {
+    "mcp": "node server/index.js",
+    "mcp:http": "node server/index.js --http",
+    "test": "node --test",
+    "check": "node --check server/index.js && node --check server/mcp-server.js && node --check server/http.js && node --check server/client.js && node --check server/runtime.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/server": "2.4.0",
+    "zod": "^4.1.12"
+  }
+}

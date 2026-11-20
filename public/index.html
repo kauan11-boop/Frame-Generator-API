@@ -7,23 +7,22 @@
   <link rel="stylesheet" href="./css/main.css" />
 </head>
 <body class="landing">
-  <main class="hero">
-    <div class="hero-card">
-      <div class="badge">GitHub Pages · Plataforma modular unificada</div>
-      <h1>Frame-Generator-API</h1>
-      <p>Ecossistema web para carregar modelos de IA, analisar metadados GGUF, planejar geração/aprimoramento de quadros (imagem, vídeo, jogo), administrar engines, repacks, ferramentas, usuários e tarefas — com API lógica central e núcleo no navegador.</p>
-      <div class="actions">
-        <a class="btn primary" href="./dashboard.html">Abrir dashboard</a>
-        <a class="btn" href="../configs/api.json">Contrato API</a>
-        <a class="btn" href="./documentation/index.md">Documentação</a>
-      </div>
-      <div class="grid mini">
-        <div class="mini-card"><h3>Modelos & GGUF</h3><p>Análise real de metadados GGUF no navegador, registro, compatibilidade e quantização (análise/planejamento) com execução delegada a runtime compatível.</p></div>
-        <div class="mini-card"><h3>Geração de quadros</h3><p>Motores unificados para imagem, vídeo e jogo: planejamento, análise e integração com engines/provedores externos quando necessários.</p></div>
-        <div class="mini-card"><h3>Repacks & Ferramentas</h3><p>Manifests JSON validados, registro de ferramentas/repacks e administração modular integrada à API lógica e ao painel.</p></div>
-      </div>
-      <p class="muted small">Hospedagem estática no GitHub Pages (modo demonstração/local). Inferência e processamento pesado dependem de engines, runtimes ou backends externos compatíveis configurados — sem simulação de resultados.</p>
+  <main class="hero"><div class="hero-card">
+    <div class="badge">GitHub Pages · Plataforma modular unificada</div>
+    <h1>Frame-Generator-API</h1>
+    <p>Ecossistema web para análise de modelos, metadados GGUF, planejamento de geração/aprimoramento de quadros, engines, repacks e ferramentas, com API lógica e núcleo no navegador.</p>
+    <div class="actions">
+      <a class="btn primary" href="./dashboard.html">Abrir dashboard</a>
+      <a class="btn" href="./mcp.html">MCP Universal</a>
+      <a class="btn" href="../configs/api.json">Contrato API</a>
+      <a class="btn" href="./documentation/index.md">Documentação</a>
     </div>
-  </main>
+    <div class="grid mini">
+      <div class="mini-card"><h3>Modelos & GGUF</h3><p>Análise de metadados GGUF no navegador, registro e compatibilidade. A execução depende de runtime compatível.</p></div>
+      <div class="mini-card"><h3>Geração de quadros</h3><p>Planejamento e integração com engines/provedores externos quando disponíveis.</p></div>
+      <div class="mini-card"><h3>MCP Universal</h3><p>Servidor MCP local por stdio ou HTTP, cliente para conectar servidores externos e ferramentas independentes de IA.</p></div>
+    </div>
+    <p class="muted small">GitHub Pages hospeda apenas o frontend. Inferência e processamento pesado dependem de engines, runtimes ou backends externos configurados — sem simulação de resultados.</p>
+  </div></main>
 </body>
 </html>
