@@ -232,7 +232,11 @@ async function api(path, options = {}) {
 Payload: exportado por esta aba ("Baixar payload de integração").`;
 
   let masterPrompt = 'Master prompt indisponível (abra ./documentation/master-prompt.md).';
-  try { const r = await fetch('./documentation/master-prompt.md', { cache: 'no-store' }); if (r.ok) masterPrompt = await r.text(); } catch {}
+  const mpCandidates = ['./documentation/master-prompt.md', 'documentation/master-prompt.md', `${siteBase}Public/documentation/master-prompt.md`, `${siteBase}public/documentation/master-prompt.md`, '../Public/documentation/master-prompt.md'];
+  let masterPromptUrl = './documentation/master-prompt.md';
+  for (const u of mpCandidates) {
+    try { const r = await fetch(u, { cache: 'no-store' }); if (r.ok) { masterPrompt = await r.text(); masterPromptUrl = u; break; } } catch {}
+  }
   const commandsText = `npx serve .                      # servir localmente (GitHub Pages/estático)\n`+
 `# Configs JSON: configs/api.json, settings.json, models.json, generators.json, repacks.json, permissions.json\n`+
 `# API lógica: /api/v1/* (contrato; requer backend/provedor para execução remota)\n`+
@@ -256,7 +260,7 @@ Payload: exportado por esta aba ("Baixar payload de integração").`;
         <div class="integration-actions">
           <button class="btn primary" id="dl-payload">Baixar payload de integração (JSON)</button>
           <button class="btn" id="copy-payload">Copiar payload</button>
-          <a class="btn" href="./documentation/master-prompt.md" download>Baixar Master Prompt</a>
+          <a class="btn" id="dl-master" href="./documentation/master-prompt.md" download>Baixar Master Prompt</a>
         </div>
       </div>
       <div class="card"><h3>Conexão (backend/API)</h3>
@@ -330,6 +334,7 @@ Payload: exportado por esta aba ("Baixar payload de integração").`;
   document.getElementById('copy-proj')?.addEventListener('click', ()=>copyText(document.getElementById('code-proj')?.textContent||''));
   document.getElementById('copy-master')?.addEventListener('click', ()=>copyText(document.getElementById('code-master')?.textContent||''));
   document.getElementById('copy-cmd')?.addEventListener('click', ()=>copyText(document.getElementById('code-cmd')?.textContent||''));
+  const dlMaster = document.getElementById('dl-master'); if (dlMaster && masterPromptUrl) dlMaster.href = masterPromptUrl;
 }
 
 (async () => {
