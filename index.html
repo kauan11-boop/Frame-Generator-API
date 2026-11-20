@@ -20,6 +20,7 @@
       <div class="badge-row" aria-label="Contexto do projeto">
         <span class="badge info">GitHub Pages · site estático</span>
         <span class="badge">Contrato lógico <code>/api/v1</code></span>
+        <span class="badge">v2.0.0 · MIT</span>
         <span class="badge">Execução real requer runtime/provedor compatível</span>
       </div>
       <div class="hero-head">
@@ -27,11 +28,13 @@
       </div>
       <h1>Frame-Generator-API</h1>
       <p class="lead">Núcleo web modular para <strong>análise e registro de modelos</strong> (incluindo metadados GGUF no navegador, sujeito a limites), inspeção de <strong>capacidades/engines/provedores</strong>, gerenciamento de configurações públicas e <strong>integração por contrato</strong> (<code>/api/v1</code>).</p>
-      <p>Esta interface é honesta sobre o que está disponível: em hospedagem estática não há servidor REST nativo. Inferência, quantização efetiva e processamento pesado de imagem/vídeo <strong>não são simulados</strong> e dependem de backend, engine ou provedor compatível configurado.</p>
+      <p>Esta interface é honesta sobre o que está disponível: em hospedagem estática não há servidor REST nativo. Inferência, quantização/conversão efetiva e processamento pesado de imagem/vídeo <strong>não são simulados</strong> e dependem de backend, engine ou provedor compatível configurado.</p>
+      <p class="section-note">O dashboard inclui ferramentas de integração (payload e cliente WebSocket opcional), estúdio Discord para geração de templates com simulação local na interface e demo React no navegador — sempre com estados e limites explícitos.</p>
 
       <div class="actions" role="group" aria-label="Ações principais">
         <a class="btn primary" href="./Public/dashboard.html">Abrir dashboard</a>
         <a class="btn" href="./Public/documentation/index.html">Ler documentação</a>
+        <a class="btn" href="./Public/react-vite.html">Abrir demo React</a>
         <a class="btn" href="./configs/api.json">Ver contrato/config da API (JSON)</a>
         <a class="btn" href="https://github.com/kauan11-boop/Frame-Generator-API" rel="noopener noreferrer">Repositório no GitHub</a>
       </div>
@@ -41,26 +44,26 @@
         <div class="mini-grid">
           <div class="mini">
             <h3>1. Verificar ambiente</h3>
-            <p>Abra o dashboard para ver status do núcleo, capacidades do navegador (WebGPU, WebCodecs, WASM, etc.) e recursos registrados na sessão.</p>
+            <p>Abra o dashboard para ver status do núcleo, diagnóstico de configurações, capacidades do navegador (WebGPU, WebCodecs, WASM, etc.) e recursos da sessão.</p>
           </div>
           <div class="mini">
             <h3>2. Explorar recursos</h3>
-            <p>Consulte geradores, engines, provedores, presets, templates, manifests e configurações públicas expostos pelo projeto.</p>
+            <p>Consulte modelos, geradores, engines, provedores, presets, templates, manifests e configurações públicas expostos pelo projeto.</p>
           </div>
           <div class="mini">
-            <h3>3. Integrar backend</h3>
-            <p>Na aba Integração, configure a URL base de um backend compatível (modo local/remoto) para operações que exigem execução externa.</p>
+            <h3>3. Integrar e configurar</h3>
+            <p>Na aba Integração, configure backend compatível (sessão), exporte o payload e utilize o cliente WebSocket opcional para endpoints externos.</p>
           </div>
           <div class="mini">
-            <h3>4. Exportar payload</h3>
-            <p>Baixe o payload de integração (JSON) e use a documentação/master prompt para conectar IA, agentes ou pipelines ao contrato real.</p>
+            <h3>4. Gerar artefatos e integrar IA</h3>
+            <p>Use o estúdio Discord para templates/simulação local, a demo React e o master prompt/documentação para conectar agentes e pipelines ao contrato real.</p>
           </div>
         </div>
       </section>
 
       <section class="mt" aria-labelledby="boot-title">
         <h2 id="boot-title" style="font-size:1.125rem;margin:0 0 8px;color:var(--text-strong)">Verificação rápida do núcleo (navegador)</h2>
-        <p class="section-note">Opcional: inicializa o núcleo nesta página para confirmar carregamento de módulos e configs. Para uso completo, utilize o dashboard.</p>
+        <p class="section-note">Opcional: inicializa o núcleo nesta página para confirmar carregamento de módulos e configurações. Para uso completo, utilize o dashboard.</p>
         <div class="actions" style="margin-top:10px">
           <button class="btn" id="boot-run" type="button">Verificar núcleo agora</button>
         </div>
@@ -68,9 +71,10 @@
       </section>
 
       <footer class="footer mt" aria-label="Informações do projeto">
+        <span>Responsável: Kauan Henrique Alves dos Reis</span>
         <span>Licença: <a href="./LICENSE">MIT</a></span>
-        <span>Configs: <a href="./configs/api.json">api.json</a></span>
-        <span>Documentação: <a href="./Public/documentation/index.html">índice</a></span>
+        <span>Docs: <a href="./Public/documentation/index.html">índice</a></span>
+        <span>Histórico: <a href="./CHANGELOG.md">CHANGELOG</a></span>
       </footer>
     </article>
   </main>
@@ -90,7 +94,7 @@
         const s = app?.getStatus ? app.getStatus() : null;
         if (app && app.error) throw app.error;
         const counts = s?.counts || {};
-        setStatus('ok', `Núcleo pronto (v${s?.version || '1.0.0'}). Módulos: ${counts.modules ?? 0}, geradores: ${counts.generators ?? 0}, engines: ${counts.engines ?? 0}, provedores: ${counts.providers ?? 0}. Modo: ${s?.mode || app?.api?.mode || 'demo'}.`);
+        setStatus('ok', `Núcleo pronto (v${s?.version || '2.0.0'}). Módulos: ${counts.modules ?? 0}, geradores: ${counts.generators ?? 0}, engines: ${counts.engines ?? 0}, provedores: ${counts.providers ?? 0}. Modo: ${s?.mode || app?.api?.mode || 'demo'}.`);
       } catch (err) {
         const msg = err?.message || String(err);
         setStatus('err', `Falha ao inicializar o núcleo: ${msg}. Verifique se está servindo os arquivos via HTTP (ex.: npx serve .) e consulte a documentação para solução de problemas.`);

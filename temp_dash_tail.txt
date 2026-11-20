@@ -1,0 +1,901 @@
+﻿            <div>VideoEncoder</div><div>${boolPill(!!wc.videoEncoder)}</div>
+            <div>VideoFrame</div><div>${boolPill(!!wc.videoFrame)}</div>
+          </div>
+          <p class="section-note">Suporte a APIs nÃ£o implica suporte a todos os codecs, perfis ou fluxos de encode/decode.</p>
+        </section>
+      </div>
+    </div>`;
+}
+
+function renderModels() {
+  const el = qs('#tab-models');
+  if (!el) return;
+  const models = app?.modelRegistry?.list ? app.modelRegistry.list() : [];
+  const loaded = app?.modelLoader?.listLoaded ? app.modelLoader.listLoaded() : [];
+  const supported = staticData.configs?.models?.defaults?.supportedFormats || ['gguf','onnx','safetensors','bin','pt','pth','json-manifest'];
+
+  const rows = models.map((m) => [
+    `<strong>${esc(m.name || m.fileName || m.id)}</strong><br><code>${esc(m.id)}</code>`,
+    esc(m.format || 'â€”'),
+    esc(m.architecture || 'â€”'),
+    esc(m.quantization || m.precision || 'â€”'),
+    m.size ? `${esc(formatBytes(m.size))}` : 'â€”',
+    statePill(m.state || 'registered'),
+    `<span class="muted">${esc((m.runtimeCompatible || []).join(', ') || 'â€”')}${Array.isArray(m.warnings) && m.warnings.length ? `<br>Avisos: ${esc(m.warnings[0])}${m.warnings.length > 1 ? ` (+${m.warnings.length - 1})` : ''}` : ''}</span>`,
+  ]);
+
+  const loadedInfo = loaded.length ? `<p><strong>Carregados nesta sessÃ£o:</strong> ${esc(loaded.join(', '))}</p>` : '<p class="muted">Nenhum modelo marcado como carregado nesta sessÃ£o.</p>';
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="models-info-title">
+        <h2 id="models-info-title">AnÃ¡lise e registro de modelos (estado real)</h2>
+        <div class="notice info">
+          <h3>O que esta UI oferece</h3>
+          <ul>
+            <li>Exibe modelos <strong>registrados/analisados nesta sessÃ£o</strong> pelo nÃºcleo, quando houver.</li>
+            <li>Formatos declarados em configuraÃ§Ã£o: ${pills(supported)}.</li>
+            <li>AnÃ¡lise de metadados GGUF pode ocorrer no navegador (com limites de tamanho/memÃ³ria). <strong>AnÃ¡lise nÃ£o Ã© inferÃªncia.</strong></li>
+          </ul>
+        </div>
+        <div class="notice warn mt">
+          <h3>LimitaÃ§Ãµes importantes</h3>
+          <ul>
+            <li>Esta interface web estÃ¡tica <strong>nÃ£o inclui</strong> um fluxo completo de upload/execuÃ§Ã£o de inferÃªncia por padrÃ£o.</li>
+            <li>Carregamento de pesos e inferÃªncia requerem runtime/provedor compatÃ­vel (local ou backend) configurado.</li>
+            <li>QuantizaÃ§Ã£o/conversÃ£o efetiva nÃ£o Ã© executada no cliente estÃ¡tico; arquivos originais devem ser preservados.</li>
+          </ul>
+        </div>
+        <p class="section-note mt">Para integraÃ§Ãµes programÃ¡ticas, use o nÃºcleo exposto (<code>window.FGUA</code> / <code>FGUA_APP</code>), APIs do <code>ModelLoader</code>/<code>ModelRegistry</code> e o payload de integraÃ§Ã£o, respeitando estados retornados.</p>
+      </section>
+
+      <section class="card" aria-labelledby="models-list-title">
+        <h2 id="models-list-title">Modelos na sessÃ£o</h2>
+        ${loadedInfo}
+        ${rows.length ? table(['Modelo', 'Formato', 'Arquitetura', 'QuantizaÃ§Ã£o/PrecisÃ£o', 'Tamanho', 'Estado', 'Runtime/avisos'], rows, 'Modelos registrados na sessÃ£o', { srCaption: true }) : emptyState('Nenhum modelo registrado nesta sessÃ£o', 'Quando um modelo for analisado/registrado pelo nÃºcleo nesta sessÃ£o, ele aparecerÃ¡ aqui com metadados e estado. Em modo demo, Ã© esperado nÃ£o haver modelos carregados.', sectionNavButton('integration', 'Ver opÃ§Ãµes de integraÃ§Ã£o'))}
+      </section>
+    </div>`;
+}
+
+function renderGenerators() {
+  const el = qs('#tab-generators');
+  if (!el) return;
+  const generators = app?.generatorRegistry?.list ? app.generatorRegistry.list() : [];
+  const presetsFromConfig = staticData.configs?.settings?.presets || [];
+  const presetsPublic = staticData.presets?.presets || [];
+  const template = staticData.jobTemplate;
+
+  const genRows = generators.map((g) => [
+    `<strong>${esc(g.name || g.id)}</strong><br><code>${esc(g.id)}</code>`,
+    esc(g.category || 'â€”'),
+    statePill(g.enabled === false ? 'disabled' : (g.status || 'registered')),
+    `<span class="muted">${esc(g.engine ? `Engine preferencial: ${g.engine}` : 'Sem engine preferencial definida.')}</span>`,
+  ]);
+
+  const renderPresetRows = (items, sourceLabel) => (items || []).map((p) => [
+    `<strong>${esc(p.name || p.id)}</strong><br><code>${esc(p.id || 'â€”')}</code>`,
+    esc(p.category || 'â€”'),
+    `<code>${esc(JSON.stringify(p.config || {}))}</code>`,
+    esc(sourceLabel),
+  ]);
+
+  const presetRows = [...renderPresetRows(presetsFromConfig, 'configs/settings.json'), ...renderPresetRows(presetsPublic, 'Public/presets/default-presets.json')];
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="gen-reg-title">
+        <h2 id="gen-reg-title">Geradores registrados</h2>
+        <p class="muted">Registro de geradores planejados/suportados pelo nÃºcleo. Registro nÃ£o implica execuÃ§Ã£o disponÃ­vel sem engine/modelo/provedor compatÃ­vel.</p>
+        ${genRows.length ? table(['Gerador', 'Categoria', 'Estado', 'Detalhes'], genRows, 'Geradores registrados', { srCaption: true }) : emptyState('Nenhum gerador registrado', 'Verifique configs/generators.json e o bootstrap do nÃºcleo.', sectionNavButton('config', 'Ver configuraÃ§Ãµes'))}
+      </section>
+
+      <section class="card" aria-labelledby="gen-presets-title">
+        <h2 id="gen-presets-title">Presets (configuraÃ§Ã£o e artefatos pÃºblicos)</h2>
+        <p class="muted">Presets sÃ£o parÃ¢metros reutilizÃ¡veis. Podem existir em <code>configs/settings.json</code> e/ou em <code>Public/presets/default-presets.json</code>; diferenÃ§as refletem as fontes atuais do repositÃ³rio e devem ser tratadas conforme o seu fluxo de integraÃ§Ã£o.</p>
+        ${presetRows.length ? table(['Preset', 'Categoria', 'ConfiguraÃ§Ã£o', 'Fonte'], presetRows, 'Presets disponÃ­veis', { srCaption: true }) : emptyState('Nenhum preset encontrado', 'NÃ£o foram encontrados presets nas fontes esperadas.', sectionNavButton('config', 'Ver configuraÃ§Ãµes'))}
+      </section>
+
+      <section class="card" aria-labelledby="gen-template-title">
+        <h2 id="gen-template-title">Template de tarefa (artefato pÃºblico)</h2>
+        ${template ? `
+          <div class="kv">
+            <div>ID</div><div><code>${esc(template.id || 'â€”')}</code></div>
+            <div>Nome</div><div>${esc(template.name || 'â€”')}</div>
+            <div>Tipo</div><div>${esc(template.type || 'â€”')}</div>
+            <div>Campos</div><div>${pills(template.fields || []) || '<span class="muted">â€”</span>'}</div>
+          </div>
+          ${codeBlock('job-template-json', JSON.stringify(template, null, 2), 'Copiar template JSON')}
+          <p class="section-note">Template de referÃªncia para estruturar tarefas em integraÃ§Ãµes; nÃ£o executa processamento por si sÃ³.</p>
+        ` : emptyState('Template indisponÃ­vel', 'NÃ£o foi possÃ­vel carregar Public/templates/job-template.json.', '')}
+      </section>
+    </div>`;
+}
+
+function renderJobs() {
+  const el = qs('#tab-jobs');
+  if (!el) return;
+  const jobs = app?.jobs?.list ? app.jobs.list() : [];
+  const rows = jobs.map((j) => [
+    `<code>${esc(j.id)}</code>`,
+    esc(j.type || j.category || 'â€”'),
+    statePill(j.state || 'â€”'),
+    `${esc(j.progress ?? 0)}%`,
+    formatDate(j.createdAt),
+    formatDate(j.completedAt),
+    `<span class="muted">${esc(j.message || j.error?.message || 'â€”')}</span>`,
+  ]);
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="jobs-title">
+        <h2 id="jobs-title">Tarefas da sessÃ£o</h2>
+        <p class="muted">Tarefas sÃ£o gerenciadas em memÃ³ria nesta sessÃ£o. Estados refletem execuÃ§Ã£o real reportada pelo nÃºcleo (ex.: <code>unavailable</code>, <code>requires-provider/runtime</code>, <code>failed</code>, <code>cancelled</code>, <code>succeeded</code>). Nenhuma execuÃ§Ã£o Ã© simulada.</p>
+        ${rows.length ? table(['ID', 'Tipo', 'Estado', 'Progresso', 'Criada', 'ConcluÃ­da', 'Mensagem'], rows, 'Tarefas da sessÃ£o', { srCaption: true }) : emptyState('Nenhuma tarefa nesta sessÃ£o', 'Tarefas aparecerÃ£o aqui quando criadas por integraÃ§Ãµes ou componentes do nÃºcleo. Em uso apenas visual/demo, Ã© normal que a lista esteja vazia.', sectionNavButton('integration', 'Ver integraÃ§Ã£o e contrato'))}
+      </section>
+      <section class="card" aria-labelledby="jobs-help-title">
+        <h2 id="jobs-help-title">Como criar/acompanhar tarefas</h2>
+        <ul class="prose">
+          <li>Use a API do nÃºcleo exposta em <code>window.FGUA.jobs</code> (quando disponÃ­vel) em ambientes compatÃ­veis.</li>
+          <li>Para execuÃ§Ã£o real, configure engine/provedor/backend apropriados; sem eles, tarefas podem terminar como indisponÃ­veis por design.</li>
+          <li>Consulte o payload de integraÃ§Ã£o e a documentaÃ§Ã£o para contratos, requisitos e limites.</li>
+        </ul>
+      </section>
+    </div>`;
+}
+
+function renderIntegration() {
+  const el = qs('#tab-integration');
+  if (!el) return;
+  const s = getStatus() || {};
+  const contract = app?.api?.getContract ? app.api.getContract() : (staticData.configs?.api ? { base: staticData.configs.api.base || '/api/v1', namespaces: staticData.configs.api.namespaces || [] } : { base: '/api/v1', namespaces: [] });
+  const namespaces = Array.isArray(contract.namespaces) ? contract.namespaces : [];
+  const site = getSite();
+  const payload = app?.getIntegrationPayload ? app.getIntegrationPayload(site) : { project: 'Frame-Generator-API', generatedAt: new Date().toISOString(), site, contract, status: s, capabilities: s.capabilities || {}, models: [], engines: [], providers: [], generators: [], notes: ['Payload gerado sem nÃºcleo completo.'] };
+
+  const backendUrl = app?.api?.baseUrl || '';
+  const mode = app?.api?.mode || 'demo';
+
+  const commandsText = `# Servir localmente (site estÃ¡tico)\n`+
+`npx serve .\n`+
+`# Abrir: http://localhost:3000/  ou  http://localhost:3000/Public/dashboard.html\n\n`+
+`# VerificaÃ§Ã£o do repositÃ³rio\n`+
+`npm run lint:syntax\n`+
+`npm run check:json\n`+
+`npm test\n`+
+`npm run ci\n\n`+
+`# Arquivos Ãºteis\n`+
+`# Configs: configs/api.json, settings.json, models.json, generators.json, repacks.json, permissions.json\n`+
+`# Docs:   Public/documentation/index.html, commands.html, master-prompt.md\n`+
+`# Contrato lÃ³gico: ${contract.base || '/api/v1'} (requere backend/provedor compatÃ­vel para execuÃ§Ã£o remota)\n`;
+
+  const jsExample = `// Exemplo: consumir informaÃ§Ãµes pÃºblicas e respeitar estados reais\nconst siteBase = '${site}';\n\nasync function getPublicJson(path) {\n  const res = await fetch(new URL(path, siteBase));\n  if (!res.ok) throw new Error('Falha ao carregar ' + path + ': ' + res.status);\n  return res.json();\n}\n\n// Config/contrato publicados estaticamente\nconst apiConfig = await getPublicJson('configs/api.json');\n\n// Para operaÃ§Ãµes remotas, configure um backend compatÃ­vel (nÃ£o incluÃ­do no GitHub Pages)\nconst BACKEND_BASE_URL = '${backendUrl.replace(/'/g, "\\'")}'; // vazio => sem backend configurado\n\nasync function callBackend(contractPath, init = {}) {\n  if (!BACKEND_BASE_URL) {\n    return { ok: false, state: 'unavailable', error: { code: 'BACKEND_UNAVAILABLE', message: 'Backend nÃ£o configurado.' } };\n  }\n  const url = new URL(contractPath, BACKEND_BASE_URL.endsWith('/') ? BACKEND_BASE_URL : BACKEND_BASE_URL + '/');\n  const res = await fetch(url, { headers: { Accept: 'application/json', ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}) }, ...init });\n  const data = await res.json().catch(() => null);\n  return data ?? { ok: res.ok, state: res.ok ? 'ok' : 'error' };\n}\n`;
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="int-contract-title">
+        <h2 id="int-contract-title">Contrato lÃ³gico e estado de integraÃ§Ã£o</h2>
+        <div class="grid">
+          <div>
+            <div class="kv">
+              <div>Contrato base</div><div><code>${esc(contract.base || '/api/v1')}</code></div>
+              <div>Modo atual (sessÃ£o)</div><div>${statePill(mode)}</div>
+              <div>URL de backend</div><div>${backendUrl ? `<code>${esc(backendUrl)}</code>` : '<span class="muted">NÃ£o configurada</span>'}</div>
+              <div>Backend reportado</div><div>${statePill(s?.backend?.state || (backendUrl ? 'configurado' : 'unconfigured'))}</div>
+            </div>
+            <p class="section-note">Em GitHub Pages, <code>/api/v1/*</code> Ã© um contrato lÃ³gico. Chamadas reais exigem backend compatÃ­vel acessÃ­vel pela rede/CORS conforme seu ambiente.</p>
+          </div>
+          <div>
+            <h3 style="font-size:0.9375rem;margin:0 0 8px">Namespaces declarados</h3>
+            ${namespaces.length ? `<div>${pills(namespaces)}</div>` : emptyState('Sem namespaces declarados', 'Verifique configs/api.json.')}
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="int-config-title">
+        <h2 id="int-config-title">Configurar backend (apenas nesta sessÃ£o)</h2>
+        <p class="muted">Defina a URL base de um backend compatÃ­vel para testes/integraÃ§Ã£o. A configuraÃ§Ã£o nÃ£o Ã© persistida entre recarregamentos e nÃ£o valida conectividade automaticamente.</p>
+        <form id="api-config-form" class="form-row" novalidate>
+          <div class="field" style="flex:2 1 320px">
+            <label for="api-base-url">URL base do backend</label>
+            <input id="api-base-url" name="api-base-url" type="url" inputmode="url" placeholder="https://seu-backend.exemplo" value="${escAttr(backendUrl)}" autocomplete="off" />
+            <div class="help-text" id="api-base-help">Use a origem/base esperada pelo seu backend compatÃ­vel. Deixe vazio para permanecer sem backend.</div>
+          </div>
+          <div class="field" style="flex:1 1 180px">
+            <label for="api-mode">Modo</label>
+            <select id="api-mode" name="api-mode">
+              <option value="demo" ${mode === 'demo' ? 'selected' : ''}>demo (sem backend)</option>
+              <option value="local" ${mode === 'local' ? 'selected' : ''}>local</option>
+              <option value="remote" ${mode === 'remote' ? 'selected' : ''}>remote</option>
+            </select>
+            <div class="help-text">Afeta como o nÃºcleo resolve o backend para operaÃ§Ãµes remotas.</div>
+          </div>
+          <div class="field" style="flex:0 0 auto;min-width:auto">
+            <button class="btn primary" id="api-save" type="submit">Aplicar na sessÃ£o</button>
+          </div>
+        </form>
+        <div id="api-status" class="notice info mt" role="status" aria-live="polite">Nenhuma alteraÃ§Ã£o aplicada nesta sessÃ£o ainda.</div>
+      </section>
+
+      <section class="card" aria-labelledby="ws-title">
+        <h2 id="ws-title">WebSocket (utilitÃ¡rio cliente, opcional)</h2>
+        <p class="muted">Conecte-se a um endpoint WebSocket compatÃ­vel quando disponÃ­vel. O cÃ³digo/token Ã© opcional: vocÃª pode conectar sem cÃ³digo ou informar um cÃ³digo para autenticaÃ§Ã£o (enviado como parÃ¢metro de consulta <code>code</code> e, ao abrir, como mensagem <code>{type:"auth",code}</code>, conforme suporte do servidor). NÃ£o armazene segredos em arquivos pÃºblicos.</p>
+        <div class="notice info" role="note"><p style="margin:0"><strong>Hospedagem estÃ¡tica:</strong> o GitHub Pages nÃ£o fornece servidor WebSocket. Esta seÃ§Ã£o Ã© um cliente utilitÃ¡rio para backends/serviÃ§os externos compatÃ­veis.</p></div>
+        <form id="ws-form" class="stack mt" novalidate>
+          <div class="form-row">
+            <div class="field" style="flex:2 1 320px">
+              <label for="ws-url">URL WebSocket</label>
+              <input id="ws-url" name="ws-url" type="url" inputmode="url" placeholder="wss://seu-servidor.exemplo/socket" autocomplete="off" />
+              <div class="help-text">Use <code>ws://</code> ou <code>wss://</code>. Deixe vazio se nÃ£o for utilizar.</div>
+            </div>
+            <div class="field" style="flex:1 1 220px">
+              <label for="ws-code">CÃ³digo/token (opcional)</label>
+              <input id="ws-code" name="ws-code" type="text" placeholder="Opcional" autocomplete="off" />
+              <div class="help-text">Pode ser deixado em branco. Evite tokens sensÃ­veis em ambientes compartilhados.</div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="ws-connect" type="submit">Conectar</button>
+            <button class="btn" id="ws-disconnect" type="button">Desconectar</button>
+            <span id="ws-state" class="badge info">desconectado</span>
+          </div>
+        </form>
+        <div class="form-row mt" style="align-items:flex-end">
+          <div class="field" style="flex:1 1 320px">
+            <label for="ws-message">Mensagem</label>
+            <input id="ws-message" name="ws-message" type="text" placeholder='{"type":"ping"} ou texto' autocomplete="off" />
+          </div>
+          <div class="field" style="flex:0 0 auto;min-width:auto">
+            <button class="btn" id="ws-send" type="button">Enviar</button>
+          </div>
+        </div>
+        <details class="disclosure mt" open>
+          <summary>Log e mensagens</summary>
+          <div class="details-body"><pre id="ws-log" class="wrap" aria-live="polite">Sem eventos WebSocket.</pre></div>
+        </details>
+      </section>
+
+      <section class="card" aria-labelledby="int-payload-title">
+        <h2 id="int-payload-title">Payload de integraÃ§Ã£o</h2>
+        <p class="muted">Resumo exportÃ¡vel do estado atual, capacidades, recursos registrados e referÃªncias de configs/docs. Ãštil para agentes, pipelines e ferramentas externas.</p>
+        <div class="actions">
+          <button class="btn primary" id="dl-payload" type="button">Baixar payload (JSON)</button>
+          <button class="btn" id="copy-payload" type="button" data-copy-target="payload-pre" data-copy-label="Copiar payload JSON">Copiar payload</button>
+        </div>
+        <details class="disclosure mt" open>
+          <summary>PrÃ©via do payload (JSON)</summary>
+          <div class="details-body">${codeBlock('payload-pre', JSON.stringify(payload, null, 2), 'Copiar payload JSON')}</div>
+        </details>
+      </section>
+
+      <div class="grid-2">
+        <section class="card" aria-labelledby="int-cmd-title">
+          <h2 id="int-cmd-title">Comandos e verificaÃ§Ã£o</h2>
+          ${codeBlock('code-cmd', commandsText, 'Copiar comandos')}
+          <p class="section-note mt">IntegraÃ§Ãµes integradas ao navegador (sem pasta externa): demo React em <code>Public/react-vite.html</code>; estÃºdio/simulador/gerador Discord e templates embutidos na aba <strong>Discord Bot</strong>.</p>
+          <div class="actions mt"><a class="btn" href="./react-vite.html" target="_blank" rel="noopener noreferrer">Abrir demo React (navegador)</a>${sectionNavButton('discord', 'Abrir Discord Bot')}</div>
+        </section>
+        <section class="card" aria-labelledby="int-example-title">
+          <h2 id="int-example-title">Exemplo de integraÃ§Ã£o (JavaScript)</h2>
+          ${codeBlock('code-js', jsExample, 'Copiar exemplo JS')}
+          <p class="section-note">O exemplo trata ausÃªncia de backend como estado indisponÃ­vel. Adapte autenticaÃ§Ã£o, CORS e tratamento de erros ao seu backend real.</p>
+        </section>
+      </div>
+    </div>`;
+}
+
+function renderDiscord() {
+  const el = qs('#tab-discord');
+  if (!el) return;
+  const opts = getDiscordOptions();
+  const defaults = {
+    name: 'Meu Bot Discord',
+    packageName: 'meu-bot-discord',
+    clientId: 'COLOQUE_SEU_CLIENT_ID',
+    intents: opts.defaultIntents.slice(),
+    events: ['ready', 'interactionCreate', 'messageCreate'],
+    prefix: '!',
+    useSlash: true,
+    usePrefix: true,
+    commands: [{ name: 'ping', description: 'Responde com Pong!', response: 'Pong!' }],
+    description: 'Bot Discord gerado pelo configurador do Frame-Generator-API.',
+    nodeVersion: '>=18'
+  };
+  const form = { ...defaults, ...(discordState.form || {}) };
+  discordState.form = form;
+  if (!discordState.generated) discordState.generated = generateDiscordFiles(form);
+  if (!Array.isArray(discordState.simLog)) discordState.simLog = [];
+  const gen = discordState.generated;
+  const fileOptions = (gen.files || []).map((f, i) => '<option value="' + i + '">' + esc(f.path) + '</option>').join('');
+  const selectedIndex = Math.min(Math.max(0, Number(discordState.selectedFile || 0)), Math.max(0, (gen.files || []).length - 1));
+  discordState.selectedFile = selectedIndex;
+  const selectedFile = (gen.files || [])[selectedIndex] || { path: '', content: '' };
+
+  const intentChecks = opts.intents.map((it) => {
+    const checked = (form.intents || []).includes(it) ? 'checked' : '';
+    return '<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 10px 4px 0;font-size:0.875rem"><input type="checkbox" name="discord-intent" value="' + escAttr(it) + '" ' + checked + ' /> <code>' + esc(it) + '</code></label>';
+  }).join('');
+  const eventChecks = opts.events.map((ev) => {
+    const checked = (form.events || []).includes(ev) ? 'checked' : '';
+    return '<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 10px 4px 0;font-size:0.875rem"><input type="checkbox" name="discord-event" value="' + escAttr(ev) + '" ' + checked + ' /> <code>' + esc(ev) + '</code></label>';
+  }).join('');
+
+  const filesList = (gen.files || []).length ? '<ul>' + gen.files.map((f) => '<li><code>' + esc(f.path) + '</code></li>').join('') + '</ul>' : '<p class="muted">â€”</p>';
+  const preview = (gen.files && gen.files.length) ? codeBlock('dc-file-preview', selectedFile.content || '', 'Copiar conteÃºdo') : emptyState('Nenhum arquivo gerado', 'Clique em "Gerar/atualizar templates".');
+
+  el.innerHTML = ''
+    + '<div class="stack">'
+    + '  <section class="card" aria-labelledby="discord-intro-title">'
+    + '    <h2 id="discord-intro-title">Sistema avanÃ§ado de configuraÃ§Ã£o de bots Discord</h2>'
+    + '    <div class="notice info" role="note">'
+    + '      <h3>ExecuÃ§Ã£o e limites</h3>'
+    + '      <ul>'
+    + '        <li>Este configurador gera <strong>templates e conteÃºdos discord.js (Node.js)</strong> para vocÃª executar em um ambiente Node externo. <strong>NÃ£o executa bots no navegador/GitHub Pages.</strong></li>'
+    + '        <li>NÃ£o insira tokens reais em arquivos versionados. Use <code>.env</code>/segredos no ambiente de execuÃ§Ã£o do bot.</li>'
+    + '        <li>Intents privilegiados (ex.: <code>GuildMembers</code>, <code>MessageContent</code>, <code>GuildPresences</code>) exigem ativaÃ§Ã£o no Developer Portal e podem exigir verificaÃ§Ã£o.</li>'
+    + '      </ul>'
+    + '    </div>'
+    + '    <p class="section-note mt">ConteÃºdos integrados diretamente no cÃ³digo do navegador: configuraÃ§Ã£o, geraÃ§Ã£o de arquivos, simulaÃ§Ã£o de comandos/eventos e templates embutidos (preview/cÃ³pia/download). Para conexÃ£o real ao Discord, exporte os templates e execute em runtime Node.js externo com token seguro.</p>'
+    + '  </section>'
+    + '  <section class="card" aria-labelledby="discord-form-title">'
+    + '    <h2 id="discord-form-title">ConfiguraÃ§Ã£o do bot e conteÃºdos</h2>'
+    + '    <form id="discord-form" class="stack" novalidate>'
+    + '      <div class="grid-2">'
+    + '        <div class="field"><label for="dc-name">Nome do bot/projeto</label><input id="dc-name" name="name" type="text" value="' + escAttr(form.name) + '" /></div>'
+    + '        <div class="field"><label for="dc-pkg">Nome do pacote (npm)</label><input id="dc-pkg" name="packageName" type="text" value="' + escAttr(form.packageName) + '" /></div>'
+    + '        <div class="field"><label for="dc-client">Client ID (placeholder/valor)</label><input id="dc-client" name="clientId" type="text" value="' + escAttr(form.clientId) + '" /></div>'
+    + '        <div class="field"><label for="dc-node">VersÃ£o Node (engines)</label><input id="dc-node" name="nodeVersion" type="text" value="' + escAttr(form.nodeVersion) + '" /></div>'
+    + '        <div class="field"><label for="dc-prefix">Prefixo (comandos por mensagem)</label><input id="dc-prefix" name="prefix" type="text" value="' + escAttr(form.prefix) + '" /></div>'
+    + '        <div class="field"><label for="dc-desc">DescriÃ§Ã£o</label><input id="dc-desc" name="description" type="text" value="' + escAttr(form.description) + '" /></div>'
+    + '      </div>'
+    + '      <div class="form-row">'
+    + '        <label style="display:inline-flex;align-items:center;gap:8px"><input type="checkbox" id="dc-slash" name="useSlash" ' + (form.useSlash ? 'checked' : '') + ' /> Habilitar slash commands (recomendado)</label>'
+    + '        <label style="display:inline-flex;align-items:center;gap:8px"><input type="checkbox" id="dc-prefix-enabled" name="usePrefix" ' + (form.usePrefix ? 'checked' : '') + ' /> Habilitar comandos por prefixo</label>'
+    + '      </div>'
+    + '      <div><h3 style="font-size:0.9375rem;margin:8px 0">Intents</h3><div>' + intentChecks + '</div></div>'
+    + '      <div><h3 style="font-size:0.9375rem;margin:8px 0">Eventos</h3><div>' + eventChecks + '</div></div>'
+    + '      <div><h3 style="font-size:0.9375rem;margin:8px 0">Comando personalizado (slash) â€” adicional</h3>'
+    + '        <div class="grid-2">'
+    + '          <div class="field"><label for="dc-cmd-name">Nome</label><input id="dc-cmd-name" type="text" value="' + escAttr((form.commands && form.commands[0] && form.commands[0].name) || 'ping') + '" placeholder="ex.: status" /></div>'
+    + '          <div class="field"><label for="dc-cmd-desc">DescriÃ§Ã£o</label><input id="dc-cmd-desc" type="text" value="' + escAttr((form.commands && form.commands[0] && form.commands[0].description) || 'Responde com Pong!') + '" placeholder="DescriÃ§Ã£o do comando" /></div>'
+    + '          <div class="field" style="grid-column:1/-1"><label for="dc-cmd-resp">Resposta</label><input id="dc-cmd-resp" type="text" value="' + escAttr((form.commands && form.commands[0] && form.commands[0].response) || 'Pong!') + '" placeholder="Texto de resposta" /></div>'
+    + '        </div>'
+    + '      </div>'
+    + '      <div class="actions">'
+    + '        <button class="btn primary" id="dc-generate" type="submit">Gerar/atualizar templates</button>'
+    + '        <button class="btn" id="dc-download-config" type="button">Baixar config (JSON)</button>'
+    + '        <button class="btn" id="dc-download-file" type="button">Baixar arquivo selecionado</button>'
+    + '        <button class="btn" id="dc-copy-file" type="button">Copiar arquivo selecionado</button>'
+    + '      </div>'
+    + '    </form>'
+    + '  </section>'
+    + '  <section class="card" aria-labelledby="discord-files-title">'
+    + '    <h2 id="discord-files-title">Arquivos gerados (prÃ©via)</h2>'
+    + '    <p class="muted">Selecione um arquivo para visualizar, copiar ou baixar. Os arquivos sÃ£o gerados no navegador a partir da configuraÃ§Ã£o atual.</p>'
+    + '    <div class="form-row"><div class="field" style="flex:1 1 320px"><label for="dc-file-select">Arquivo</label><select id="dc-file-select">' + fileOptions + '</select></div></div>'
+    + '    <div class="mt">' + preview + '</div>'
+    + '    <details class="disclosure mt"><summary>Lista de arquivos gerados</summary><div class="details-body">' + filesList + '</div></details>'
+    + '  </section>'
+    + '  <section class="card" aria-labelledby="discord-sim-title">'
+    + '    <h2 id="discord-sim-title">Simulador de comandos e eventos (navegador)</h2>'
+    + '    <p class="muted">Teste comandos configurados localmente no navegador (ex.: <code>/ping</code>, <code>' + esc(form.prefix || '!') + 'ping</code> ou mensagens). Isto simula respostas/eventos de UI; nÃ£o conecta ao gateway do Discord.</p>'
+    + '    <div class="form-row" style="align-items:flex-end">'
+    + '      <div class="field" style="flex:1 1 320px"><label for="dc-sim-input">Entrada</label><input id="dc-sim-input" type="text" placeholder="/ping ou ' + escAttr(form.prefix || '!') + 'ping" /></div>'
+    + '      <div class="field" style="flex:0 0 auto;min-width:auto"><button class="btn primary" id="dc-sim-run" type="button">Simular</button></div>'
+    + '      <div class="field" style="flex:0 0 auto;min-width:auto"><button class="btn" id="dc-sim-clear" type="button">Limpar</button></div>'
+    + '    </div>'
+    + '    <pre id="dc-sim-log" class="wrap mt" aria-live="polite">' + esc((discordState.simLog || []).join('\n') || 'Sem simulaÃ§Ãµes.') + '</pre>'
+    + '  </section>'
+    + '  <section class="card" aria-labelledby="discord-embedded-title">'
+    + '    <h2 id="discord-embedded-title">Templates integrados (conteÃºdo embutido)</h2>'
+    + '    <p class="muted">Fontes/templates embutidos diretamente no cÃ³digo do app para consulta, cÃ³pia e download (sem pasta externa). Inclui referÃªncia Node.js do bot e fontes React+Vite; a demo React executa no navegador.</p>'
+    + '    <div class="actions mt"><a class="btn primary" href="./react-vite.html" target="_blank" rel="noopener noreferrer">Abrir demo React (navegador)</a></div>'
+    + (() => {
+        const all = [...getDiscordRuntimeTemplateFiles(), ...getReactViteTemplates()];
+        const idx = Math.min(Math.max(0, Number(discordState.embeddedIndex || 0)), Math.max(0, all.length - 1));
+        discordState.embeddedIndex = idx;
+        const opts = all.map((f, i) => '<option value="' + i + '"' + (i === idx ? ' selected' : '') + '>' + esc(f.path) + '</option>').join('');
+        const cur = all[idx] || { path: '', content: '' };
+        return ''
+          + '    <div class="form-row mt"><div class="field" style="flex:1 1 320px"><label for="dc-embed-select">Arquivo embutido</label><select id="dc-embed-select">' + opts + '</select></div></div>'
+          + '    <div class="actions mt"><button class="btn" id="dc-embed-copy" type="button">Copiar embutido</button><button class="btn" id="dc-embed-download" type="button">Baixar embutido</button></div>'
+          + '    <div class="mt">' + codeBlock('dc-embed-preview', cur.content || '', 'Copiar conteÃºdo') + '</div>';
+      })()
+    + '  </section>'
+    + '</div>';
+}
+
+function renderConfig() {
+  const el = qs('#tab-config');
+  if (!el) return;
+  const diagnostics = getStatus()?.config?.diagnostics || {};
+  const configs = staticData.configs || {};
+  const permissions = configs.permissions || null;
+  const settings = configs.settings || null;
+  const repacks = configs.repacks || null;
+
+  const rows = CONFIG_FILES.map((c) => {
+    const d = diagnostics[c.key] || {};
+    const ok = d.ok !== false && configs[c.key];
+    const url = new URL(`../../${c.name}`, import.meta.url).href;
+    return [
+      `<strong>${esc(c.name)}</strong><br><span class="muted">${esc(c.desc)}</span>`,
+      statePill(ok ? 'carregado' : 'falha/fallback'),
+      `<a href="${escAttr(url)}" target="_blank" rel="noopener noreferrer">Abrir JSON</a>`,
+      d.error?.message ? `<span class="muted">${esc(d.error.message)}</span>` : 'â€”',
+    ];
+  });
+
+  const roleRows = permissions?.roles ? Object.entries(permissions.roles).map(([role, def]) => [
+    `<strong>${esc(role)}</strong>`,
+    pills(def?.allow || []),
+  ]) : [];
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="cfg-files-title">
+        <h2 id="cfg-files-title">Arquivos de configuraÃ§Ã£o pÃºblicos</h2>
+        <p class="muted">Arquivos JSON servidos estaticamente. SÃ£o carregados pelo nÃºcleo (quando possÃ­vel) e podem ser consumidos por integraÃ§Ãµes. NÃ£o armazene segredos em arquivos pÃºblicos.</p>
+        ${table(['Arquivo / descriÃ§Ã£o', 'Estado no nÃºcleo', 'Acesso', 'ObservaÃ§Ã£o'], rows, 'ConfiguraÃ§Ãµes pÃºblicas', { srCaption: true })}
+      </section>
+
+      <div class="grid-2">
+        <section class="card" aria-labelledby="cfg-perms-title">
+          <h2 id="cfg-perms-title">PermissÃµes (nÃ­vel de UI)</h2>
+          <p class="muted">${esc(permissions?.note || 'Em hospedagem estÃ¡tica, permissÃµes/papÃ©is sÃ£o informativos para UI; autorizaÃ§Ã£o confiÃ¡vel requer backend.')}</p>
+          ${roleRows.length ? table(['Papel', 'PermissÃµes permitidas'], roleRows, 'PapÃ©is e permissÃµes', { srCaption: true }) : emptyState('PermissÃµes nÃ£o carregadas', 'NÃ£o foi possÃ­vel carregar configs/permissions.json.')}
+        </section>
+        <section class="card" aria-labelledby="cfg-sys-title">
+          <h2 id="cfg-sys-title">Sistema e provedores declarados</h2>
+          <div class="kv">
+            <div>Nome</div><div>${esc(settings?.system?.name || 'â€”')}</div>
+            <div>VersÃ£o (config)</div><div>${esc(settings?.system?.version || 'â€”')}</div>
+            <div>Hospedagem</div><div>${esc(settings?.system?.hosting || 'â€”')}</div>
+            <div>Site</div><div>${settings?.system?.site ? `<a href="${escAttr(settings.system.site)}" target="_blank" rel="noopener noreferrer">${esc(settings.system.site)}</a>` : 'â€”'}</div>
+          </div>
+          <h3 class="mt" style="font-size:0.9375rem">Provedores em settings.json</h3>
+          ${(settings?.providers || []).length ? `<ul>${settings.providers.map((p) => `<li><strong>${esc(p.name || p.id)}</strong> â€” tipo: ${esc(p.type || 'â€”')}, estado declarado: ${statePill(p.state || 'â€”')}${p.url ? `, URL: <code>${esc(p.url)}</code>` : ''}</li>`).join('')}</ul>` : emptyState('Nenhum provedor declarado', 'configs/settings.json nÃ£o contÃ©m provedores declarados.')}
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="cfg-repacks-title">
+        <h2 id="cfg-repacks-title">Repacks declarados (config)</h2>
+        ${(repacks?.repacks?.length || repacks?.manifests?.length) ? `<pre>${esc(JSON.stringify(repacks, null, 2))}</pre>` : emptyState('Nenhum repack declarado em configs/repacks.json', 'Para exemplos de manifesto, consulte a aba DocumentaÃ§Ã£o e recursos.', sectionNavButton('docs', 'Abrir documentaÃ§Ã£o e recursos'))}
+      </section>
+    </div>`;
+}
+
+function renderDocs() {
+  const el = qs('#tab-docs');
+  if (!el) return;
+  const sampleManifest = staticData.sampleManifest;
+  const docs = [
+    { title: 'DocumentaÃ§Ã£o (Ã­ndice)', href: './documentation/index.html', desc: 'VisÃ£o geral, mÃ³dulos, capacidades, limites e referÃªncias.' },
+    { title: 'Comandos e operaÃ§Ãµes', href: './documentation/commands.html', desc: 'ExecuÃ§Ã£o local, verificaÃ§Ã£o, contrato e publicaÃ§Ã£o.' },
+    { title: 'Master prompt (Markdown)', href: masterPrompt.url || './documentation/master-prompt.md', desc: 'Prompt tÃ©cnico para integraÃ§Ã£o com IA/agentes/projetos.' },
+    { title: 'README do repositÃ³rio', href: '../README.md', desc: 'Resumo do projeto, estrutura, limites e verificaÃ§Ã£o.' },
+  ];
+
+  const mpContent = masterPrompt.text ? codeBlock('master-prompt-pre', masterPrompt.text, 'Copiar master prompt', { wrap: true }) : emptyState('Master prompt nÃ£o carregado', `NÃ£o foi possÃ­vel carregar o master prompt automaticamente. ${masterPrompt.error ? 'Motivo: ' + masterPrompt.error : ''}`, `<a class="btn" href="./documentation/master-prompt.md" target="_blank" rel="noopener noreferrer">Abrir arquivo</a>`);
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="docs-links-title">
+        <h2 id="docs-links-title">DocumentaÃ§Ã£o e guias</h2>
+        <div class="table-wrap"><table><caption class="sr-only">Documentos disponÃ­veis</caption><thead><tr><th scope="col">Documento</th><th scope="col">DescriÃ§Ã£o</th><th scope="col">Acesso</th></tr></thead><tbody>
+          ${docs.map((d) => `<tr><td><strong>${esc(d.title)}</strong></td><td class="muted">${esc(d.desc)}</td><td><a href="${escAttr(d.href)}" target="_blank" rel="noopener noreferrer">Abrir</a></td></tr>`).join('')}
+        </tbody></table></div>
+        <p class="section-note">Alguns arquivos sÃ£o servidos como Markdown/JSON estÃ¡tico; a visualizaÃ§Ã£o depende do navegador/servidor. Use "Abrir" para acessar o conteÃºdo original.</p>
+      </section>
+
+      <section class="card" aria-labelledby="docs-master-title">
+        <h2 id="docs-master-title">Master prompt (referÃªncia)</h2>
+        <p class="muted">ConteÃºdo orientado a integraÃ§Ã£o tÃ©cnica. Revise e adapte antes de usar em agentes ou pipelines.</p>
+        ${mpContent}
+      </section>
+
+      <div class="grid-2">
+        <section class="card" aria-labelledby="docs-manifest-title">
+          <h2 id="docs-manifest-title">Manifesto de repack (exemplo)</h2>
+          ${sampleManifest ? `${codeBlock('sample-manifest-pre', JSON.stringify(sampleManifest, null, 2), 'Copiar manifesto de exemplo')}<p class="section-note">Exemplo em <code>Public/manifests/sample-repack.json</code>. ImportaÃ§Ã£o/ativaÃ§Ã£o depende de fluxos e runtime compatÃ­veis; o registro em <code>configs/repacks.json</code> pode estar vazio.</p>` : emptyState('Manifesto de exemplo indisponÃ­vel', 'NÃ£o foi possÃ­vel carregar Public/manifests/sample-repack.json.')}
+        </section>
+        <section class="card" aria-labelledby="docs-privacy-title">
+          <h2 id="docs-privacy-title">Privacidade, seguranÃ§a e limites</h2>
+          <ul class="prose">
+            <li><strong>Processamento local:</strong> anÃ¡lises realizadas pelo nÃºcleo no navegador ocorrem no cliente, mas dependem dos arquivos/configuraÃ§Ãµes fornecidos e das APIs do navegador.</li>
+            <li><strong>Sem backend confiÃ¡vel embutido:</strong> autenticaÃ§Ã£o/permissÃµes no frontend sÃ£o controles de UI; nÃ£o trate como fronteira de seguranÃ§a.</li>
+            <li><strong>Sem segredos em pÃºblico:</strong> nÃ£o coloque tokens/chaves em configs, manifests ou URLs versionadas.</li>
+            <li><strong>Sem simulaÃ§Ã£o:</strong> inferÃªncia, quantizaÃ§Ã£o efetiva e pipelines pesados exigem runtime/provedor compatÃ­vel e devem reportar estados reais.</li>
+          </ul>
+        </section>
+      </div>
+    </div>`;
+}
+
+function renderAll() {
+  renderOverview();
+  renderResources();
+  renderModels();
+  renderGenerators();
+  renderJobs();
+  renderIntegration();
+  renderConfig();
+  renderDiscord();
+  renderDocs();
+  wireInteractions();
+  renderNotices();
+  updateChrome();
+}
+
+function wireInteractions() {
+  // Copy buttons (delegation)
+  document.removeEventListener('click', handleCopyClick);
+  document.addEventListener('click', handleCopyClick);
+  document.removeEventListener('click', handleGotoClick);
+  document.addEventListener('click', handleGotoClick);
+
+  const dl = qs('#dl-payload');
+  if (dl) {
+    dl.onclick = () => {
+      const payload = app?.getIntegrationPayload ? app.getIntegrationPayload(getSite()) : { error: 'NÃºcleo indisponÃ­vel' };
+      downloadJson('frame-generator-api-integration.json', payload);
+    };
+  }
+
+  const form = qs('#api-config-form');
+  if (form) {
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const baseInput = qs('#api-base-url');
+      const modeSel = qs('#api-mode');
+      const statusEl = qs('#api-status');
+      const raw = (baseInput?.value || '').trim();
+      const modeVal = modeSel?.value || 'demo';
+      let baseUrl = null;
+      if (raw) {
+        try {
+          const u = new URL(raw);
+          baseUrl = u.toString().replace(/\/$/, '');
+        } catch {
+          if (statusEl) {
+            statusEl.className = 'notice err mt';
+            statusEl.textContent = 'URL invÃ¡lida. Informe uma URL absoluta vÃ¡lida (ex.: https://seu-backend.exemplo) ou deixe em branco.';
+          }
+          baseInput?.focus();
+          announce('URL de backend invÃ¡lida.', 'assertive');
+          return;
+        }
+      }
+      try {
+        if (app?.api?.configure) {
+          app.api.configure({ baseUrl, mode: modeVal, backend: { remoteUrl: baseUrl, localUrl: baseUrl, connected: !!baseUrl } });
+        }
+        if (app?.backend?.configure) {
+          app.backend.configure({ baseUrl, type: modeVal === 'local' ? 'local' : 'remote' });
+        }
+      } catch (err) {
+        if (statusEl) {
+          statusEl.className = 'notice err mt';
+          statusEl.textContent = `Falha ao aplicar configuraÃ§Ã£o: ${err?.message || err}`;
+        }
+        return;
+      }
+      if (statusEl) {
+        statusEl.className = 'notice ok mt';
+        statusEl.textContent = baseUrl
+          ? `ConfiguraÃ§Ã£o aplicada nesta sessÃ£o: modo ${modeVal}, URL ${baseUrl}. Conectividade real nÃ£o verificada.`
+          : `ConfiguraÃ§Ã£o aplicada nesta sessÃ£o: modo ${modeVal}, sem URL de backend.`;
+      }
+      announce('ConfiguraÃ§Ã£o de backend aplicada na sessÃ£o.');
+      updateChrome();
+      // Re-render only integration payload preview and notices
+      const pre = qs('#payload-pre');
+      if (pre && app?.getIntegrationPayload) pre.textContent = JSON.stringify(app.getIntegrationPayload(getSite()), null, 2);
+      renderNotices();
+    };
+  }
+
+  // Usage chart actions
+  const usageRefresh = qs('#usage-refresh');
+  if (usageRefresh) usageRefresh.onclick = () => { recordFeatureUse('usage-refresh', { label: 'Atualizar grÃ¡fico de uso', category: 'aÃ§Ã£o' }); renderOverview(); wireInteractions(); announce('GrÃ¡fico de uso atualizado.'); };
+  const usageClear = qs('#usage-clear');
+  if (usageClear) usageClear.onclick = () => {
+    try { localStorage.removeItem('fgua:usage:v1'); } catch {}
+    recordFeatureUse('usage-clear', { label: 'Limpar rastreamento', category: 'aÃ§Ã£o' });
+    renderOverview(); wireInteractions();
+    announce('Rastreamento local de uso limpo.');
+  };
+
+  // WebSocket utilities
+  if (!wsClient) wsClient = new WebSocketClient();
+  const renderWsState = () => {
+    if (!wsClient) return;
+    const wsStateEl = qs('#ws-state');
+    if (!wsStateEl) return;
+    const st = wsClient.getStatus();
+    wsStateEl.textContent = st.state;
+    wsStateEl.className = 'badge ' + (st.state === 'open' ? 'ok' : st.state === 'error' ? 'err' : st.state === 'connecting' ? 'warn' : 'info');
+  };
+  const appendWsLog = (line) => {
+    const wsLogEl = qs('#ws-log');
+    if (!wsLogEl) return;
+    const prev = wsLogEl.textContent === 'Sem eventos WebSocket.' ? '' : wsLogEl.textContent + '\n';
+    wsLogEl.textContent = (prev + line).split('\n').slice(-120).join('\n');
+  };
+  if (!wsClient._uiBound) {
+    wsClient.on('state', () => renderWsState());
+    wsClient.on('log', (item) => appendWsLog('[' + item.at + '] ' + (item.level || 'info').toUpperCase() + ' ' + (item.message || '')));
+    wsClient.on('message', (msg) => appendWsLog('[mensagem] ' + (typeof msg.text === 'string' ? msg.text : JSON.stringify(msg.parsed ?? msg.raw))));
+    wsClient._uiBound = true;
+  }
+  const wsForm = qs('#ws-form');
+  const wsDisconnect = qs('#ws-disconnect');
+  const wsSend = qs('#ws-send');
+  if (wsForm) wsForm.onsubmit = (e) => {
+    e.preventDefault();
+    const url = (qs('#ws-url')?.value || '').trim();
+    const code = (qs('#ws-code')?.value || '').trim();
+    wsClient.configure({ url: url || null, code: code || '' });
+    const res = wsClient.connect();
+    recordFeatureUse('ws-connect', { label: 'WebSocket: conectar', category: 'integraÃ§Ã£o' });
+    if (!res.ok) appendWsLog('[erro] ' + (res.error?.message || 'Falha ao conectar'));
+    renderWsState();
+  };
+  if (wsDisconnect) wsDisconnect.onclick = () => {
+    wsClient.disconnect(true);
+    recordFeatureUse('ws-disconnect', { label: 'WebSocket: desconectar', category: 'integraÃ§Ã£o' });
+    appendWsLog('[info] DesconexÃ£o solicitada.');
+    renderWsState();
+  };
+  if (wsSend) wsSend.onclick = () => {
+    const raw = (qs('#ws-message')?.value || '').trim();
+    if (!raw) return;
+    let payload = raw;
+    try { payload = JSON.parse(raw); } catch {}
+    const res = wsClient.send(payload);
+    recordFeatureUse('ws-send', { label: 'WebSocket: enviar', category: 'integraÃ§Ã£o' });
+    if (!res || !res.ok) appendWsLog('[erro] ' + (res?.error?.message || 'Falha ao enviar'));
+  };
+  renderWsState();
+
+  // Discord configurator
+  const dcForm = qs('#discord-form');
+  if (dcForm) dcForm.onsubmit = (e) => {
+    e.preventDefault();
+    const intents = qsa('input[name="discord-intent"]:checked', dcForm).map((i) => i.value);
+    const events = qsa('input[name="discord-event"]:checked', dcForm).map((i) => i.value);
+    const form = {
+      name: (qs('#dc-name')?.value || '').trim(),
+      packageName: (qs('#dc-pkg')?.value || '').trim(),
+      clientId: (qs('#dc-client')?.value || '').trim(),
+      nodeVersion: (qs('#dc-node')?.value || '').trim(),
+      prefix: (qs('#dc-prefix')?.value || '!').trim(),
+      description: (qs('#dc-desc')?.value || '').trim(),
+      useSlash: !!qs('#dc-slash')?.checked,
+      usePrefix: !!qs('#dc-prefix-enabled')?.checked,
+      intents,
+      events,
+      commands: [{
+        name: (qs('#dc-cmd-name')?.value || 'ping').trim(),
+        description: (qs('#dc-cmd-desc')?.value || 'Responde com Pong!').trim(),
+        response: (qs('#dc-cmd-resp')?.value || 'Pong!').trim(),
+      }],
+    };
+    discordState.form = form;
+    discordState.generated = generateDiscordFiles(form);
+    discordState.selectedFile = 0;
+    recordFeatureUse('discord-generate', { label: 'Discord: gerar templates', category: 'discord' });
+    renderDiscord();
+    wireInteractions();
+    announce('Templates do bot Discord gerados/atualizados.');
+  };
+  const dcSelect = qs('#dc-file-select');
+  if (dcSelect) dcSelect.onchange = () => {
+    discordState.selectedFile = Number(dcSelect.value || 0);
+    recordFeatureUse('discord-select-file', { label: 'Discord: selecionar arquivo', category: 'discord' });
+    renderDiscord();
+    wireInteractions();
+  };
+  const dcDownloadConfig = qs('#dc-download-config');
+  if (dcDownloadConfig) dcDownloadConfig.onclick = () => {
+    recordFeatureUse('discord-download-config', { label: 'Discord: baixar config', category: 'discord' });
+    downloadJson('discord-bot-config.json', discordState.generated?.config || discordState.form || {});
+  };
+  const dcDownloadFile = qs('#dc-download-file');
+  if (dcDownloadFile) dcDownloadFile.onclick = () => {
+    const f = (discordState.generated?.files || [])[Number(discordState.selectedFile || 0)];
+    if (!f) return;
+    try {
+      const blob = new Blob([f.content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (f.path.split('/').pop() || 'arquivo.txt');
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      recordFeatureUse('discord-download-file', { label: 'Discord: baixar arquivo', category: 'discord' });
+      announce('Arquivo preparado para download.');
+    } catch (e) { announce('Falha ao baixar arquivo.', 'assertive'); }
+  };
+  const dcCopyFile = qs('#dc-copy-file');
+  if (dcCopyFile) dcCopyFile.onclick = async () => {
+    const f = (discordState.generated?.files || [])[Number(discordState.selectedFile || 0)];
+    if (!f) return;
+    await copyText(f.content);
+    recordFeatureUse('discord-copy-file', { label: 'Discord: copiar arquivo', category: 'discord' });
+  };
+
+  const dcSimRun = qs('#dc-sim-run');
+  if (dcSimRun) dcSimRun.onclick = () => {
+    const input = (qs('#dc-sim-input')?.value || '').trim();
+    const cfg = discordState.form || discordState.generated?.config || {};
+    const res = simulateDiscordInteraction(cfg, input);
+    const lines = (res.events || []).map((ev) => `[${ev.at}] ${(ev.type || 'info').toUpperCase()} ${ev.message || ''}`);
+    if (res.output && res.output.response != null) lines.push(`[resposta] ${res.output.response}`);
+    discordState.simLog = [...(discordState.simLog || []), `> ${input || '(vazio)'}`, ...lines, ''].slice(-200);
+    recordFeatureUse('discord-simulate', { label: 'Discord: simular comando', category: 'discord' });
+    renderDiscord();
+    wireInteractions();
+  };
+  const dcSimClear = qs('#dc-sim-clear');
+  if (dcSimClear) dcSimClear.onclick = () => {
+    discordState.simLog = [];
+    recordFeatureUse('discord-sim-clear', { label: 'Discord: limpar simulador', category: 'discord' });
+    renderDiscord();
+    wireInteractions();
+  };
+
+  const dcEmbedSelect = qs('#dc-embed-select');
+  if (dcEmbedSelect) dcEmbedSelect.onchange = () => {
+    discordState.embeddedIndex = Number(dcEmbedSelect.value || 0);
+    renderDiscord();
+    wireInteractions();
+  };
+  const getEmbeddedAll = () => [...getDiscordRuntimeTemplateFiles(), ...getReactViteTemplates()];
+  const dcEmbedCopy = qs('#dc-embed-copy');
+  if (dcEmbedCopy) dcEmbedCopy.onclick = async () => {
+    const f = getEmbeddedAll()[Number(discordState.embeddedIndex || 0)];
+    if (!f) return;
+    await copyText(f.content);
+    recordFeatureUse('discord-embed-copy', { label: 'Copiar template embutido', category: 'integraÃ§Ã£o' });
+  };
+  const dcEmbedDownload = qs('#dc-embed-download');
+  if (dcEmbedDownload) dcEmbedDownload.onclick = () => {
+    const f = getEmbeddedAll()[Number(discordState.embeddedIndex || 0)];
+    if (!f) return;
+    try {
+      const blob = new Blob([f.content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (f.path.split('/').pop() || 'template.txt');
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      recordFeatureUse('discord-embed-download', { label: 'Baixar template embutido', category: 'integraÃ§Ã£o' });
+      announce('Arquivo preparado para download.');
+    } catch (e) { announce('Falha ao baixar arquivo.', 'assertive'); }
+  };
+
+}
+
+function handleCopyClick(e) {
+  const btn = e.target.closest('[data-copy-target]');
+  if (!btn) return;
+  const id = btn.getAttribute('data-copy-target');
+  const el = id ? document.getElementById(id) : null;
+  const label = btn.getAttribute('data-copy-label') || 'Copiar';
+  if (!el) return;
+  copyText(el.textContent || '').then((res) => {
+    const original = btn.textContent;
+    btn.textContent = res.ok ? 'Copiado' : 'Falha ao copiar';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = label || original; btn.disabled = false; }, 1800);
+  });
+}
+
+function handleGotoClick(e) {
+  const btn = e.target.closest('[data-goto-tab]');
+  if (!btn) return;
+  const tab = btn.getAttribute('data-goto-tab');
+  if (tab) {
+    setActiveTab(tab, { focus: true });
+    recordFeatureUse('tab:' + tab, { label: `Aba: ${tab}`, category: 'navegaÃ§Ã£o' });
+    qs('#main-content')?.focus({ preventScroll: false });
+  }
+}
+
+function syncTabsOrientation() {
+  const list = qs('#tabs');
+  if (!list) return;
+  const vertical = window.matchMedia('(min-width: 901px)').matches;
+  list.setAttribute('aria-orientation', vertical ? 'vertical' : 'horizontal');
+}
+
+function setupTabs() {
+  const tabsContainer = qs('#tabs');
+  if (!tabsContainer) return;
+  const getTabs = () => qsa('[role="tab"][data-tab]', tabsContainer);
+  syncTabsOrientation();
+  window.addEventListener('resize', syncTabsOrientation, { passive: true });
+
+  tabsContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('[role="tab"][data-tab]');
+    if (!btn) return;
+    setActiveTab(btn.dataset.tab, { focus: false });
+    recordFeatureUse('tab:' + btn.dataset.tab, { label: `Aba: ${btn.dataset.tab}`, category: 'navegaÃ§Ã£o' });
+  });
+
+  tabsContainer.addEventListener('keydown', (e) => {
+    const tabs = getTabs();
+    const current = e.target.closest('[role="tab"][data-tab]');
+    if (!current) return;
+    const idx = tabs.indexOf(current);
+    if (idx < 0) return;
+    let nextIdx = idx;
+    const key = e.key;
+    const isVertical = tabsContainer.getAttribute('aria-orientation') === 'vertical';
+    if (key === 'ArrowRight' || (isVertical && key === 'ArrowDown')) nextIdx = (idx + 1) % tabs.length;
+    else if (key === 'ArrowLeft' || (isVertical && key === 'ArrowUp')) nextIdx = (idx - 1 + tabs.length) % tabs.length;
+    else if (key === 'Home') nextIdx = 0;
+    else if (key === 'End') nextIdx = tabs.length - 1;
+    else if (key === 'Enter' || key === ' ') { e.preventDefault(); setActiveTab(current.dataset.tab, { focus: false }); return; }
+    else return;
+    e.preventDefault();
+    const next = tabs[nextIdx];
+    if (next) setActiveTab(next.dataset.tab, { focus: true });
+  });
+}
+
+function applyInitialTabFromHash() {
+  const hash = (location.hash || '').replace('#', '').trim();
+  const valid = ['overview', 'resources', 'models', 'generators', 'jobs', 'integration', 'discord', 'config', 'docs'];
+  const tab = valid.includes(hash) ? hash : 'overview';
+  setActiveTab(tab);
+  recordFeatureUse('tab:' + tab, { label: `Aba: ${tab}`, category: 'navegaÃ§Ã£o' });
+}
+
+async function main() {
+  setupTabs();
+  applyInitialTabFromHash();
+  qs('#tab-overview').innerHTML = loadingCard('Inicializando dashboard');
+
+  await initI18n(document.documentElement.lang || 'pt-BR');
+
+  try {
+    app = await bootCore();
+  } catch (e) {
+    app = { error: e };
+  }
+
+  await loadAllStatic();
+
+  if (!app || app.error) {
+    setGlobalStatus('err', 'erro');
+    updateChrome();
+    renderAll();
+    renderError(qs('#tab-overview'), app?.error || new Error('Falha ao inicializar o nÃºcleo.'));
+    announce('Falha ao inicializar o nÃºcleo do dashboard.', 'assertive');
+    return;
+  }
+
+  try { if (typeof window !== 'undefined') window.FGUA = app; } catch {}
+  try {
+    if (app?.tools && typeof app.tools.execute === 'function' && !app.tools._usageWrapped) {
+      const _exec = app.tools.execute.bind(app.tools);
+      app.tools.execute = async (id, input = {}, ctx = {}) => {
+        const res = await _exec(id, input, ctx);
+        try { recordToolUse(id, { label: String(id), category: 'tool', source: 'ToolRegistry' }); } catch {}
+        return res;
+      };
+      app.tools._usageWrapped = true;
+    }
+  } catch {}
+  renderAll();
+  announce('Dashboard carregado.');
+}
+
+main().catch((e) => {
+  console.error(e);
+  setGlobalStatus('err', 'erro');
+  renderError(qs('#tab-overview'), e);
+});
+

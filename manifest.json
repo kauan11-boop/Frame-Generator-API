@@ -7,7 +7,7 @@
   "display": "standalone",
   "background_color": "#f6f7f9",
   "theme_color": "#111827",
-  "description": "Plataforma web estática para análise de modelos, inspeção de capacidades e integração por contrato lógico /api/v1. Execução real de inferência/processamento requer runtime ou provedor compatível.",
+  "description": "Plataforma web estática para análise de modelos (incl. GGUF com limites), inspeção de capacidades e integração por contrato lógico /api/v1. Inclui dashboard, payload de integração, utilitários WebSocket/Discord (templates e simulação local) e demo React no navegador. Execução real requer runtime/provedor compatível.",
   "lang": "pt-BR",
   "categories": ["developer", "productivity", "utilities"],
   "icons": [

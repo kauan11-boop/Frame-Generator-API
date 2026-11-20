@@ -1,0 +1,452 @@
+﻿            <div>Nome</div><div>${esc(settings?.system?.name || 'â€”')}</div>
+            <div>VersÃ£o (config)</div><div>${esc(settings?.system?.version || 'â€”')}</div>
+            <div>Hospedagem</div><div>${esc(settings?.system?.hosting || 'â€”')}</div>
+            <div>Site</div><div>${settings?.system?.site ? `<a href="${escAttr(settings.system.site)}" target="_blank" rel="noopener noreferrer">${esc(settings.system.site)}</a>` : 'â€”'}</div>
+          </div>
+          <h3 class="mt" style="font-size:0.9375rem">Provedores em settings.json</h3>
+          ${(settings?.providers || []).length ? `<ul>${settings.providers.map((p) => `<li><strong>${esc(p.name || p.id)}</strong> â€” tipo: ${esc(p.type || 'â€”')}, estado declarado: ${statePill(p.state || 'â€”')}${p.url ? `, URL: <code>${esc(p.url)}</code>` : ''}</li>`).join('')}</ul>` : emptyState('Nenhum provedor declarado', 'configs/settings.json nÃ£o contÃ©m provedores declarados.')}
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="cfg-repacks-title">
+        <h2 id="cfg-repacks-title">Repacks declarados (config)</h2>
+        ${(repacks?.repacks?.length || repacks?.manifests?.length) ? `<pre>${esc(JSON.stringify(repacks, null, 2))}</pre>` : emptyState('Nenhum repack declarado em configs/repacks.json', 'Para exemplos de manifesto, consulte a aba DocumentaÃ§Ã£o e recursos.', sectionNavButton('docs', 'Abrir documentaÃ§Ã£o e recursos'))}
+      </section>
+    </div>`;
+}
+
+function renderDocs() {
+  const el = qs('#tab-docs');
+  if (!el) return;
+  const sampleManifest = staticData.sampleManifest;
+  const docs = [
+    { title: 'DocumentaÃ§Ã£o (Ã­ndice)', href: './documentation/index.html', desc: 'VisÃ£o geral, mÃ³dulos, capacidades, limites e referÃªncias.' },
+    { title: 'Comandos e operaÃ§Ãµes', href: './documentation/commands.html', desc: 'ExecuÃ§Ã£o local, verificaÃ§Ã£o, contrato e publicaÃ§Ã£o.' },
+    { title: 'Master prompt (Markdown)', href: masterPrompt.url || './documentation/master-prompt.md', desc: 'Prompt tÃ©cnico para integraÃ§Ã£o com IA/agentes/projetos.' },
+    { title: 'README do repositÃ³rio', href: '../README.md', desc: 'Resumo do projeto, estrutura, limites e verificaÃ§Ã£o.' },
+  ];
+
+  const mpContent = masterPrompt.text ? codeBlock('master-prompt-pre', masterPrompt.text, 'Copiar master prompt', { wrap: true }) : emptyState('Master prompt nÃ£o carregado', `NÃ£o foi possÃ­vel carregar o master prompt automaticamente. ${masterPrompt.error ? 'Motivo: ' + masterPrompt.error : ''}`, `<a class="btn" href="./documentation/master-prompt.md" target="_blank" rel="noopener noreferrer">Abrir arquivo</a>`);
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="docs-links-title">
+        <h2 id="docs-links-title">DocumentaÃ§Ã£o e guias</h2>
+        <div class="table-wrap"><table><caption class="sr-only">Documentos disponÃ­veis</caption><thead><tr><th scope="col">Documento</th><th scope="col">DescriÃ§Ã£o</th><th scope="col">Acesso</th></tr></thead><tbody>
+          ${docs.map((d) => `<tr><td><strong>${esc(d.title)}</strong></td><td class="muted">${esc(d.desc)}</td><td><a href="${escAttr(d.href)}" target="_blank" rel="noopener noreferrer">Abrir</a></td></tr>`).join('')}
+        </tbody></table></div>
+        <p class="section-note">Alguns arquivos sÃ£o servidos como Markdown/JSON estÃ¡tico; a visualizaÃ§Ã£o depende do navegador/servidor. Use "Abrir" para acessar o conteÃºdo original.</p>
+      </section>
+
+      <section class="card" aria-labelledby="docs-master-title">
+        <h2 id="docs-master-title">Master prompt (referÃªncia)</h2>
+        <p class="muted">ConteÃºdo orientado a integraÃ§Ã£o tÃ©cnica. Revise e adapte antes de usar em agentes ou pipelines.</p>
+        ${mpContent}
+      </section>
+
+      <div class="grid-2">
+        <section class="card" aria-labelledby="docs-manifest-title">
+          <h2 id="docs-manifest-title">Manifesto de repack (exemplo)</h2>
+          ${sampleManifest ? `${codeBlock('sample-manifest-pre', JSON.stringify(sampleManifest, null, 2), 'Copiar manifesto de exemplo')}<p class="section-note">Exemplo em <code>Public/manifests/sample-repack.json</code>. ImportaÃ§Ã£o/ativaÃ§Ã£o depende de fluxos e runtime compatÃ­veis; o registro em <code>configs/repacks.json</code> pode estar vazio.</p>` : emptyState('Manifesto de exemplo indisponÃ­vel', 'NÃ£o foi possÃ­vel carregar Public/manifests/sample-repack.json.')}
+        </section>
+        <section class="card" aria-labelledby="docs-privacy-title">
+          <h2 id="docs-privacy-title">Privacidade, seguranÃ§a e limites</h2>
+          <ul class="prose">
+            <li><strong>Processamento local:</strong> anÃ¡lises realizadas pelo nÃºcleo no navegador ocorrem no cliente, mas dependem dos arquivos/configuraÃ§Ãµes fornecidos e das APIs do navegador.</li>
+            <li><strong>Sem backend confiÃ¡vel embutido:</strong> autenticaÃ§Ã£o/permissÃµes no frontend sÃ£o controles de UI; nÃ£o trate como fronteira de seguranÃ§a.</li>
+            <li><strong>Sem segredos em pÃºblico:</strong> nÃ£o coloque tokens/chaves em configs, manifests ou URLs versionadas.</li>
+            <li><strong>Sem simulaÃ§Ã£o:</strong> inferÃªncia, quantizaÃ§Ã£o efetiva e pipelines pesados exigem runtime/provedor compatÃ­vel e devem reportar estados reais.</li>
+          </ul>
+        </section>
+      </div>
+    </div>`;
+}
+
+function renderAll() {
+  renderOverview();
+  renderResources();
+  renderModels();
+  renderGenerators();
+  renderJobs();
+  renderIntegration();
+  renderConfig();
+  renderDiscord();
+  renderDocs();
+  wireInteractions();
+  renderNotices();
+  updateChrome();
+}
+
+function wireInteractions() {
+  // Copy buttons (delegation)
+  document.removeEventListener('click', handleCopyClick);
+  document.addEventListener('click', handleCopyClick);
+  document.removeEventListener('click', handleGotoClick);
+  document.addEventListener('click', handleGotoClick);
+
+  const dl = qs('#dl-payload');
+  if (dl) {
+    dl.onclick = () => {
+      const payload = app?.getIntegrationPayload ? app.getIntegrationPayload(getSite()) : { error: 'NÃºcleo indisponÃ­vel' };
+      downloadJson('frame-generator-api-integration.json', payload);
+    };
+  }
+
+  const form = qs('#api-config-form');
+  if (form) {
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const baseInput = qs('#api-base-url');
+      const modeSel = qs('#api-mode');
+      const statusEl = qs('#api-status');
+      const raw = (baseInput?.value || '').trim();
+      const modeVal = modeSel?.value || 'demo';
+      let baseUrl = null;
+      if (raw) {
+        try {
+          const u = new URL(raw);
+          baseUrl = u.toString().replace(/\/$/, '');
+        } catch {
+          if (statusEl) {
+            statusEl.className = 'notice err mt';
+            statusEl.textContent = 'URL invÃ¡lida. Informe uma URL absoluta vÃ¡lida (ex.: https://seu-backend.exemplo) ou deixe em branco.';
+          }
+          baseInput?.focus();
+          announce('URL de backend invÃ¡lida.', 'assertive');
+          return;
+        }
+      }
+      try {
+        if (app?.api?.configure) {
+          app.api.configure({ baseUrl, mode: modeVal, backend: { remoteUrl: baseUrl, localUrl: baseUrl, connected: !!baseUrl } });
+        }
+        if (app?.backend?.configure) {
+          app.backend.configure({ baseUrl, type: modeVal === 'local' ? 'local' : 'remote' });
+        }
+      } catch (err) {
+        if (statusEl) {
+          statusEl.className = 'notice err mt';
+          statusEl.textContent = `Falha ao aplicar configuraÃ§Ã£o: ${err?.message || err}`;
+        }
+        return;
+      }
+      if (statusEl) {
+        statusEl.className = 'notice ok mt';
+        statusEl.textContent = baseUrl
+          ? `ConfiguraÃ§Ã£o aplicada nesta sessÃ£o: modo ${modeVal}, URL ${baseUrl}. Conectividade real nÃ£o verificada.`
+          : `ConfiguraÃ§Ã£o aplicada nesta sessÃ£o: modo ${modeVal}, sem URL de backend.`;
+      }
+      announce('ConfiguraÃ§Ã£o de backend aplicada na sessÃ£o.');
+      updateChrome();
+      // Re-render only integration payload preview and notices
+      const pre = qs('#payload-pre');
+      if (pre && app?.getIntegrationPayload) pre.textContent = JSON.stringify(app.getIntegrationPayload(getSite()), null, 2);
+      renderNotices();
+    };
+  }
+
+  // Usage chart actions
+  const usageRefresh = qs('#usage-refresh');
+  if (usageRefresh) usageRefresh.onclick = () => { recordFeatureUse('usage-refresh', { label: 'Atualizar grÃ¡fico de uso', category: 'aÃ§Ã£o' }); renderOverview(); wireInteractions(); announce('GrÃ¡fico de uso atualizado.'); };
+  const usageClear = qs('#usage-clear');
+  if (usageClear) usageClear.onclick = () => {
+    try { localStorage.removeItem('fgua:usage:v1'); } catch {}
+    recordFeatureUse('usage-clear', { label: 'Limpar rastreamento', category: 'aÃ§Ã£o' });
+    renderOverview(); wireInteractions();
+    announce('Rastreamento local de uso limpo.');
+  };
+
+  // WebSocket utilities
+  if (!wsClient) wsClient = new WebSocketClient();
+  const renderWsState = () => {
+    if (!wsClient) return;
+    const wsStateEl = qs('#ws-state');
+    if (!wsStateEl) return;
+    const st = wsClient.getStatus();
+    wsStateEl.textContent = st.state;
+    wsStateEl.className = 'badge ' + (st.state === 'open' ? 'ok' : st.state === 'error' ? 'err' : st.state === 'connecting' ? 'warn' : 'info');
+  };
+  const appendWsLog = (line) => {
+    const wsLogEl = qs('#ws-log');
+    if (!wsLogEl) return;
+    const prev = wsLogEl.textContent === 'Sem eventos WebSocket.' ? '' : wsLogEl.textContent + '\n';
+    wsLogEl.textContent = (prev + line).split('\n').slice(-120).join('\n');
+  };
+  if (!wsClient._uiBound) {
+    wsClient.on('state', () => renderWsState());
+    wsClient.on('log', (item) => appendWsLog('[' + item.at + '] ' + (item.level || 'info').toUpperCase() + ' ' + (item.message || '')));
+    wsClient.on('message', (msg) => appendWsLog('[mensagem] ' + (typeof msg.text === 'string' ? msg.text : JSON.stringify(msg.parsed ?? msg.raw))));
+    wsClient._uiBound = true;
+  }
+  const wsForm = qs('#ws-form');
+  const wsDisconnect = qs('#ws-disconnect');
+  const wsSend = qs('#ws-send');
+  if (wsForm) wsForm.onsubmit = (e) => {
+    e.preventDefault();
+    const url = (qs('#ws-url')?.value || '').trim();
+    const code = (qs('#ws-code')?.value || '').trim();
+    wsClient.configure({ url: url || null, code: code || '' });
+    const res = wsClient.connect();
+    recordFeatureUse('ws-connect', { label: 'WebSocket: conectar', category: 'integraÃ§Ã£o' });
+    if (!res.ok) appendWsLog('[erro] ' + (res.error?.message || 'Falha ao conectar'));
+    renderWsState();
+  };
+  if (wsDisconnect) wsDisconnect.onclick = () => {
+    wsClient.disconnect(true);
+    recordFeatureUse('ws-disconnect', { label: 'WebSocket: desconectar', category: 'integraÃ§Ã£o' });
+    appendWsLog('[info] DesconexÃ£o solicitada.');
+    renderWsState();
+  };
+  if (wsSend) wsSend.onclick = () => {
+    const raw = (qs('#ws-message')?.value || '').trim();
+    if (!raw) return;
+    let payload = raw;
+    try { payload = JSON.parse(raw); } catch {}
+    const res = wsClient.send(payload);
+    recordFeatureUse('ws-send', { label: 'WebSocket: enviar', category: 'integraÃ§Ã£o' });
+    if (!res || !res.ok) appendWsLog('[erro] ' + (res?.error?.message || 'Falha ao enviar'));
+  };
+  renderWsState();
+
+  // Discord configurator
+  const dcForm = qs('#discord-form');
+  if (dcForm) dcForm.onsubmit = (e) => {
+    e.preventDefault();
+    const intents = qsa('input[name="discord-intent"]:checked', dcForm).map((i) => i.value);
+    const events = qsa('input[name="discord-event"]:checked', dcForm).map((i) => i.value);
+    const form = {
+      name: (qs('#dc-name')?.value || '').trim(),
+      packageName: (qs('#dc-pkg')?.value || '').trim(),
+      clientId: (qs('#dc-client')?.value || '').trim(),
+      nodeVersion: (qs('#dc-node')?.value || '').trim(),
+      prefix: (qs('#dc-prefix')?.value || '!').trim(),
+      description: (qs('#dc-desc')?.value || '').trim(),
+      useSlash: !!qs('#dc-slash')?.checked,
+      usePrefix: !!qs('#dc-prefix-enabled')?.checked,
+      intents,
+      events,
+      commands: [{
+        name: (qs('#dc-cmd-name')?.value || 'ping').trim(),
+        description: (qs('#dc-cmd-desc')?.value || 'Responde com Pong!').trim(),
+        response: (qs('#dc-cmd-resp')?.value || 'Pong!').trim(),
+      }],
+    };
+    discordState.form = form;
+    discordState.generated = generateDiscordFiles(form);
+    discordState.selectedFile = 0;
+    recordFeatureUse('discord-generate', { label: 'Discord: gerar templates', category: 'discord' });
+    renderDiscord();
+    wireInteractions();
+    announce('Templates do bot Discord gerados/atualizados.');
+  };
+  const dcSelect = qs('#dc-file-select');
+  if (dcSelect) dcSelect.onchange = () => {
+    discordState.selectedFile = Number(dcSelect.value || 0);
+    recordFeatureUse('discord-select-file', { label: 'Discord: selecionar arquivo', category: 'discord' });
+    renderDiscord();
+    wireInteractions();
+  };
+  const dcDownloadConfig = qs('#dc-download-config');
+  if (dcDownloadConfig) dcDownloadConfig.onclick = () => {
+    recordFeatureUse('discord-download-config', { label: 'Discord: baixar config', category: 'discord' });
+    downloadJson('discord-bot-config.json', discordState.generated?.config || discordState.form || {});
+  };
+  const dcDownloadFile = qs('#dc-download-file');
+  if (dcDownloadFile) dcDownloadFile.onclick = () => {
+    const f = (discordState.generated?.files || [])[Number(discordState.selectedFile || 0)];
+    if (!f) return;
+    try {
+      const blob = new Blob([f.content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (f.path.split('/').pop() || 'arquivo.txt');
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      recordFeatureUse('discord-download-file', { label: 'Discord: baixar arquivo', category: 'discord' });
+      announce('Arquivo preparado para download.');
+    } catch (e) { announce('Falha ao baixar arquivo.', 'assertive'); }
+  };
+  const dcCopyFile = qs('#dc-copy-file');
+  if (dcCopyFile) dcCopyFile.onclick = async () => {
+    const f = (discordState.generated?.files || [])[Number(discordState.selectedFile || 0)];
+    if (!f) return;
+    await copyText(f.content);
+    recordFeatureUse('discord-copy-file', { label: 'Discord: copiar arquivo', category: 'discord' });
+  };
+
+  const dcSimRun = qs('#dc-sim-run');
+  if (dcSimRun) dcSimRun.onclick = () => {
+    const input = (qs('#dc-sim-input')?.value || '').trim();
+    const cfg = discordState.form || discordState.generated?.config || {};
+    const res = simulateDiscordInteraction(cfg, input);
+    const lines = (res.events || []).map((ev) => `[${ev.at}] ${(ev.type || 'info').toUpperCase()} ${ev.message || ''}`);
+    if (res.output && res.output.response != null) lines.push(`[resposta] ${res.output.response}`);
+    discordState.simLog = [...(discordState.simLog || []), `> ${input || '(vazio)'}`, ...lines, ''].slice(-200);
+    recordFeatureUse('discord-simulate', { label: 'Discord: simular comando', category: 'discord' });
+    renderDiscord();
+    wireInteractions();
+  };
+  const dcSimClear = qs('#dc-sim-clear');
+  if (dcSimClear) dcSimClear.onclick = () => {
+    discordState.simLog = [];
+    recordFeatureUse('discord-sim-clear', { label: 'Discord: limpar simulador', category: 'discord' });
+    renderDiscord();
+    wireInteractions();
+  };
+
+  const dcEmbedSelect = qs('#dc-embed-select');
+  if (dcEmbedSelect) dcEmbedSelect.onchange = () => {
+    discordState.embeddedIndex = Number(dcEmbedSelect.value || 0);
+    renderDiscord();
+    wireInteractions();
+  };
+  const getEmbeddedAll = () => [...getDiscordRuntimeTemplateFiles(), ...getReactViteTemplates()];
+  const dcEmbedCopy = qs('#dc-embed-copy');
+  if (dcEmbedCopy) dcEmbedCopy.onclick = async () => {
+    const f = getEmbeddedAll()[Number(discordState.embeddedIndex || 0)];
+    if (!f) return;
+    await copyText(f.content);
+    recordFeatureUse('discord-embed-copy', { label: 'Copiar template embutido', category: 'integraÃ§Ã£o' });
+  };
+  const dcEmbedDownload = qs('#dc-embed-download');
+  if (dcEmbedDownload) dcEmbedDownload.onclick = () => {
+    const f = getEmbeddedAll()[Number(discordState.embeddedIndex || 0)];
+    if (!f) return;
+    try {
+      const blob = new Blob([f.content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (f.path.split('/').pop() || 'template.txt');
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      recordFeatureUse('discord-embed-download', { label: 'Baixar template embutido', category: 'integraÃ§Ã£o' });
+      announce('Arquivo preparado para download.');
+    } catch (e) { announce('Falha ao baixar arquivo.', 'assertive'); }
+  };
+
+}
+
+function handleCopyClick(e) {
+  const btn = e.target.closest('[data-copy-target]');
+  if (!btn) return;
+  const id = btn.getAttribute('data-copy-target');
+  const el = id ? document.getElementById(id) : null;
+  const label = btn.getAttribute('data-copy-label') || 'Copiar';
+  if (!el) return;
+  copyText(el.textContent || '').then((res) => {
+    const original = btn.textContent;
+    btn.textContent = res.ok ? 'Copiado' : 'Falha ao copiar';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = label || original; btn.disabled = false; }, 1800);
+  });
+}
+
+function handleGotoClick(e) {
+  const btn = e.target.closest('[data-goto-tab]');
+  if (!btn) return;
+  const tab = btn.getAttribute('data-goto-tab');
+  if (tab) {
+    setActiveTab(tab, { focus: true });
+    recordFeatureUse('tab:' + tab, { label: `Aba: ${tab}`, category: 'navegaÃ§Ã£o' });
+    qs('#main-content')?.focus({ preventScroll: false });
+  }
+}
+
+function syncTabsOrientation() {
+  const list = qs('#tabs');
+  if (!list) return;
+  const vertical = window.matchMedia('(min-width: 901px)').matches;
+  list.setAttribute('aria-orientation', vertical ? 'vertical' : 'horizontal');
+}
+
+function setupTabs() {
+  const tabsContainer = qs('#tabs');
+  if (!tabsContainer) return;
+  const getTabs = () => qsa('[role="tab"][data-tab]', tabsContainer);
+  syncTabsOrientation();
+  window.addEventListener('resize', syncTabsOrientation, { passive: true });
+
+  tabsContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('[role="tab"][data-tab]');
+    if (!btn) return;
+    setActiveTab(btn.dataset.tab, { focus: false });
+    recordFeatureUse('tab:' + btn.dataset.tab, { label: `Aba: ${btn.dataset.tab}`, category: 'navegaÃ§Ã£o' });
+  });
+
+  tabsContainer.addEventListener('keydown', (e) => {
+    const tabs = getTabs();
+    const current = e.target.closest('[role="tab"][data-tab]');
+    if (!current) return;
+    const idx = tabs.indexOf(current);
+    if (idx < 0) return;
+    let nextIdx = idx;
+    const key = e.key;
+    const isVertical = tabsContainer.getAttribute('aria-orientation') === 'vertical';
+    if (key === 'ArrowRight' || (isVertical && key === 'ArrowDown')) nextIdx = (idx + 1) % tabs.length;
+    else if (key === 'ArrowLeft' || (isVertical && key === 'ArrowUp')) nextIdx = (idx - 1 + tabs.length) % tabs.length;
+    else if (key === 'Home') nextIdx = 0;
+    else if (key === 'End') nextIdx = tabs.length - 1;
+    else if (key === 'Enter' || key === ' ') { e.preventDefault(); setActiveTab(current.dataset.tab, { focus: false }); return; }
+    else return;
+    e.preventDefault();
+    const next = tabs[nextIdx];
+    if (next) setActiveTab(next.dataset.tab, { focus: true });
+  });
+}
+
+function applyInitialTabFromHash() {
+  const hash = (location.hash || '').replace('#', '').trim();
+  const valid = ['overview', 'resources', 'models', 'generators', 'jobs', 'integration', 'discord', 'config', 'docs'];
+  const tab = valid.includes(hash) ? hash : 'overview';
+  setActiveTab(tab);
+  recordFeatureUse('tab:' + tab, { label: `Aba: ${tab}`, category: 'navegaÃ§Ã£o' });
+}
+
+async function main() {
+  setupTabs();
+  applyInitialTabFromHash();
+  qs('#tab-overview').innerHTML = loadingCard('Inicializando dashboard');
+
+  await initI18n(document.documentElement.lang || 'pt-BR');
+
+  try {
+    app = await bootCore();
+  } catch (e) {
+    app = { error: e };
+  }
+
+  await loadAllStatic();
+
+  if (!app || app.error) {
+    setGlobalStatus('err', 'erro');
+    updateChrome();
+    renderAll();
+    renderError(qs('#tab-overview'), app?.error || new Error('Falha ao inicializar o nÃºcleo.'));
+    announce('Falha ao inicializar o nÃºcleo do dashboard.', 'assertive');
+    return;
+  }
+
+  try { if (typeof window !== 'undefined') window.FGUA = app; } catch {}
+  try {
+    if (app?.tools && typeof app.tools.execute === 'function' && !app.tools._usageWrapped) {
+      const _exec = app.tools.execute.bind(app.tools);
+      app.tools.execute = async (id, input = {}, ctx = {}) => {
+        const res = await _exec(id, input, ctx);
+        try { recordToolUse(id, { label: String(id), category: 'tool', source: 'ToolRegistry' }); } catch {}
+        return res;
+      };
+      app.tools._usageWrapped = true;
+    }
+  } catch {}
+  renderAll();
+  announce('Dashboard carregado.');
+}
+
+main().catch((e) => {
+  console.error(e);
+  setGlobalStatus('err', 'erro');
+  renderError(qs('#tab-overview'), e);
+});
+

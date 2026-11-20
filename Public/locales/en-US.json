@@ -12,6 +12,7 @@
     "nav.generators": "Generators & presets",
     "nav.jobs": "Jobs",
     "nav.integration": "Integration & API",
+    "nav.discord": "Discord Bot",
     "nav.config": "Configuration & permissions",
     "nav.docs": "Documentation & resources",
     "status.loading": "Loading…",
@@ -31,9 +32,23 @@
     "actions.apply": "Apply",
     "actions.open": "Open",
     "actions.reload": "Reload",
+    "actions.connect": "Connect",
+    "actions.disconnect": "Disconnect",
+    "actions.send": "Send",
+    "actions.generate": "Generate",
+    "actions.simulate": "Simulate",
+    "actions.clear": "Clear",
     "empty.none": "No items available.",
     "errors.loadSection": "Could not load this section",
     "notices.staticHosting": "Static hosting: no native REST server. Real execution depends on a compatible runtime/provider.",
-    "notices.noSimulation": "Inference, effective quantization, and heavy processing are not simulated."
+    "notices.noSimulation": "Inference, effective quantization, and heavy processing are not simulated.",
+    "integration.websocket.title": "WebSocket (client utility, optional)",
+    "integration.websocket.note": "Connects to compatible external endpoints. GitHub Pages does not provide a WebSocket server.",
+    "discord.title": "Discord bot configuration studio",
+    "discord.note": "Generates templates and simulates commands/events locally in the UI. It does not run a bot in the browser or connect to the Discord gateway.",
+    "react.title": "React demo (browser)",
+    "react.note": "Runs in the browser via ESM/CDN and consumes public configs/contract.",
+    "usage.title": "Most used tools and features",
+    "usage.note": "Tracked locally in this session/browser (no automatic upload to servers)."
   }
 }

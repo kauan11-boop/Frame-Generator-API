@@ -482,7 +482,8 @@ function renderIntegration() {
 `# Docs:   Public/documentation/index.html, commands.html, master-prompt.md\n`+
 `# Contrato lógico: ${contract.base || '/api/v1'} (requere backend/provedor compatível para execução remota)\n`;
 
-  const jsExample = `// Exemplo: consumir informações públicas e respeitar estados reais\nconst siteBase = '${site}';\n\nasync function getPublicJson(path) {\n  const res = await fetch(new URL(path, siteBase));\n  if (!res.ok) throw new Error('Falha ao carregar ' + path + ': ' + res.status);\n  return res.json();\n}\n\n// Config/contrato publicados estaticamente\nconst apiConfig = await getPublicJson('configs/api.json');\n\n// Para operações remotas, configure um backend compatível (não incluído no GitHub Pages)\nconst BACKEND_BASE_URL = '${backendUrl.replace(/'/g, "\\'")}'; // vazio => sem backend configurado\n\nasync function callBackend(contractPath, init = {}) {\n  if (!BACKEND_BASE_URL) {\n    return { ok: false, state: 'unavailable', error: { code: 'BACKEND_UNAVAILABLE', message: 'Backend não configurado.' } };\n  }\n  const url = new URL(contractPath, BACKEND_BASE_URL.endsWith('/') ? BACKEND_BASE_URL : BACKEND_BASE_URL + '/');\n  const res = await fetch(url, { headers: { Accept: 'application/json', ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}) }, ...init });\n  const data = await res.json().catch(() => null);\n  return data ?? { ok: res.ok, state: res.ok ? 'ok' : 'error' };\n}\n`;
+  const escapeJsSingle = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r/g, '\\r').replace(/\n/g, '\\n');
+  const jsExample = `// Exemplo: consumir informações públicas e respeitar estados reais\nconst siteBase = '${escapeJsSingle(site)}';\n\nasync function getPublicJson(path) {\n  const res = await fetch(new URL(path, siteBase));\n  if (!res.ok) throw new Error('Falha ao carregar ' + path + ': ' + res.status);\n  return res.json();\n}\n\n// Config/contrato publicados estaticamente\nconst apiConfig = await getPublicJson('configs/api.json');\n\n// Para operações remotas, configure um backend compatível (não incluído no GitHub Pages)\nconst BACKEND_BASE_URL = '${escapeJsSingle(backendUrl)}'; // vazio => sem backend configurado\n\nasync function callBackend(contractPath, init = {}) {\n  if (!BACKEND_BASE_URL) {\n    return { ok: false, state: 'unavailable', error: { code: 'BACKEND_UNAVAILABLE', message: 'Backend não configurado.' } };\n  }\n  const url = new URL(contractPath, BACKEND_BASE_URL.endsWith('/') ? BACKEND_BASE_URL : BACKEND_BASE_URL + '/');\n  const res = await fetch(url, { headers: { Accept: 'application/json', ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}) }, ...init });\n  const data = await res.json().catch(() => null);\n  return data ?? { ok: res.ok, state: res.ok ? 'ok' : 'error' };\n}\n`;
 
   el.innerHTML = `
     <div class="stack">
@@ -880,11 +881,16 @@ function wireInteractions() {
         }
       }
       try {
+        const normalizedBaseUrl = baseUrl ? String(baseUrl).replace(/\/+$/, '') : null;
         if (app?.api?.configure) {
-          app.api.configure({ baseUrl, mode: modeVal, backend: { remoteUrl: baseUrl, localUrl: baseUrl, connected: !!baseUrl } });
+          app.api.configure({
+            baseUrl: normalizedBaseUrl,
+            mode: modeVal,
+            backend: { remoteUrl: normalizedBaseUrl, localUrl: normalizedBaseUrl, connected: false },
+          });
         }
         if (app?.backend?.configure) {
-          app.backend.configure({ baseUrl, type: modeVal === 'local' ? 'local' : 'remote' });
+          app.backend.configure({ baseUrl: normalizedBaseUrl, type: modeVal === 'local' ? 'local' : 'remote' });
         }
       } catch (err) {
         if (statusEl) {

@@ -20,6 +20,7 @@ export class WebSocketClient {
     this.manualClose = false;
     this.listeners = new Map();
     this.history = [];
+    this._reconnectTimer = null;
   }
 
   on(event, fn) {
@@ -46,10 +47,32 @@ export class WebSocketClient {
     this.emit('state', { state, detail, url: this.url });
   }
 
+  _clearReconnectTimer() {
+    if (this._reconnectTimer) {
+      try { clearTimeout(this._reconnectTimer); } catch {}
+      this._reconnectTimer = null;
+    }
+  }
+
+  _validateUrl(rawUrl) {
+    if (!rawUrl) return { ok: false, error: { code: 'INVALID_URL', message: 'Informe uma URL WebSocket válida (ws:// ou wss://).' } };
+    let parsed;
+    try {
+      parsed = new URL(String(rawUrl));
+    } catch (e) {
+      return { ok: false, error: { code: 'INVALID_URL', message: e?.message || 'URL WebSocket inválida.' } };
+    }
+    if (parsed.protocol !== 'ws:' && parsed.protocol !== 'wss:') {
+      return { ok: false, error: { code: 'INVALID_PROTOCOL', message: 'Protocolo inválido. Use ws:// ou wss://.' } };
+    }
+    return { ok: true, url: parsed };
+  }
+
   buildUrl() {
     if (!this.url) return null;
     let u;
-    try { u = new URL(this.url); } catch { return this.url; }
+    try { u = new URL(String(this.url)); } catch { return null; }
+    if (u.protocol !== 'ws:' && u.protocol !== 'wss:') return null;
     if (this.code && this.attachCodeAsQuery) {
       try { u.searchParams.set(this.queryParam, this.code); } catch {}
     }
@@ -57,6 +80,7 @@ export class WebSocketClient {
   }
 
   configure({ url, code, protocols, autoReconnect, reconnectDelayMs, maxReconnectAttempts, attachCodeAsQuery, queryParam } = {}) {
+    this._clearReconnectTimer();
     if (url !== undefined) this.url = url || null;
     if (code !== undefined) this.code = code || '';
     if (protocols !== undefined) this.protocols = Array.isArray(protocols) ? protocols : undefined;
@@ -69,11 +93,18 @@ export class WebSocketClient {
   }
 
   connect() {
+    this._clearReconnectTimer();
     if (typeof WebSocket === 'undefined') {
       const err = { code: 'UNSUPPORTED', message: 'WebSocket não suportado neste navegador.' };
       this._setState('error', err);
       this._log({ level: 'error', message: err.message });
       return { ok: false, state: 'unsupported', error: err };
+    }
+    const validation = this._validateUrl(this.url);
+    if (!validation.ok) {
+      this._setState('error', validation.error);
+      this._log({ level: 'error', message: validation.error.message });
+      return { ok: false, state: 'invalid', error: validation.error };
     }
     const target = this.buildUrl();
     if (!target) {
@@ -96,6 +127,7 @@ export class WebSocketClient {
 
     this.ws.onopen = () => {
       this.attempts = 0;
+      this._clearReconnectTimer();
       this._setState('open');
       this._log({ level: 'ok', message: 'Conexão WebSocket aberta.', detail: { target } });
       // Optional auth message when code is provided (without forcing protocol semantics)
@@ -120,7 +152,11 @@ export class WebSocketClient {
       if (!wasManual && this.autoReconnect && this.attempts < this.maxReconnectAttempts) {
         this.attempts += 1;
         this._log({ level: 'info', message: `Tentativa de reconexão ${this.attempts}/${this.maxReconnectAttempts} em ${this.reconnectDelayMs}ms.` });
-        setTimeout(() => { if (!this.manualClose) this.connect(); }, this.reconnectDelayMs);
+        this._clearReconnectTimer();
+        this._reconnectTimer = setTimeout(() => {
+          this._reconnectTimer = null;
+          if (!this.manualClose) this.connect();
+        }, this.reconnectDelayMs);
       }
     };
 
@@ -147,6 +183,7 @@ export class WebSocketClient {
 
   disconnect(manual = true) {
     this.manualClose = !!manual;
+    this._clearReconnectTimer();
     if (this.ws) {
       try { this._setState('closing'); this.ws.close(); } catch {}
     } else {

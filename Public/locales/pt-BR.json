@@ -12,6 +12,7 @@
     "nav.generators": "Geradores e presets",
     "nav.jobs": "Tarefas",
     "nav.integration": "Integração e API",
+    "nav.discord": "Discord Bot",
     "nav.config": "Configurações e permissões",
     "nav.docs": "Documentação e recursos",
     "status.loading": "Carregando…",
@@ -31,9 +32,23 @@
     "actions.apply": "Aplicar",
     "actions.open": "Abrir",
     "actions.reload": "Recarregar",
+    "actions.connect": "Conectar",
+    "actions.disconnect": "Desconectar",
+    "actions.send": "Enviar",
+    "actions.generate": "Gerar",
+    "actions.simulate": "Simular",
+    "actions.clear": "Limpar",
     "empty.none": "Nenhum item disponível.",
     "errors.loadSection": "Não foi possível carregar esta seção",
     "notices.staticHosting": "Hospedagem estática: sem servidor REST nativo. Execução real depende de runtime/provedor compatível.",
-    "notices.noSimulation": "Inferência, quantização efetiva e processamento pesado não são simulados."
+    "notices.noSimulation": "Inferência, quantização efetiva e processamento pesado não são simulados.",
+    "integration.websocket.title": "WebSocket (utilitário cliente, opcional)",
+    "integration.websocket.note": "Conecta a endpoints externos compatíveis. O GitHub Pages não fornece servidor WebSocket.",
+    "discord.title": "Estúdio de configuração de bots Discord",
+    "discord.note": "Gera templates e simula comandos/eventos localmente na UI. Não executa bot no navegador nem conecta ao gateway do Discord.",
+    "react.title": "Demo React (navegador)",
+    "react.note": "Executa no navegador via ESM/CDN e consome configurações/contrato públicos.",
+    "usage.title": "Ferramentas e recursos mais utilizados",
+    "usage.note": "Rastreamento local nesta sessão/navegador (sem envio automático para servidores)."
   }
 }

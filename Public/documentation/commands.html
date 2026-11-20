@@ -20,7 +20,7 @@
         <a class="btn" href="../../index.html">Página inicial</a>
       </div>
       <h1>Comandos e operações</h1>
-      <p>Referência prática para executar, verificar e integrar o Frame-Generator-API em ambiente estático.</p>
+      <p>Referência prática para executar, verificar e integrar o Frame-Generator-API em ambiente estático (GitHub Pages/local).</p>
 
       <h2>Desenvolvimento e verificação</h2>
       <pre><code>npx serve .
@@ -47,10 +47,13 @@ npm run ci            # lint:syntax + check:json + test</code></pre>
         <p><strong>Hospedagem estática:</strong> não há implementação REST nativa no GitHub Pages. Operações remotas retornam estado indisponível quando não há backend compatível configurado.</p>
       </div>
 
-      <h2>Integração</h2>
+      <h2>Integração e recursos da interface</h2>
       <ul>
         <li><strong>Payload de integração:</strong> Dashboard → <em>Integração e API</em> → baixar/copiar payload JSON.</li>
-        <li><strong>Configuração de backend (sessão):</strong> defina URL e modo no dashboard; a UI não valida conectividade automaticamente.</li>
+        <li><strong>Configuração de backend (sessão):</strong> defina URL e modo no dashboard; a UI não valida conectividade automaticamente. Execução real depende de backend/runtimes compatíveis.</li>
+        <li><strong>WebSocket (cliente utilitário):</strong> Dashboard → <em>Integração e API</em> → conectar a endpoint externo (<code>ws://</code>/<code>wss://</code>) com código/token opcional. Sem servidor WebSocket no GitHub Pages.</li>
+        <li><strong>Discord Bot (estúdio):</strong> Dashboard → <em>Discord Bot</em> → gerar templates <code>discord.js</code> (Node.js), simular comandos/eventos localmente e copiar/baixar arquivos. Não executa bot no navegador nem conecta ao gateway.</li>
+        <li><strong>Demo React (navegador):</strong> <a href="../react-vite.html">Public/react-vite.html</a> (ESM/CDN; requer rede para dependências externas).</li>
         <li><strong>Artefatos públicos:</strong> <code>Public/presets/default-presets.json</code>, <code>Public/templates/job-template.json</code>, <code>Public/manifests/sample-repack.json</code>, <code>Public/locales/*.json</code>.</li>
         <li><strong>Master prompt:</strong> <a href="./master-prompt.md">Public/documentation/master-prompt.md</a>.</li>
       </ul>

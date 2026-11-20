@@ -1,6 +1,6 @@
 {
   "name": "frame-generator-api",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "description": "Plataforma web modular estática para análise de modelos, geração/aprimoramento de quadros e integração via contrato lógico /api/v1.",
   "license": "MIT",

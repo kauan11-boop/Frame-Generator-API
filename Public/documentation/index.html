@@ -21,10 +21,11 @@
       </div>
       <h1>Documentação — Frame-Generator-API</h1>
       <p class="lead">Plataforma web modular estática (FGUA) para análise e registro de modelos, inspeção de capacidades/engines/provedores e integração por <strong>contrato lógico</strong> <code>/api/v1</code>. Hospedagem alvo: GitHub Pages.</p>
+      <p><strong>Responsável:</strong> Kauan Henrique Alves dos Reis · <strong>Versão:</strong> 2.0.0 · <strong>Licença:</strong> MIT</p>
 
       <div class="notice info" role="note">
         <h2>Estado real da interface</h2>
-        <p>O dashboard web atual oferece <strong>visão geral</strong>, <strong>inspeção de recursos/capacidades</strong>, <strong>visualização de registros da sessão</strong> (modelos, geradores, tarefas quando existentes), <strong>configuração de backend na sessão</strong>, <strong>exportação de payload de integração</strong> e acesso a configurações/documentação/artefatos públicos. Não há fluxos completos de upload/execução/gerenciamento administrativo na UI sem runtime/provedor compatível.</p>
+        <p>O dashboard oferece visão geral, recursos/capacidades, modelos e tarefas da sessão (quando existentes), geradores/presets, integração e API (contrato, backend em sessão, cliente WebSocket utilitário e payload), estúdio Discord Bot (templates <code>discord.js</code> com simulação local de comandos/eventos), configurações/permissões e documentação/recursos. <strong>Não há</strong> fluxos completos de upload/execução/gerenciamento administrativo na UI sem runtime/provedor compatível, e operações indisponíveis retornam estados explícitos (sem simulação).</p>
       </div>
 
       <h2>Modos de operação</h2>
@@ -61,8 +62,11 @@
         <li><strong>ONNX:</strong> dependente de ONNX Runtime Web carregado e compatibilidade de modelo/operadores.</li>
         <li><strong>WebCodecs/WebGPU:</strong> detectados quando disponíveis; uso efetivo depende de pipeline/modelo/runtime compatível.</li>
         <li><strong>Jobs/tarefas:</strong> estados explícitos (ex.: <code>pending</code>, <code>queued</code>, <code>running</code>, <code>succeeded</code>, <code>failed</code>, <code>cancelled</code>, <code>unavailable</code>).</li>
+        <li><strong>WebSocket (cliente):</strong> utilitário para endpoints externos compatíveis (<code>ws://</code>/<code>wss://</code>, código opcional). GitHub Pages não fornece servidor WebSocket.</li>
+        <li><strong>Discord Bot (estúdio):</strong> gera templates e simula comandos/eventos localmente na UI; execução real requer runtime Node.js externo e token seguro.</li>
+        <li><strong>React demo:</strong> página integrada via ESM/CDN para consumo de configs/contrato (dependência externa de rede no runtime do navegador).</li>
         <li><strong>Segurança:</strong> sem fronteira de servidor no frontend estático; não armazenar segredos em arquivos públicos. Autorização confiável requer backend.</li>
-        <li><strong>Privacidade local:</strong> análises no cliente usam APIs do navegador e arquivos selecionados/fornecidos no contexto da sessão; informações de hardware podem ser aproximadas ou omitidas pelo navegador.</li>
+        <li><strong>Privacidade local:</strong> análises no cliente usam APIs do navegador e dados da sessão; informações de hardware podem ser aproximadas ou omitidas pelo navegador.</li>
       </ul>
 
       <h2>Recursos públicos adicionais</h2>
@@ -75,10 +79,13 @@
 
       <h2>Links úteis</h2>
       <ul>
+        <li><a href="../dashboard.html">Dashboard</a></li>
         <li><a href="./commands.html">Comandos e operações</a></li>
         <li><a href="./master-prompt.md">Master prompt (Markdown)</a></li>
+        <li><a href="../react-vite.html">Demo React (navegador)</a></li>
         <li><a href="../../configs/api.json">Configuração da API (JSON)</a></li>
         <li><a href="../../README.md">README</a></li>
+        <li><a href="../../CHANGELOG.md">CHANGELOG</a></li>
         <li><a href="../../LICENSE">Licença MIT</a></li>
       </ul>
     </article>

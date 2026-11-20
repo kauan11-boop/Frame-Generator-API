@@ -30,7 +30,7 @@ import { CacheManager } from './storage/CacheManager.js';
 import { HistoryManager } from './storage/HistoryManager.js';
 import { deepMergeSafe, nowIso } from './core/utils.js';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '2.0.0';
 const CONFIG_NAMES = ['api', 'models', 'generators', 'repacks', 'permissions', 'settings'];
 
 function createLogger(events, max = 500) {
