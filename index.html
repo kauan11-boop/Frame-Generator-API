@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Frame-Generator-API</title>
   <link rel="manifest" href="./manifest.json" />
-  <link rel="stylesheet" href="./Public/css/main.css" />
+  <link rel="stylesheet" href="./public/css/main.css" />
   <style>
     .boot-wrap{min-height:100vh;display:grid;place-items:center;padding:24px;background:#f6f7f9;color:#111827;font-family:Inter,system-ui,Arial,sans-serif}
     .boot-card{max-width:720px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px}
@@ -21,14 +21,15 @@
   <div class="boot-wrap">
     <div class="boot-card">
       <h1>Frame-Generator-API</h1>
-      <p>Plataforma universal de geração de quadros, processamento gráfico e gerenciamento de modelos de IA (FGUA). Inicializando núcleo modular no navegador…</p>
+      <p>Plataforma universal de geração de quadros, processamento gráfico e gerenciamento de modelos de IA (FGUA).</p>
       <div id="boot-status" class="boot-meta">Carregando módulos…</div>
       <div class="boot-actions">
-        <a class="bbtn primary" href="./Public/dashboard.html">Abrir Dashboard</a>
-        <a class="bbtn" href="./Public/index.html">Interface</a>
+        <a class="bbtn primary" href="./public/dashboard.html">Abrir Dashboard</a>
+        <a class="bbtn" href="./public/index.html">Interface</a>
+        <a class="bbtn" href="./public/mcp.html">MCP Universal</a>
         <a class="bbtn" href="./configs/api.json">Contrato API (JSON)</a>
       </div>
-      <div class="boot-meta">Hospedagem estática (GitHub Pages). Operações de inferência/execução pesada requerem runtime ou provedor externo compatível.</div>
+      <div class="boot-meta">GitHub Pages hospeda a interface. O runtime MCP Node.js é executado separadamente em ambiente local ou servidor configurado.</div>
     </div>
   </div>
   <script type="module">
@@ -38,11 +39,9 @@
       const app = await createApp();
       const s = app.getStatus();
       el.textContent = `Núcleo pronto: ${s.status} • módulos: ${s.modules.length} • engines: ${s.counts.engines} • provedores: ${s.counts.providers} • WebGPU: ${app.webgpuInfo?.available ? 'disponível' : 'indisponível'}`;
-      // mantém na página inicial; dashboard pode consumir window.FGUA se aberto no mesmo contexto não é garantido,
-      // mas app expõe estado e pode ser inicializado também pelo dashboard.
     } catch (e) {
       console.error(e);
-      el.textContent = 'Falha ao inicializar núcleo: ' + (e && e.message ? e.message : e);
+      el.textContent = 'Falha ao inicializar núcleo: ' + (e?.message || e);
     }
   </script>
 </body>

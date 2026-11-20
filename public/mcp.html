@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MCP Universal — Frame-Generator-API</title>
+<link rel="stylesheet" href="./css/main.css">
+<style>
+.mcp-wrap{max-width:1100px;margin:0 auto;padding:28px 20px}.mcp-top{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
+.mcp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:18px}
+.mcp-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px}
+.mcp-card h2{font-size:17px;margin:0 0 8px}.mcp-card p{color:var(--muted);font-size:14px}
+.mcp-code{white-space:pre-wrap;overflow-wrap:anywhere;background:#111827;color:#f9fafb;padding:14px;border-radius:8px;font:12px/1.6 var(--mono)}
+.mcp-actions{display:flex;gap:8px;flex-wrap:wrap}.mcp-status{font-weight:600}.mcp-note{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main class="mcp-wrap">
+  <div class="mcp-top">
+    <div><a href="./dashboard.html">← Dashboard</a><h1>MCP Universal</h1><p class="muted">Servidor, cliente e runtime universal do Frame-Generator-API.</p></div>
+    <span class="status" id="mcp-status">Verificando runtime…</span>
+  </div>
+  <div class="mcp-grid">
+    <section class="mcp-card"><h2>Servidor MCP local — stdio</h2><p>Modo recomendado para hosts MCP que iniciam o processo localmente. Não exige IA no runtime.</p>
+      <pre class="mcp-code">npm install
+npm run mcp</pre>
+      <p class="mcp-note">Configure o host MCP para iniciar <code>node /caminho/Frame-Generator-API/server/index.js</code> com o diretório de trabalho na raiz do projeto.</p>
+    </section>
+    <section class="mcp-card"><h2>Servidor MCP HTTP</h2><p>Endpoint local compatível com Streamable HTTP.</p>
+      <pre class="mcp-code">npm run mcp:http
+# MCP: http://127.0.0.1:3333/mcp
+# Health: http://127.0.0.1:3333/health</pre>
+      <p class="mcp-note">O bind padrão é loopback. Acesso remoto exige token, allowlist e proxy TLS configurados.</p>
+    </section>
+    <section class="mcp-card"><h2>Cliente MCP</h2><p>O módulo <code>server/client.js</code> conecta a servidores externos por Streamable HTTP, lista tools/resources/prompts e permite chamadas explícitas.</p>
+      <pre class="mcp-code">import { connectMcpServer } from './server/client.js';
+
+const remote = await connectMcpServer({
+  url: 'https://servidor.example/mcp'
+});
+const tools = await remote.listTools();
+await remote.close();</pre>
+    </section>
+  </div>
+  <section class="mcp-card" style="margin-top:16px"><h2>Ferramentas disponíveis</h2>
+    <ul>
+      <li><code>fgua_system_status</code> — estado e diagnóstico</li>
+      <li><code>fgua_api_contract</code> — namespaces do contrato /api/v1</li>
+      <li><code>fgua_modules_list</code> — inventário de módulos</li>
+      <li><code>fgua_catalog_read</code> — catálogos JSON</li>
+      <li><code>fgua_ai_status</code> — configuração opcional de IA sem expor segredos</li>
+      <li><code>fgua_pipeline_validate</code> — validação estrutural sem executar etapas</li>
+    </ul>
+    <p>Resources: <code>fgua://system/status</code>, <code>fgua://api/contract</code>, <code>fgua://catalog/models</code>, <code>fgua://catalog/generators</code>.</p>
+    <p>Prompt: <code>fgua_pipeline_design</code>.</p>
+  </section>
+  <section class="mcp-card" style="margin-top:16px"><h2>Verificação local</h2><p>Quando o servidor HTTP estiver ativo, esta página consulta apenas o health check.</p>
+    <div class="mcp-actions"><button class="btn primary" id="check-mcp">Verificar http://127.0.0.1:3333/health</button><a class="btn" href="./documentation/mcp.md">Documentação MCP</a></div>
+    <pre class="mcp-code" id="health-output">Aguardando verificação…</pre>
+  </section>
+  <p class="mcp-note" style="margin-top:18px">GitHub Pages não executa Node.js. Esta página é a interface de configuração; o servidor MCP deve rodar localmente ou em infraestrutura própria.</p>
+</main>
+<script type="module">
+const status=document.getElementById('mcp-status');
+document.getElementById('check-mcp').addEventListener('click',async()=>{
+ const out=document.getElementById('health-output');out.textContent='Verificando…';
+ try{const r=await fetch('http://127.0.0.1:3333/health',{cache:'no-store'});const data=await r.json();out.textContent=JSON.stringify(data,null,2);status.textContent=data.ok?'MCP online':'MCP indisponível';status.className='status '+(data.ok?'ok':'');}
+ catch(e){out.textContent='Não foi possível acessar o runtime local. Inicie npm run mcp:http. '+e.message;status.textContent='MCP offline';}
+});
+</script>
+</body>
+</html>
