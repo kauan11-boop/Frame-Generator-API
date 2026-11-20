@@ -1,8 +1,50 @@
 {
-  "generators": [
-    { "id": "frame-generator", "name": "Universal Frame Generator", "category": "unified", "enabled": true },
-    { "id": "image-generator", "name": "Image Generator", "category": "image", "enabled": true },
-    { "id": "video-generator", "name": "Video Generator", "category": "video", "enabled": true },
-    { "id": "game-frame-generator", "name": "Game Frame Generator", "category": "game", "enabled": true }
-  ]
+  "version": "2.0.0",
+  "note": "Gêneros de geração/aprimoramento. Todos produzem PLANOS com estados explícitos; execução real exige engine/modelo/provedor compatível.",
+  "genres": {
+    "jogos": {
+      "label": "Geração de quadros de jogos",
+      "description": "Planeja interpolação/geração de quadros para jogos (ex.: 30→120 fps). Não intercepta pipeline gráfico; usa apenas integrações/capturas autorizadas.",
+      "params": {
+        "fpsOrigem": [30, 60, 90, 120],
+        "fpsAlvo": [60, 90, 120, 144, 240],
+        "latenciaMaxMs": 16,
+        "modo": ["interpolacao", "duplicacao-adaptativa", "planejado"]
+      },
+      "engines": ["WebGPU", "WebCodecs", "Worker"],
+      "pixelBudgetPreset": "jogo",
+      "state": "requires-runtime"
+    },
+    "imagem": {
+      "label": "Aprimoramento gráfico de fotos",
+      "description": "Planeja upscaling/melhoria de imagens (PNG/JPG/WebP) com controlador de pixels e engine detectada.",
+      "params": {
+        "fatoresEscala": [1.5, 2, 3, 4],
+        "formatos": ["png", "jpeg", "webp"],
+        "qualidade": ["equilibrado", "alto", "maximo"],
+        "denoise": [0, 1, 2, 3]
+      },
+      "engines": ["WebGPU", "WebGL", "TF.js", "Transformers.js"],
+      "pixelBudgetPreset": "imagem",
+      "state": "requires-runtime"
+    },
+    "video": {
+      "label": "Melhoria de filmes e séries (.mp4)",
+      "description": "Planeja aprimoramento de vídeos: fps alvo, escala, cenas. Não simula resultado; requer pipeline externo/runtime.",
+      "params": {
+        "fpsAlvo": [24, 30, 60, 120],
+        "fatoresEscala": [1, 1.5, 2],
+        "modo": ["analise", "interpolacao", "upscale"],
+        "cenaDeteccao": true
+      },
+      "engines": ["WebCodecs", "WebGPU", "Worker"],
+      "pixelBudgetPreset": "video",
+      "state": "requires-runtime"
+    }
+  },
+  "pixelBudgets": {
+    "jogo": { "maxPixelsPorQuadro": 2073600, "maxMBps": 60, "ajusteDinamico": true },
+    "imagem": { "maxPixelsPorOperacao": 8294400, "maxMB": 512, "ajusteDinamico": false },
+    "video": { "maxPixelsPorQuadro": 2073600, "maxQuadrosProcessados": 10000, "ajusteDinamico": true }
+  }
 }

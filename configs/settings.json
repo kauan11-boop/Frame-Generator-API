@@ -1,22 +1,40 @@
 {
-  "system": {
-    "name": "Frame-Generator-API",
-    "version": "2.0.0",
-    "hosting": "github-pages",
-    "site": "https://kauan11-boop.github.io/Frame-Generator-API/"
+  "version": "2.0.0",
+  "locale": "pt-BR",
+  "theme": "dark",
+  "wallpaper": "bloom-dark",
+  "accent": "#4cc2ff",
+  "mode": "demo",
+  "backends": {
+    "lmstudio": {
+      "baseUrl": "http://localhost:1234",
+      "openai": ["/v1/models", "/v1/chat/completions", "/v1/completions", "/v1/embeddings", "/v1/responses"],
+      "nativeV1": ["/api/v1/models", "/api/v1/chat", "/api/v1/models/load", "/api/v1/models/unload"],
+      "nativeV0": ["/api/v0/models", "/api/v0/chat/completions", "/api/v0/completions", "/api/v0/embeddings"],
+      "corsRequired": true,
+      "authOptional": "Authorization: Bearer <token> (Manage Tokens no LM Studio)"
+    },
+    "customBackend": { "baseUrl": "", "enabled": false }
   },
-  "ui": {
-    "theme": "light-minimal",
-    "sidebar": true,
-    "language": "pt-BR"
+  "runtime": {
+    "tfjs": { "cdn": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/+esm", "backends": ["webgpu", "webgl", "cpu"], "autoLoad": false },
+    "transformers": { "cdn": "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.5/+esm", "device": ["webgpu", "wasm"], "autoLoad": false }
   },
-  "providers": [
-    { "id": "browser-local", "name": "Browser Local", "type": "Browser Local", "state": "available", "capabilities": ["analysis", "ui", "storage"] },
-    { "id": "webgpu-local", "name": "WebGPU Local", "type": "WebGPU", "state": "detect", "capabilities": [] },
-    { "id": "external-backend", "name": "External Backend", "type": "Remote REST API", "url": null, "state": "unconfigured", "capabilities": ["remote-execution"] }
-  ],
-  "presets": [
-    { "id": "video-30-to-60", "name": "Vídeo: 30 → 60 FPS", "category": "video", "config": { "inputFps": 30, "targetFps": 60, "interpolate": true } },
-    { "id": "image-upscale-2x", "name": "Imagem: upscale 2x", "category": "image", "config": { "scale": 2, "denoise": false, "enhance": true } }
-  ]
+  "shell": {
+    "taskbarHeight": 48,
+    "animations": true,
+    "snapAssist": true,
+    "clock24h": true,
+    "bootMs": 1200
+  },
+  "pixelBudget": {
+    "fpsMonitor": true,
+    "autoScale": true,
+    "minScalePct": 50,
+    "maxScalePct": 100
+  },
+  "storage": {
+    "driver": "indexeddb",
+    "namespaces": ["fgua.config", "fgua.fs", "fgua.users", "fgua.jobs", "fgua.notify"]
+  }
 }

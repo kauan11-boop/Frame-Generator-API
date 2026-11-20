@@ -1,94 +1,37 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Documentação — Frame-Generator-API</title>
-  <meta name="description" content="Documentação do Frame-Generator-API: visão geral, módulos, capacidades reais, limitações, contrato /api/v1 e recursos." />
-  <meta name="theme-color" content="#111827" />
-  <link rel="icon" href="../icons/frame-generator-api-icon.svg" type="image/svg+xml" />
-  <link rel="manifest" href="../../manifest.json" />
-  <link rel="stylesheet" href="../css/main.css" />
+  <meta charset="UTF-8">
+  <title>FGUA — Documentação</title>
+  <link rel="stylesheet" href="../styles/win11.css">
+  <link rel="stylesheet" href="../styles/apps.css">
+  <style>
+    body { background: var(--win-bg); color: var(--txt-primary); font-family: var(--font); }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 32px 24px 80px; user-select: text; }
+    h1 { font-family: var(--font-display); font-weight: 600; }
+    h2 { font-size: 17px; margin-top: 28px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .card { background: var(--card-bg); border: 1px solid var(--divider); border-radius: 8px; padding: 16px; display: block; color: var(--txt-primary); text-decoration: none; }
+    .card:hover { background: var(--card-bg-hover); }
+    .card h4 { margin: 0 0 6px; font-size: 14px; }
+    .card p { margin: 0; font-size: 12px; color: var(--txt-secondary); }
+  </style>
 </head>
-<body class="landing">
-  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
-  <main id="conteudo" class="hero" style="max-width:1100px">
-    <article class="hero-card prose">
-      <div class="actions" style="margin-bottom:16px">
-        <a class="btn" href="../dashboard.html">Voltar ao dashboard</a>
-        <a class="btn" href="../../index.html">Página inicial</a>
-        <a class="btn" href="./commands.html">Comandos e operações</a>
-      </div>
-      <h1>Documentação — Frame-Generator-API</h1>
-      <p class="lead">Plataforma web modular estática (FGUA) para análise e registro de modelos, inspeção de capacidades/engines/provedores e integração por <strong>contrato lógico</strong> <code>/api/v1</code>. Hospedagem alvo: GitHub Pages.</p>
-      <p><strong>Responsável:</strong> Kauan Henrique Alves dos Reis · <strong>Versão:</strong> 2.0.0 · <strong>Licença:</strong> MIT</p>
-
-      <div class="notice info" role="note">
-        <h2>Estado real da interface</h2>
-        <p>O dashboard oferece visão geral, recursos/capacidades, modelos e tarefas da sessão (quando existentes), geradores/presets, integração e API (contrato, backend em sessão, cliente WebSocket utilitário e payload), estúdio Discord Bot (templates <code>discord.js</code> com simulação local de comandos/eventos), configurações/permissões e documentação/recursos. <strong>Não há</strong> fluxos completos de upload/execução/gerenciamento administrativo na UI sem runtime/provedor compatível, e operações indisponíveis retornam estados explícitos (sem simulação).</p>
-      </div>
-
-      <h2>Modos de operação</h2>
-      <ul>
-        <li><strong><code>demo</code> (padrão):</strong> núcleo local no navegador. Operações remotas retornam indisponibilidade explícita quando não há backend configurado.</li>
-        <li><strong><code>local</code> / <code>remote</code>:</strong> permitem definir URL base de backend compatível (na sessão) para operações que exigem execução externa.</li>
-      </ul>
-      <p><strong>Importante:</strong> inferência, quantização efetiva e processamento pesado não são simulados. Estados como <code>unavailable</code>, <code>requires-provider</code> e <code>requires-runtime</code> indicam dependências ausentes.</p>
-
-      <h2>Contrato e configuração</h2>
-      <ul>
-        <li><strong>Contrato lógico:</strong> <code>configs/api.json</code> (<code>base</code>, <code>mode</code>, <code>backend</code>, <code>namespaces</code>) e <code>ApiController.getContract()</code>.</li>
-        <li><strong>Configurações públicas:</strong> <code>configs/settings.json</code>, <code>configs/models.json</code>, <code>configs/generators.json</code>, <code>configs/repacks.json</code>, <code>configs/permissions.json</code>.</li>
-        <li><strong>Payload de integração:</strong> exportado pelo dashboard com status, capacidades, recursos registrados e referências.</li>
-      </ul>
-
-      <h2>Módulos do núcleo (<code>src/</code>)</h2>
-      <ul>
-        <li><strong>core:</strong> EventBus, ModuleRegistry, LifecycleManager, ApiController, JobManager, ProviderManager, utilitários/contratos.</li>
-        <li><strong>configuration:</strong> JsonManager, SettingsManager.</li>
-        <li><strong>models:</strong> MetadataLoader (GGUF), ModelLoader, ModelRegistry, ModelCompatibility.</li>
-        <li><strong>quantization:</strong> QuantizationAnalyzer, QuantizationManager (análise/planejamento; execução efetiva requer runtime externo).</li>
-        <li><strong>generators:</strong> FrameGenerator, ImageGenerator, VideoGenerator, GeneratorRegistry.</li>
-        <li><strong>processing:</strong> ImageProcessor, VideoProcessor, FrameProcessor.</li>
-        <li><strong>engines:</strong> WebGPUEngine, WebCodecsEngine, ONNXEngine (adapter), BackendAdapter.</li>
-        <li><strong>repacks:</strong> ManifestLoader, RepackManager, ToolRegistry.</li>
-        <li><strong>security:</strong> AuthenticationManager, PermissionManager, ValidationManager (nível de UI/cliente em ambiente estático).</li>
-        <li><strong>storage:</strong> IndexedDBManager, CacheManager, HistoryManager.</li>
-      </ul>
-
-      <h2>Capacidades e limites</h2>
-      <ul>
-        <li><strong>GGUF:</strong> parser no navegador com validações de limites e extração de metadados/tensores (sujeito a tamanho/memória). Carregamento/inferência requer runtime/provedor compatível.</li>
-        <li><strong>ONNX:</strong> dependente de ONNX Runtime Web carregado e compatibilidade de modelo/operadores.</li>
-        <li><strong>WebCodecs/WebGPU:</strong> detectados quando disponíveis; uso efetivo depende de pipeline/modelo/runtime compatível.</li>
-        <li><strong>Jobs/tarefas:</strong> estados explícitos (ex.: <code>pending</code>, <code>queued</code>, <code>running</code>, <code>succeeded</code>, <code>failed</code>, <code>cancelled</code>, <code>unavailable</code>).</li>
-        <li><strong>WebSocket (cliente):</strong> utilitário para endpoints externos compatíveis (<code>ws://</code>/<code>wss://</code>, código opcional). GitHub Pages não fornece servidor WebSocket.</li>
-        <li><strong>Discord Bot (estúdio):</strong> gera templates e simula comandos/eventos localmente na UI; execução real requer runtime Node.js externo e token seguro.</li>
-        <li><strong>React demo:</strong> página integrada via ESM/CDN para consumo de configs/contrato (dependência externa de rede no runtime do navegador).</li>
-        <li><strong>Segurança:</strong> sem fronteira de servidor no frontend estático; não armazenar segredos em arquivos públicos. Autorização confiável requer backend.</li>
-        <li><strong>Privacidade local:</strong> análises no cliente usam APIs do navegador e dados da sessão; informações de hardware podem ser aproximadas ou omitidas pelo navegador.</li>
-      </ul>
-
-      <h2>Recursos públicos adicionais</h2>
-      <ul>
-        <li><strong>Presets:</strong> <code>Public/presets/default-presets.json</code> e <code>configs/settings.json</code> (fontes declarativas; podem diferir em escopo).</li>
-        <li><strong>Template de tarefa:</strong> <code>Public/templates/job-template.json</code>.</li>
-        <li><strong>Manifesto de exemplo:</strong> <code>Public/manifests/sample-repack.json</code>.</li>
-        <li><strong>Locales:</strong> <code>Public/locales/pt-BR.json</code>, <code>Public/locales/en-US.json</code> (base de internacionalização).</li>
-      </ul>
-
-      <h2>Links úteis</h2>
-      <ul>
-        <li><a href="../dashboard.html">Dashboard</a></li>
-        <li><a href="./commands.html">Comandos e operações</a></li>
-        <li><a href="./master-prompt.md">Master prompt (Markdown)</a></li>
-        <li><a href="../react-vite.html">Demo React (navegador)</a></li>
-        <li><a href="../../configs/api.json">Configuração da API (JSON)</a></li>
-        <li><a href="../../README.md">README</a></li>
-        <li><a href="../../CHANGELOG.md">CHANGELOG</a></li>
-        <li><a href="../../LICENSE">Licença MIT</a></li>
-      </ul>
-    </article>
-  </main>
+<body>
+  <div class="wrap">
+    <h1>Documentação do FGUA v2</h1>
+    <p style="color:var(--txt-secondary);line-height:1.6">O Frame-Generator-API (FGUA) é um núcleo web modular com shell de sistema operacional Windows 11 para análise/registro de modelos, inspeção de capacidades e planejamento de geração/aprimoramento de quadros sob o contrato lógico <code class="inline">/api/v1/*</code>. Runtime HTML5 + CSS3 + JavaScript (ES Modules), hospedado no GitHub Pages como site estático.</p>
+    <div class="cards">
+      <a class="card" href="architecture.html"><h4>Arquitetura</h4><p>Diretórios, subsistemas e fluxos (SRC ≤ 10 · PUBLIC ≤ 20).</p></a>
+      <a class="card" href="api-contract.html"><h4>Contrato /api/v1</h4><p>16 namespaces, endpoints, estados e permissões.</p></a>
+      <a class="card" href="commands.html"><h4>Comandos</h4><p>npm, terminal FGUA e LM Studio.</p></a>
+      <a class="card" href="limits.html"><h4>Limites reais</h4><p>O que o navegador faz e o que exige runtime externo.</p></a>
+      <a class="card" href="master-prompt.html"><h4>Master Prompt IA</h4><p>Prompt de integração para modelos/agentes de IA.</p></a>
+      <a class="card" href="license.html"><h4>Licença</h4><p>MIT — termos completos.</p></a>
+    </div>
+    <h2>Recursos do sistema</h2>
+    <p>Área de trabalho: <a href="../desktop/index.html">/Public/desktop/index.html</a> · Dashboard standalone: <a href="../dashboard.html">/Public/dashboard.html</a> · Configs: <a href="../../configs/api.json">/configs/api.json</a></p>
+    <p style="color:var(--txt-tertiary);font-size:12px">Verificação local: <code>npm run ci</code> · Servidor: <code>npm run serve</code> → http://localhost:4173</p>
+  </div>
 </body>
 </html>

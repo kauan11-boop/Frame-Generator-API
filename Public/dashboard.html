@@ -1,96 +1,88 @@
-﻿<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard — Frame-Generator-API</title>
-  <meta name="description" content="Dashboard do Frame-Generator-API: status do núcleo, capacidades do navegador, recursos registrados, configurações públicas e integração por contrato /api/v1." />
-  <meta name="theme-color" content="#111827" />
-  <link rel="icon" href="./icons/frame-generator-api-icon.svg" type="image/svg+xml" />
-  <link rel="manifest" href="../manifest.json" />
-  <link rel="stylesheet" href="./css/main.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FGUA — Dashboard (standalone)</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='2' width='9' height='9' rx='1' fill='%234cc2ff'/%3E%3Crect x='13' y='2' width='9' height='9' rx='1' fill='%234cc2ff'/%3E%3Crect x='2' y='13' width='9' height='9' rx='1' fill='%234cc2ff'/%3E%3Crect x='13' y='13' width='9' height='9' rx='1' fill='%234cc2ff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles/win11.css">
+  <style>
+    body { background: var(--win-bg); color: var(--txt-primary); font-family: var(--font); padding: 24px; overflow: auto; user-select: text; }
+    .wrap { max-width: 1060px; margin: 0 auto; }
+    h1 { font-family: var(--font-display); font-weight: 600; margin: 0 0 4px; }
+    h2 { font-size: 16px; margin: 26px 0 10px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+    .card { background: var(--card-bg); border: 1px solid var(--divider); border-radius: 8px; padding: 16px; }
+    .kv { display: flex; justify-content: space-between; font-size: 12.5px; padding: 3px 0; color: var(--txt-secondary); }
+    .kv b { color: var(--txt-primary); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } }
+    pre { background: var(--win-bg-2); border: 1px solid var(--divider); border-radius: 8px; padding: 14px; font-size: 12px; font-family: 'Cascadia Code', Consolas, monospace; overflow-x: auto; }
+    a { color: var(--accent); }
+    .badge { display: inline-flex; padding: 2px 10px; border-radius: 10px; font-size: 11px; border: 1px solid var(--divider); }
+    .ok { color: var(--ok); } .warn { color: var(--warn); } .err { color: var(--err); }
+  </style>
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Pular para o conteúdo principal</a>
-  <div class="layout">
-    <aside class="sidebar" aria-label="Navegação do dashboard">
-      <a class="brand" href="../index.html">
-        <img class="brand-mark" src="./icons/frame-generator-api-icon.svg" alt="" width="32" height="32" />
-        <span class="brand-text">
-          <strong>Frame-Generator-API</strong>
-          <span>Dashboard · sessão no navegador</span>
-        </span>
-      </a>
+  <div class="wrap">
+    <h1>Frame-Generator-API — Dashboard</h1>
+    <p class="sub" style="color:var(--txt-tertiary)">Página standalone informativa/integrativa (fallback do shell Windows 11). Carrega o núcleo FGUA diretamente.</p>
 
-      <nav class="nav" aria-label="Seções do dashboard">
-        <div id="tabs" class="nav" role="tablist" aria-orientation="vertical" aria-label="Seções">
-          <button type="button" class="nav-item active" role="tab" id="tab-btn-overview" aria-selected="true" aria-controls="tab-overview" tabindex="0" data-tab="overview">Visão geral</button>
-          <button type="button" class="nav-item" role="tab" id="tab-btn-resources" aria-selected="false" aria-controls="tab-resources" tabindex="-1" data-tab="resources">Recursos e capacidades</button>
-          <button type="button" class="nav-item" role="tab" id="tab-btn-models" aria-selected="false" aria-controls="tab-models" tabindex="-1" data-tab="models">Modelos (sessão)</button>
-          <button type="button" class="nav-item" role="tab" id="tab-btn-generators" aria-selected="false" aria-controls="tab-generators" tabindex="-1" data-tab="generators">Geradores e presets</button>
-          <button type="button" class="nav-item" role="tab" id="tab-btn-jobs" aria-selected="false" aria-controls="tab-jobs" tabindex="-1" data-tab="jobs">Tarefas</button>
-          <button type="button" class="nav-item" role="tab" id="tab-btn-integration" aria-selected="false" aria-controls="tab-integration" tabindex="-1" data-tab="integration">Integração e API</button>
-          <button type="button" class="nav-item" role="tab" id="tab-btn-discord" aria-selected="false" aria-controls="tab-discord" tabindex="-1" data-tab="discord">Discord Bot</button>
-          <button type="button" class="nav-item" role="tab" id="tab-btn-config" aria-selected="false" aria-controls="tab-config" tabindex="-1" data-tab="config">Configurações e permissões</button>
-          <button type="button" class="nav-item" role="tab" id="tab-btn-docs" aria-selected="false" aria-controls="tab-docs" tabindex="-1" data-tab="docs">Documentação e recursos</button>
-        </div>
+    <h2>Sessão e núcleo</h2>
+    <div class="cards" id="cards-core"></div>
 
-        <div class="nav-group" aria-label="Links úteis">
-          <div class="nav-group-title">Links</div>
-          <a class="nav-item" href="../index.html">Página inicial</a>
-          <a class="nav-item" href="./documentation/index.html">Documentação (HTML)</a>
-          <a class="nav-item" href="../configs/api.json">Contrato <code>configs/api.json</code></a>
-          <a class="nav-item" href="../LICENSE">Licença (MIT)</a>
-        </div>
-      </nav>
+    <h2>Capacidades detectadas</h2>
+    <div class="cards" id="cards-caps"></div>
 
-      <div class="side-meta" aria-label="Estado resumido">
-        <div><strong>Status:</strong> <span id="side-status" class="badge info">carregando…</span></div>
-        <div><strong>Modo:</strong> <span id="side-mode">—</span></div>
-        <div><strong>Backend:</strong> <span id="side-backend">—</span></div>
-        <p class="section-note" style="margin-top:8px">Dados desta sessão no navegador. Hospedagem estática: sem servidor REST nativo.</p>
-      </div>
-    </aside>
+    <h2>Contrato /api/v1 — namespaces</h2>
+    <div id="ns-list"></div>
 
-    <main class="main" id="main-content" tabindex="-1">
-      <div class="main-inner">
-        <header class="page-header">
-          <div>
-            <h1 id="page-title">Visão geral</h1>
-            <p id="page-subtitle">Estado do núcleo, diagnóstico e contexto da sessão atual.</p>
-          </div>
-          <div class="header-meta">
-            <span id="status-pill" class="status info" role="status" aria-live="polite">Carregando…</span>
-            <span class="badge" id="mode-pill">demo</span>
-            <span class="badge" id="hosting-pill">GitHub Pages · estático</span>
-          </div>
-        </header>
+    <h2>Payload de integração</h2>
+    <pre id="payload">Carregando…</pre>
 
-        <div id="global-notices" class="stack" aria-live="polite"></div>
-
-        <div class="tab-panels">
-          <section id="tab-overview" class="tab active" role="tabpanel" aria-labelledby="tab-btn-overview" tabindex="0">
-            <div class="card"><h2>Carregando dashboard</h2><p class="muted">Inicializando núcleo e carregando dados da sessão…</p></div>
-          </section>
-          <section id="tab-resources" class="tab" role="tabpanel" aria-labelledby="tab-btn-resources" tabindex="0" hidden></section>
-          <section id="tab-models" class="tab" role="tabpanel" aria-labelledby="tab-btn-models" tabindex="0" hidden></section>
-          <section id="tab-generators" class="tab" role="tabpanel" aria-labelledby="tab-btn-generators" tabindex="0" hidden></section>
-          <section id="tab-jobs" class="tab" role="tabpanel" aria-labelledby="tab-btn-jobs" tabindex="0" hidden></section>
-          <section id="tab-integration" class="tab" role="tabpanel" aria-labelledby="tab-btn-integration" tabindex="0" hidden></section>
-          <section id="tab-discord" class="tab" role="tabpanel" aria-labelledby="tab-btn-discord" tabindex="0" hidden></section>
-          <section id="tab-config" class="tab" role="tabpanel" aria-labelledby="tab-btn-config" tabindex="0" hidden></section>
-          <section id="tab-docs" class="tab" role="tabpanel" aria-labelledby="tab-btn-docs" tabindex="0" hidden></section>
-        </div>
-
-        <div id="live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
-
-        <footer class="footer" aria-label="Metadados da sessão">
-          <span id="meta">Base: —</span>
-          <span id="updated-at"></span>
-        </footer>
-      </div>
-    </main>
+    <p class="sub" style="margin-top:20px">Links rápidos: <a href="desktop/index.html">Área de trabalho (shell Win11)</a> · <a href="documentation/index.html">Documentação</a> · <a href="documentation/commands.html">Comandos</a></p>
   </div>
-  <script type="module" src="./js/dashboard.js"></script>
+
+  <script type="module">
+    import { initFGUA } from '../src/shell/public-api.js';
+    try {
+      const FGUA = await initFGUA();
+      const snap = FGUA.snapshot();
+      const card = (t, rows) => `<div class="card"><h4>${t}</h4>${rows.map(([k, v]) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`).join('')}</div>`;
+      document.getElementById('cards-core').innerHTML =
+        card('Núcleo', [['Versão', '2.0.0'], ['Contrato', '/api/v1'], ['Modo', snap.mode], ['Locale', snap.locale], ['Bootado em', snap.bootedAt ?? '—']]) +
+        card('Sessão', [['Usuário', snap.session?.name ?? '—'], ['Papel', snap.session?.role ?? '—'], ['Storage', FGUA.get('store').driver]]);
+
+      const caps = snap.caps ?? {};
+      document.getElementById('cards-caps').innerHTML =
+        card('WebGPU', [['Suportado', caps.webgpu?.supported ? 'sim' : 'não'], ['Adaptador', caps.webgpu?.adapter?.vendor ?? '—']]) +
+        card('WebGL 2', [['Suportado', caps.webgl2?.supported ? 'sim' : 'não'], ['Renderer', (caps.webgl2?.renderer ?? '—').slice(0, 40)]]) +
+        card('WebAssembly', [['Suportado', caps.wasm?.supported ? 'sim' : 'não'], ['SIMD', caps.wasm?.simd ? 'sim' : 'não']]) +
+        card('WebCodecs', [['VideoEncoder', caps.webcodecs?.videoEncoder ? 'sim' : 'não'], ['Workers', caps.workers ? 'sim' : 'não']]);
+
+      const api = FGUA.get('config').api;
+      const nsList = document.getElementById('ns-list');
+      for (const [name, def] of Object.entries(api.namespaces)) {
+        const d = document.createElement('details');
+        d.style.cssText = 'margin:8px 0;border:1px solid var(--divider);border-radius:8px;padding:10px 14px;background:var(--card-bg)';
+        d.innerHTML = `<summary style="cursor:pointer;font-weight:600"><span class="badge ok">/api/v1/${name}/</span>&nbsp; ${def.endpoints.length} endpoint(s) · permissão: ${def.permission}</summary>` +
+          def.endpoints.map(e => `<div class="kv"><span><code>${e.path}</code> (${e.method})</span><b>${e.state}</b></div>`).join('');
+        nsList.appendChild(d);
+      }
+
+      const payload = {
+        integration: 'FGUA v2',
+        mode: snap.mode,
+        contract: api.contract,
+        namespaces: Object.keys(api.namespaces),
+        states: FGUA.states.STATES,
+        resources: { desktop: 'Public/desktop/index.html', dashboard: 'Public/dashboard.html', docs: 'Public/documentation/index.html' },
+        verify: 'npm run ci'
+      };
+      document.getElementById('payload').textContent = JSON.stringify(payload, null, 2);
+    } catch (err) {
+      document.getElementById('payload').textContent = `Falha ao carregar o núcleo: ${err?.message || err}\nServa o site por HTTP (ex.: npm run serve em http://localhost:4173).`;
+    }
+  </script>
 </body>
 </html>

@@ -1,39 +1,30 @@
 {
-  "presets": [
-    {
-      "id": "video-30-to-60",
-      "name": "Vídeo: 30 → 60 FPS",
-      "category": "video",
-      "description": "Preset de referência para interpolação de quadros em vídeo (exemplo). Requer pipeline/engine/provedor compatível.",
-      "config": { "inputFps": 30, "targetFps": 60, "interpolate": true }
+  "version": "2.0.0",
+  "presets": {
+    "jogos-120fps": {
+      "descricao": "Jogos: 60 → 120 fps, 1080p, ajuste dinâmico de pixels",
+      "genero": "jogos",
+      "params": { "fpsOrigem": 60, "fpsAlvo": 120, "base": { "width": 1920, "height": 1080 }, "latenciaMaxMs": 16 }
     },
-    {
-      "id": "video-24-to-60",
-      "name": "Vídeo/Filme: 24 → 60 FPS",
-      "category": "video",
-      "description": "Preset de referência para conversão de taxa de quadros (exemplo). Requer pipeline/engine/provedor compatível.",
-      "config": { "inputFps": 24, "targetFps": 60, "interpolate": true, "preserveAudioSync": true }
+    "jogos-240fps": {
+      "descricao": "Jogos competitivos: 120 → 240 fps, 720p para latência mínima",
+      "genero": "jogos",
+      "params": { "fpsOrigem": 120, "fpsAlvo": 240, "base": { "width": 1280, "height": 720 }, "latenciaMaxMs": 8 }
     },
-    {
-      "id": "image-upscale-2x",
-      "name": "Imagem: upscale 2x",
-      "category": "image",
-      "description": "Preset de referência para aumento de escala 2x (exemplo). Requer modelo/runtime compatível.",
-      "config": { "scale": 2, "denoise": false, "enhance": true }
+    "imagem-4k": {
+      "descricao": "Foto: upscale 2× até 4K com qualidade máxima",
+      "genero": "imagem",
+      "params": { "fatoresEscala": 2, "qualidade": "maximo", "denoise": 1 }
     },
-    {
-      "id": "image-upscale-4x-denoise",
-      "name": "Imagem: upscale 4x + redução de ruído",
-      "category": "image",
-      "description": "Preset de referência para aumento de escala 4x com redução de ruído (exemplo). Requer modelo/runtime compatível.",
-      "config": { "scale": 4, "denoise": true, "enhance": true }
+    "video-60fps": {
+      "descricao": "Filme/série .mp4: 24 → 60 fps com detecção de cenas",
+      "genero": "video",
+      "params": { "fpsAlvo": 60, "fatoresEscala": 1, "modo": "interpolacao", "cenaDeteccao": true }
     },
-    {
-      "id": "game-smooth-30-60",
-      "name": "Jogo (captura): 30 → 60 FPS",
-      "category": "game",
-      "description": "Preset de referência para suavização de captura de jogo (exemplo). Não implica interceptação automática de pipeline gráfico; requer integração autorizada e compatível.",
-      "config": { "inputFps": 30, "targetFps": 60, "interpolate": true }
+    "gguf-qa4km": {
+      "descricao": "Quantização: converter F16 → Q4_K_M (apenas plano; runtime externo)",
+      "genero": "quantizacao",
+      "params": { "quantFrom": "F16", "quantTo": "Q4_K_M" }
     }
-  ]
+  }
 }

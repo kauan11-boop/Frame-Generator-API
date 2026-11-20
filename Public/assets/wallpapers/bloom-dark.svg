@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#1a2f5e"/>
+      <stop offset="45%" stop-color="#10234a"/>
+      <stop offset="100%" stop-color="#060d1f"/>
+    </radialGradient>
+    <linearGradient id="ribbon1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f7bff" stop-opacity=".85"/>
+      <stop offset="50%" stop-color="#2b4ec9" stop-opacity=".55"/>
+      <stop offset="100%" stop-color="#12306e" stop-opacity=".2"/>
+    </linearGradient>
+    <linearGradient id="ribbon2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7cc0ff" stop-opacity=".8"/>
+      <stop offset="55%" stop-color="#3f7ae0" stop-opacity=".45"/>
+      <stop offset="100%" stop-color="#0c2a66" stop-opacity=".1"/>
+    </linearGradient>
+    <linearGradient id="ribbon3" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8fd0ff" stop-opacity=".55"/>
+      <stop offset="60%" stop-color="#3d6fd6" stop-opacity=".3"/>
+      <stop offset="100%" stop-color="#0a2251" stop-opacity=".08"/>
+    </linearGradient>
+    <filter id="soft1" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="18"/></filter>
+    <filter id="soft2" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="34"/></filter>
+    <filter id="soft3" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="8"/></filter>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#9fd4ff" stop-opacity=".5"/>
+      <stop offset="100%" stop-color="#9fd4ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <circle cx="960" cy="520" r="430" fill="url(#glow)"/>
+  <g filter="url(#soft2)">
+    <path d="M300,760 C520,380 780,340 960,520 C1140,700 1400,660 1660,420 C1500,760 1240,900 960,820 C700,760 480,860 300,760 Z" fill="url(#ribbon1)" opacity=".8"/>
+  </g>
+  <g filter="url(#soft1)">
+    <path d="M380,520 C600,260 860,300 980,470 C1120,660 1350,640 1580,480 C1460,700 1200,820 980,740 C760,660 540,700 380,520 Z" fill="url(#ribbon2)" opacity=".65"/>
+  </g>
+  <g filter="url(#soft3)">
+    <path d="M520,640 C700,420 900,430 1020,560 C1160,720 1380,700 1540,560 C1440,760 1220,860 1020,790 C840,720 640,760 520,640 Z" fill="url(#ribbon3)" opacity=".75"/>
+  </g>
+  <g filter="url(#soft1)" opacity=".5">
+    <ellipse cx="880" cy="360" rx="320" ry="90" fill="#5ea0ff" opacity=".28"/>
+    <ellipse cx="1180" cy="680" rx="360" ry="100" fill="#2c55b8" opacity=".35"/>
+  </g>
+</svg>

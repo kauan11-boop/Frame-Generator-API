@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>FGUA — Contrato /api/v1</title>
+<link rel="stylesheet" href="../styles/win11.css"><link rel="stylesheet" href="../styles/apps.css">
+<style>body{background:var(--win-bg);color:var(--txt-primary);font-family:var(--font)}.wrap{max-width:860px;margin:0 auto;padding:32px 24px 80px;user-select:text}h1{font-family:var(--font-display)}h2{font-size:17px;margin-top:26px}table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--divider);color:var(--txt-tertiary)}td{padding:7px 10px;border-bottom:1px solid var(--divider)}code{font-family:'Cascadia Code',Consolas,monospace;font-size:12px}.st{color:var(--info)}.st2{color:var(--warn)}</style>
+</head><body><div class="wrap">
+<h1>Contrato lógico /api/v1</h1>
+<p style="color:var(--txt-secondary)">Uma única API que controla tudo: JSON de entrada/saída, estados explícitos e guard de permissões por namespace (configs/permissions.json). No modo <code class="inline">demo</code> os handlers locais executam análise/planejamento reais; operações de execução retornam <span class="st2">requires-runtime/requires-provider</span>. Em <code class="inline">local/remote</code>, endpoints remotos são atendidos pelo baseUrl configurado.</p>
+<h2>Namespaces e endpoints</h2>
+<table><tr><th>Namespace</th><th>Endpoint</th><th>Estado típico</th></tr>
+<tr><td rowspan="3"><code>system</code></td><td><code>GET /system/info</code></td><td class="st">ready</td></tr>
+<tr><td><code>GET /system/capabilities</code></td><td class="st">ready</td></tr>
+<tr><td><code>GET /system/health</code></td><td class="st">ready</td></tr>
+<tr><td rowspan="4"><code>models</code></td><td><code>GET /models/list</code></td><td class="st">ready</td></tr>
+<tr><td><code>GET /models/get</code></td><td class="st">ready</td></tr>
+<tr><td><code>POST /models/register</code></td><td class="st">succeeded</td></tr>
+<tr><td><code>POST /models/load</code></td><td class="st2">requires-provider</td></tr>
+<tr><td rowspan="2"><code>metadata</code></td><td><code>POST /metadata/parse</code></td><td class="st">analyzed</td></tr>
+<tr><td><code>GET /metadata/summary</code></td><td class="st">ready</td></tr>
+<tr><td rowspan="3"><code>quantization</code></td><td><code>GET /quantization/types</code></td><td class="st">ready</td></tr>
+<tr><td><code>POST /quantization/estimate</code></td><td class="st">planned</td></tr>
+<tr><td><code>POST /quantization/plan</code></td><td class="st2">requires-runtime</td></tr>
+<tr><td rowspan="2"><code>generators</code></td><td><code>GET /generators/list</code></td><td class="st">ready</td></tr>
+<tr><td><code>POST /generators/plan</code></td><td class="st">planned</td></tr>
+<tr><td rowspan="2"><code>frames</code></td><td><code>POST /frames/plan</code></td><td class="st">planned</td></tr>
+<tr><td><code>POST /frames/budget</code></td><td class="st">ready</td></tr>
+<tr><td rowspan="2"><code>images</code></td><td><code>POST /images/plan</code></td><td class="st">planned</td></tr>
+<tr><td><code>POST /images/probe</code></td><td class="st">analyzed</td></tr>
+<tr><td rowspan="2"><code>videos</code></td><td><code>POST /videos/plan</code></td><td class="st">planned</td></tr>
+<tr><td><code>POST /videos/probe</code></td><td class="st">analyzed</td></tr>
+<tr><td rowspan="2"><code>engines</code></td><td><code>GET /engines/detect</code></td><td class="st">ready</td></tr>
+<tr><td><code>POST /engines/select</code></td><td class="st">planned</td></tr>
+<tr><td rowspan="4"><code>repack</code></td><td><code>GET /repack/list</code></td><td class="st">ready</td></tr>
+<tr><td><code>GET /repack/get</code></td><td class="st">ready</td></tr>
+<tr><td><code>POST /repack/install</code></td><td class="st">succeeded/planned</td></tr>
+<tr><td><code>POST /repack/bundle</code></td><td class="st">planned</td></tr>
+<tr><td rowspan="2"><code>tools</code></td><td><code>GET /tools/list</code></td><td class="st">ready</td></tr>
+<tr><td><code>POST /tools/run</code></td><td class="st">planned</td></tr>
+<tr><td rowspan="3"><code>users</code></td><td><code>GET /users/list</code></td><td class="st">ready</td></tr>
+<tr><td><code>POST /users/create</code></td><td class="st">succeeded</td></tr>
+<tr><td><code>POST /users/auth</code></td><td class="st">succeeded/failed</td></tr>
+<tr><td rowspan="2"><code>permissions</code></td><td><code>GET /permissions/roles</code></td><td class="st">ready</td></tr>
+<tr><td><code>POST /permissions/check</code></td><td class="st">ready</td></tr>
+<tr><td rowspan="2"><code>config</code></td><td><code>GET /config/get</code></td><td class="st">ready</td></tr>
+<tr><td><code>POST /config/set</code></td><td class="st">succeeded</td></tr>
+<tr><td rowspan="3"><code>jobs</code></td><td><code>GET /jobs/list</code></td><td class="st">ready</td></tr>
+<tr><td><code>POST /jobs/create</code></td><td class="st">planned</td></tr>
+<tr><td><code>POST /jobs/cancel</code></td><td>cancelled</td></tr>
+<tr><td rowspan="4"><code>storage</code></td><td><code>GET /storage/ls</code></td><td class="st">ready</td></tr>
+<tr><td><code>GET /storage/read</code></td><td class="st">ready</td></tr>
+<tr><td><code>POST /storage/write</code></td><td class="st">succeeded</td></tr>
+<tr><td><code>POST /storage/remove</code></td><td class="st">succeeded</td></tr>
+</table>
+<h2>Envelope de resposta</h2>
+<pre>{
+  "ok": true,
+  "state": "planned",
+  "data": { ... },
+  "error": null,
+  "meta": { "ns": "frames", "action": "plan", "mode": "demo", "elapsedMs": 2 }
+}</pre>
+<h2>Estados explícitos</h2>
+<p><code>ready</code> · <code>planned</code> · <code>analyzed</code> · <code class="st2">requires-provider</code> · <code class="st2">requires-runtime</code> · <span style="color:var(--err)">unavailable · invalid · failed</span> · cancelled · succeeded</p>
+<p><a href="index.html">← voltar</a></p>
+</div></body></html>

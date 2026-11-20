@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <radialGradient id="bgL" cx="50%" cy="40%" r="78%">
+      <stop offset="0%" stop-color="#eaf3ff"/>
+      <stop offset="50%" stop-color="#cfe0f7"/>
+      <stop offset="100%" stop-color="#9db9df"/>
+    </radialGradient>
+    <linearGradient id="r1L" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9fc4ff" stop-opacity=".9"/>
+      <stop offset="55%" stop-color="#6e9ff0" stop-opacity=".5"/>
+      <stop offset="100%" stop-color="#b9d3f5" stop-opacity=".15"/>
+    </linearGradient>
+    <linearGradient id="r2L" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#c2e0ff" stop-opacity=".85"/>
+      <stop offset="60%" stop-color="#8fb6ef" stop-opacity=".4"/>
+      <stop offset="100%" stop-color="#d5e6fa" stop-opacity=".1"/>
+    </linearGradient>
+    <linearGradient id="r3L" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7fa8e8" stop-opacity=".5"/>
+      <stop offset="100%" stop-color="#e4eefc" stop-opacity=".1"/>
+    </linearGradient>
+    <filter id="s1L" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="16"/></filter>
+    <filter id="s2L" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="32"/></filter>
+    <filter id="s3L" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="8"/></filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bgL)"/>
+  <g filter="url(#s2L)">
+    <path d="M300,760 C520,380 780,340 960,520 C1140,700 1400,660 1660,420 C1500,760 1240,900 960,820 C700,760 480,860 300,760 Z" fill="url(#r1L)" opacity=".8"/>
+  </g>
+  <g filter="url(#s1L)">
+    <path d="M380,520 C600,260 860,300 980,470 C1120,660 1350,640 1580,480 C1460,700 1200,820 980,740 C760,660 540,700 380,520 Z" fill="url(#r2L)" opacity=".7"/>
+  </g>
+  <g filter="url(#s3L)">
+    <path d="M520,640 C700,420 900,430 1020,560 C1160,720 1380,700 1540,560 C1440,760 1220,860 1020,790 C840,720 640,760 520,640 Z" fill="url(#r3L)" opacity=".7"/>
+  </g>
+</svg>

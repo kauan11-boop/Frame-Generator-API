@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Frame-Generator-API — Área de Trabalho</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='2' width='9' height='9' rx='1' fill='%234cc2ff'/%3E%3Crect x='13' y='2' width='9' height='9' rx='1' fill='%234cc2ff'/%3E%3Crect x='2' y='13' width='9' height='9' rx='1' fill='%234cc2ff'/%3E%3Crect x='13' y='13' width='9' height='9' rx='1' fill='%234cc2ff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="../styles/win11.css">
+  <link rel="stylesheet" href="../styles/apps.css">
+</head>
+<body>
+  <div id="desktop-root">
+    <!-- Boot -->
+    <div id="boot">
+      <svg class="logo" viewBox="0 0 24 24">
+        <rect x="2" y="2" width="9.4" height="9.4" rx="1" fill="#4cc2ff"/>
+        <rect x="12.6" y="2" width="9.4" height="9.4" rx="1" fill="#4cc2ff"/>
+        <rect x="2" y="12.6" width="9.4" height="9.4" rx="1" fill="#4cc2ff"/>
+        <rect x="12.6" y="12.6" width="9.4" height="9.4" rx="1" fill="#4cc2ff"/>
+      </svg>
+      <div class="name">Frame-Generator-API</div>
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Lock screen -->
+    <div id="lock">
+      <div class="clock"><div class="h">--:--</div><div class="d">—</div></div>
+      <div class="hint">Clique para desbloquear</div>
+      <div class="login">
+        <div class="who">Usuário</div>
+        <input type="password" placeholder="Senha" autocomplete="off">
+        <button>Entrar</button>
+        <div class="msg" style="color:#ff99a4;font-size:12px"></div>
+      </div>
+    </div>
+
+    <!-- Área de trabalho -->
+    <div id="desktop-icons"></div>
+    <div id="win-layer"></div>
+
+    <!-- Taskbar -->
+    <div id="taskbar">
+      <button class="tb-btn" id="tb-start" title="Iniciar"></button>
+      <button class="tb-btn" id="tb-search" title="Pesquisar"></button>
+      <div id="tb-apps" style="display:flex;gap:4px"></div>
+      <div id="tb-tray">
+        <button class="tray-btn" id="tb-tray-btn"><span id="tb-tray-icons"></span></button>
+        <button class="tray-btn" id="tb-clock"></button>
+        <button id="show-desk" title="Mostrar área de trabalho"></button>
+      </div>
+    </div>
+
+    <!-- Start menu -->
+    <div class="flyout" id="start">
+      <div id="start-search">
+        <svg><use href="../assets/icons.svg#i-search"/></svg>
+        <input type="text" placeholder="Digite aqui para pesquisar">
+      </div>
+      <div class="start-sec-title">Fixados <span class="all">Todos os aplicativos</span></div>
+      <div class="start-grid" id="start-pins"></div>
+      <div id="start-rec">
+        <div class="start-sec-title">Recomendados</div>
+        <div class="rec-list"></div>
+      </div>
+      <div id="start-footer">
+        <div id="start-user"></div>
+        <button class="tb-btn" id="start-power" title="Liga/Desliga"></button>
+      </div>
+    </div>
+
+    <!-- Quick Settings -->
+    <div class="flyout" id="qs">
+      <div class="qs-grid" id="qs-grid"></div>
+      <div class="qs-slider">
+        <svg><use href="../assets/icons.svg#i-bright"/></svg>
+        <input type="range" id="qs-bright" min="30" max="100" value="100">
+      </div>
+      <div class="qs-slider">
+        <svg><use href="../assets/icons.svg#i-vol"/></svg>
+        <input type="range" id="qs-vol" min="0" max="100" value="70">
+      </div>
+      <div class="qs-footer">
+        <span id="qs-mode-badge">Modo: demo</span>
+        <span style="display:flex;align-items:center;gap:6px" id="qs-battery"><svg style="width:16px;height:16px"><use href="../assets/icons.svg#i-battery"/></svg><span>Bateria</span></span>
+        <button class="btn" id="qs-gear" style="border:0;background:transparent"><svg><use href="../assets/icons.svg#i-gear"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Centro de notificações -->
+    <div class="flyout" id="notif">
+      <h3>Notificações</h3>
+      <div id="notif-list"></div>
+      <div class="calendar">
+        <div class="cal-head">
+          <span class="cal-title">—</span>
+          <span>
+            <button onclick="void 0"><svg style="width:12px;height:12px"><use href="../assets/icons.svg#i-chev-l"/></svg></button>
+            <button onclick="void 0"><svg style="width:12px;height:12px"><use href="../assets/icons.svg#i-chev-r"/></svg></button>
+          </span>
+        </div>
+        <div class="cal-grid"></div>
+      </div>
+    </div>
+
+    <div id="toasts"></div>
+  </div>
+
+  <script type="module" src="./shell.js"></script>
+</body>
+</html>

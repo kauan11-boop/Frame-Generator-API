@@ -1,19 +1,14 @@
 {
-  "id": "template-basic",
-  "name": "Template básico de tarefa",
-  "type": "frame-job",
-  "description": "Modelo de referência para estruturar solicitações de tarefa em integrações. Campos e execução dependem do runtime/provedor compatível.",
-  "fields": ["operation", "category", "model", "engine", "provider", "input", "output", "preset", "options"],
-  "defaults": {
-    "operation": "analyze",
-    "category": "image",
-    "engine": "auto",
-    "provider": null,
-    "preset": null,
-    "options": {}
+  "$id": "FGUA-job-template",
+  "titulo": "Novo job de quadros",
+  "genero": "jogos",
+  "params": {
+    "fpsOrigem": 60,
+    "fpsAlvo": 120,
+    "base": { "width": 1920, "height": 1080 },
+    "modo": "interpolacao"
   },
-  "notes": [
-    "Este template não executa processamento por si só.",
-    "Estados devem ser tratados explicitamente (planned, unavailable, requires-provider/runtime, failed, cancelled, succeeded)."
-  ]
+  "engine": "auto",
+  "state": "planned",
+  "notas": "Job declarativo: registra o plano; execução real exige runtime/provedor compatível (estados requires-runtime/requires-provider)."
 }

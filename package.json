@@ -1,15 +1,31 @@
 {
   "name": "frame-generator-api",
   "version": "2.0.0",
-  "private": true,
-  "description": "Plataforma web modular estática para análise de modelos, geração/aprimoramento de quadros e integração via contrato lógico /api/v1.",
-  "license": "MIT",
+  "description": "FGUA v2 — núcleo web modular com shell Windows 11 para análise de modelos, quantização, geração/aprimoramento de quadros (jogos, imagem, vídeo) sob contrato lógico /api/v1.",
   "type": "module",
+  "license": "MIT",
+  "author": "kauan11-boop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kauan11-boop/Frame-Generator-API"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "test": "node --test",
-    "test:unit": "node --test tests/*.test.mjs",
-    "lint:syntax": "node scripts/check-syntax.mjs",
-    "check:json": "node scripts/validate-json.mjs",
-    "ci": "npm run lint:syntax && npm run check:json && npm test"
-  }
+    "start": "node scripts/serve.mjs",
+    "serve": "node scripts/serve.mjs",
+    "test": "node tests/run-all.mjs",
+    "ci": "node scripts/ci.mjs",
+    "validate": "node tests/validate-configs.mjs"
+  },
+  "keywords": [
+    "gguf",
+    "webgpu",
+    "frames",
+    "quantization",
+    "lm-studio",
+    "transformers-js",
+    "tensorflow-js"
+  ]
 }

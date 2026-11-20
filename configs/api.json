@@ -1,52 +1,134 @@
 {
-  "base": "/api/v1",
-  "mode": "demo",
-  "backend": {
-    "localUrl": null,
-    "remoteUrl": null,
-    "connected": false
+  "version": "2.0.0",
+  "contract": "/api/v1",
+  "defaultMode": "demo",
+  "modes": {
+    "demo": "Sem backend conectado; operações remotas retornam indisponibilidade explícita.",
+    "local": "Backend/provedor compatível em baseUrl local (ex.: LM Studio http://localhost:1234).",
+    "remote": "Backend/provedor compatível em baseUrl remota autorizada."
   },
-  "namespaces": [
-    "/api/v1/system/",
-    "/api/v1/models/",
-    "/api/v1/metadata/",
-    "/api/v1/quantization/",
-    "/api/v1/generators/",
-    "/api/v1/frames/",
-    "/api/v1/images/",
-    "/api/v1/videos/",
-    "/api/v1/engines/",
-    "/api/v1/repack/",
-    "/api/v1/tools/",
-    "/api/v1/users/",
-    "/api/v1/permissions/",
-    "/api/v1/config/",
-    "/api/v1/jobs/",
-    "/api/v1/storage/",
-    "/api/v1/integrations/",
-    "/api/v1/websocket/",
-    "/api/v1/discord/",
-    "/api/v1/analytics/"
-  ],
-  "integrations": {
-    "websocket": {
-      "clientSupported": true,
-      "serverIncluded": false,
-      "authCodeOptional": true,
-      "note": "Cliente WebSocket disponível no navegador; servidor/endpoint real deve ser fornecido e executado fora do GitHub Pages."
+  "namespaces": {
+    "system": {
+      "permission": "public",
+      "endpoints": [
+        { "path": "/system/info", "method": "GET", "state": "ready", "description": "Informações do núcleo, versão e modo." },
+        { "path": "/system/capabilities", "method": "GET", "state": "ready", "description": "Capacidades detectadas (WebGPU, WebGL, WASM, WebCodecs)." },
+        { "path": "/system/health", "method": "GET", "state": "ready", "description": "Saúde dos subsistemas." }
+      ]
     },
-    "discord": {
-      "runtime": "browser-studio+node-template",
-      "library": "discord.js",
-      "browserSimulator": true,
-      "staticGenerator": true,
-      "note": "Estúdio, simulador e gerador de templates integrados no navegador; conexão real ao gateway/execução do bot requer runtime Node.js externo com token seguro."
+    "models": {
+      "permission": "models.read",
+      "endpoints": [
+        { "path": "/models/list", "method": "GET", "state": "ready", "description": "Catálogo de modelos registrados." },
+        { "path": "/models/get", "method": "GET", "state": "ready", "description": "Detalhes de um modelo por id." },
+        { "path": "/models/register", "method": "POST", "state": "ready", "description": "Registra modelo analisado no catálogo local." },
+        { "path": "/models/load", "method": "POST", "state": "requires-provider", "description": "Carrega modelo em runtime real (LM Studio /api/v1/models/load)." }
+      ]
     },
-    "reactVite": {
-      "browserDemo": "Public/react-vite.html",
-      "embeddedTemplates": true,
-      "githubPagesCompatible": true,
-      "note": "Demo React executável no navegador (ESM/CDN) e fontes/templates embutidos no código para build Vite/GitHub Pages."
+    "metadata": {
+      "permission": "models.read",
+      "endpoints": [
+        { "path": "/metadata/parse", "method": "POST", "state": "analyzed", "description": "Parser GGUF cliente: header + metadados KV." },
+        { "path": "/metadata/summary", "method": "GET", "state": "ready", "description": "Resumo agregado do catálogo." }
+      ]
+    },
+    "quantization": {
+      "permission": "quant.plan",
+      "endpoints": [
+        { "path": "/quantization/types", "method": "GET", "state": "ready", "description": "Tabela de tipos de quantização suportados para estimativa." },
+        { "path": "/quantization/estimate", "method": "POST", "state": "planned", "description": "Estimativa de tamanho/parâmetros por tipo." },
+        { "path": "/quantization/plan", "method": "POST", "state": "requires-runtime", "description": "Plano de conversão (executa apenas em runtime externo; original preservado)." }
+      ]
+    },
+    "generators": {
+      "permission": "gen.plan",
+      "endpoints": [
+        { "path": "/generators/list", "method": "GET", "state": "ready", "description": "Gêneros de geração disponíveis (jogos, imagem, vídeo)." },
+        { "path": "/generators/plan", "method": "POST", "state": "planned", "description": "Plano unificado de geração/aprimoramento." }
+      ]
+    },
+    "frames": {
+      "permission": "gen.plan",
+      "endpoints": [
+        { "path": "/frames/plan", "method": "POST", "state": "planned", "description": "Plano de geração de quadros por gênero." },
+        { "path": "/frames/budget", "method": "POST", "state": "ready", "description": "Orçamento de pixels/fps conforme desempenho medido." }
+      ]
+    },
+    "images": {
+      "permission": "gen.plan",
+      "endpoints": [
+        { "path": "/images/plan", "method": "POST", "state": "planned", "description": "Plano de aprimoramento gráfico de fotos." },
+        { "path": "/images/probe", "method": "POST", "state": "analyzed", "description": "Análise de imagem carregada (dimensões, canais, tamanho)." }
+      ]
+    },
+    "videos": {
+      "permission": "gen.plan",
+      "endpoints": [
+        { "path": "/videos/plan", "method": "POST", "state": "planned", "description": "Plano de melhoria de qualidade de filmes/séries/.mp4." },
+        { "path": "/videos/probe", "method": "POST", "state": "analyzed", "description": "Sonda de vídeo: duração, resolução, fps estimado." }
+      ]
+    },
+    "engines": {
+      "permission": "public",
+      "endpoints": [
+        { "path": "/engines/detect", "method": "GET", "state": "ready", "description": "Detecção WebGPU/WebGL/WASM/WebCodecs/TF.js/Transformers.js." },
+        { "path": "/engines/select", "method": "POST", "state": "planned", "description": "Seleção de engine conforme formato e operação." }
+      ]
+    },
+    "repack": {
+      "permission": "repack.manage",
+      "endpoints": [
+        { "path": "/repack/list", "method": "GET", "state": "ready", "description": "Repacks disponíveis." },
+        { "path": "/repack/get", "method": "GET", "state": "ready", "description": "Detalhe de repack." },
+        { "path": "/repack/install", "method": "POST", "state": "ready", "description": "Instala ferramentas do repack (passos declarativos)." },
+        { "path": "/repack/bundle", "method": "POST", "state": "planned", "description": "Multi-ferramenta em 1 comando." }
+      ]
+    },
+    "tools": {
+      "permission": "public",
+      "endpoints": [
+        { "path": "/tools/list", "method": "GET", "state": "ready", "description": "Ferramentas registradas." },
+        { "path": "/tools/run", "method": "POST", "state": "planned", "description": "Executa ferramenta declarada (planejamento/análise no demo)." }
+      ]
+    },
+    "users": {
+      "permission": "users.manage",
+      "endpoints": [
+        { "path": "/users/list", "method": "GET", "state": "ready", "description": "Usuários locais." },
+        { "path": "/users/create", "method": "POST", "state": "ready", "description": "Cria usuário local." },
+        { "path": "/users/auth", "method": "POST", "state": "ready", "description": "Autentica sessão UI." }
+      ]
+    },
+    "permissions": {
+      "permission": "public",
+      "endpoints": [
+        { "path": "/permissions/roles", "method": "GET", "state": "ready", "description": "Matriz de papéis e permissões." },
+        { "path": "/permissions/check", "method": "POST", "state": "ready", "description": "Verifica permissão da sessão." }
+      ]
+    },
+    "config": {
+      "permission": "config.manage",
+      "endpoints": [
+        { "path": "/config/get", "method": "GET", "state": "ready", "description": "Configuração ativa." },
+        { "path": "/config/set", "method": "POST", "state": "ready", "description": "Define configuração de sessão (persistida localmente)." }
+      ]
+    },
+    "jobs": {
+      "permission": "gen.plan",
+      "endpoints": [
+        { "path": "/jobs/list", "method": "GET", "state": "ready", "description": "Trabalhos declarados." },
+        { "path": "/jobs/create", "method": "POST", "state": "planned", "description": "Cria job a partir de template." },
+        { "path": "/jobs/cancel", "method": "POST", "state": "cancelled", "description": "Cancela job planejado." }
+      ]
+    },
+    "storage": {
+      "permission": "storage.write",
+      "endpoints": [
+        { "path": "/storage/ls", "method": "GET", "state": "ready", "description": "Lista arquivos virtuais." },
+        { "path": "/storage/read", "method": "GET", "state": "ready", "description": "Lê arquivo virtual." },
+        { "path": "/storage/write", "method": "POST", "state": "ready", "description": "Grava arquivo virtual." },
+        { "path": "/storage/remove", "method": "POST", "state": "ready", "description": "Remove arquivo virtual." }
+      ]
     }
   }
 }

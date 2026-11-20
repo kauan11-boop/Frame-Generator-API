@@ -1,6 +1,0 @@
-{
-  "version": "1.0.0",
-  "updated_at": "2026-11-19T00:00:00Z",
-  "results": [],
-  "note": "Resultados de jobs são persistidos pelo adapter/backend; no modo estático este índice é apenas referência."
-}

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>FGUA — Master Prompt IA</title>
+<link rel="stylesheet" href="../styles/win11.css"><link rel="stylesheet" href="../styles/apps.css">
+<style>body{background:var(--win-bg);color:var(--txt-primary);font-family:var(--font)}.wrap{max-width:860px;margin:0 auto;padding:32px 24px 80px;user-select:text}h1{font-family:var(--font-display)}h2{font-size:17px;margin-top:26px}p{color:var(--txt-secondary);line-height:1.6}pre{background:#0c0c0c;color:#ccc;border:1px solid var(--divider);border-radius:8px;padding:14px;font-size:12.5px;font-family:'Cascadia Code',Consolas,monospace;overflow-x:auto;white-space:pre-wrap;line-height:1.6}code.inline{background:var(--card-bg-hover);padding:1px 6px;border-radius:4px;font-size:12px}</style>
+</head><body><div class="wrap">
+<h1>Master Prompt de Integração (IA / Projetos)</h1>
+<p>Use este prompt ao integrar o Frame-Generator-API em um modelo de IA, agente, pipeline ou projeto. A versão personalizada com suas configurações é gerada pelo app <b>Instalador IA</b> (Iniciar → Instalador IA). Fonte canônica: <code class="inline">Public/templates/master-prompt-integration.md</code> · spec machine-readable: <code class="inline">Public/templates/integration-spec.json</code>.</p>
+<pre>### BASE-PLATE ###
+# Frame-Generator-API — Master Prompt de Integração (IA / Projetos)
+
+Use este prompt ao integrar o Frame-Generator-API em um modelo de IA,
+agente, pipeline ou projeto.
+
+## Identidade e escopo
+- Nome: Frame-Generator-API (FGUA) — v2
+- Objetivo: núcleo web modular para análise/registro de modelos,
+  inspeção de capacidades/recursos e planejamento/integração de fluxos
+  de geração e aprimoramento de quadros (imagem, vídeo, jogo) sob um
+  contrato lógico (/api/v1/*).
+- Runtime: HTML5, CSS3, JavaScript (ES Modules), execução no navegador.
+- Hospedagem: GitHub Pages (site estático). Não há servidor REST nativo.
+- Interface: shell de sistema operacional Windows 11 (taskbar, Start,
+  janelas, Quick Settings) + 12 apps integrados ao núcleo.
+- Repositório: https://github.com/kauan11-boop/Frame-Generator-API
+
+## Arquitetura
+- src/ (núcleo modular, 10 pastas): core, config, models, runtime, api,
+  generators, repacks, security, storage, shell.
+- Public/ (interface, 10 pastas): desktop, apps, styles, assets,
+  documentation, presets, templates, manifests, locales, workers.
+- configs/ (JSON único): api.json, models.json, generators.json,
+  repacks.json, permissions.json, settings.json.
+- tests/ e scripts/: npm run ci valida tudo.
+
+## Contrato lógico /api/v1
+Namespaces: system, models, metadata, quantization, generators, frames,
+images, videos, engines, repack, tools, users, permissions, config, jobs,
+storage.
+Modos: demo (padrão, sem backend), local/remote (baseUrl compatível).
+
+## Capacidades e limites reais (obrigatório respeitar)
+- GGUF: análise de metadados no cliente (parser binário, header/KV).
+  Carregamento/inferência real requer runtime/provedor compatível.
+- Quantização: identificação, estimativa e planejamento; conversão
+  efetiva requer runtime externo. Arquivo original preservado.
+  Sem conversão fictícia.
+- Geração/processamento: planejamento/análise e estados explícitos;
+  sem simulação de resultados.
+- Engines: detecção WebGPU/WebGL/WASM/WebCodecs, adaptadores TF.js e
+  Transformers.js sob demanda (CDN), backend configurável.
+- Segurança: autenticação/permissões em nível de UI; autorização
+  confiável exige backend; sem segredos em arquivos públicos.
+- Jogos: sem interceptação automática de pipeline gráfico; apenas
+  integrações/capturas autorizadas.
+
+## Integração recomendada
+1. Consumir configs/*.json e o payload de integração do dashboard.
+2. Configurar backend/provedor compatível quando for necessária
+   execução real (LM Studio: http://localhost:1234 + CORS).
+3. Selecionar engine/modelo/provedor conforme formato/operação/capacidades.
+4. Tratar estados explicitamente: ready, planned, analyzed,
+   requires-provider, requires-runtime, unavailable, invalid, failed,
+   cancelled, succeeded.
+5. Validar manifests/configs antes de uso e respeitar limites do
+   ambiente estático. Verificação: npm run ci.
+
+## LM Studio
+- OpenAI-compat: GET /v1/models · POST /v1/chat/completions ·
+  POST /v1/completions · POST /v1/embeddings · POST /v1/responses
+- REST nativa v1 (0.4+): GET /api/v1/models · POST /api/v1/chat ·
+  POST /api/v1/models/load · POST /api/v1/models/unload
+- REST v0 (legado): GET /api/v0/models · POST /api/v0/chat/completions
+- CORS obrigatório; auth opcional (Authorization: Bearer &lt;token&gt;).
+
+## Recursos úteis
+- Área de trabalho: /Public/desktop/index.html
+- Dashboard: /Public/dashboard.html
+- Documentação: /Public/documentation/index.html
+- Configs: /configs/*.json
+- Presets/templates/manifest: /Public/presets/default-presets.json,
+  /Public/templates/job-template.json, /Public/manifests/sample-repack.json
+- Licença: LICENSE (MIT)
+- Verificação local: npm run ci</pre>
+<p><a href="index.html">← voltar</a></p>
+</div></body></html>

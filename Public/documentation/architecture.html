@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>FGUA — Arquitetura</title>
+<link rel="stylesheet" href="../styles/win11.css"><link rel="stylesheet" href="../styles/apps.css">
+<style>body{background:var(--win-bg);color:var(--txt-primary);font-family:var(--font)}.wrap{max-width:860px;margin:0 auto;padding:32px 24px 80px;user-select:text}h1{font-family:var(--font-display)}h2{font-size:17px;margin-top:28px}pre{background:var(--win-bg-2);border:1px solid var(--divider);border-radius:8px;padding:14px;font-size:12px;font-family:'Cascadia Code',Consolas,monospace;overflow-x:auto;line-height:1.55}code.inline{background:var(--card-bg-hover);padding:1px 6px;border-radius:4px;font-size:12px}</style>
+</head><body><div class="wrap">
+<h1>Arquitetura de diretórios (v2)</h1>
+<p style="color:var(--txt-secondary)">Reconstruída com limites rígidos: <b>src ≤ 10 pastas</b> e <b>Public ≤ 10 pastas</b> (limite do requisito: 20). Cada pasta tem um único propósito; carregadores e lógica em <code class="inline">src/</code>, interface administrada em <code class="inline">Public/</code>.</p>
+<pre>Frame-Generator-API/
+├── index.html              # redireciona ao shell
+├── package.json / LICENSE / README.md
+├── configs/                # JSON único editável (6 arquivos)
+│   ├── api.json            # contrato /api/v1 (namespaces, endpoints, permissões)
+│   ├── models.json         # catálogo de modelos
+│   ├── generators.json     # gêneros + orçamentos de pixels
+│   ├── repacks.json        # repacks multi-ferramenta
+│   ├── permissions.json    # papéis, matriz, usuários padrão
+│   └── settings.json       # tema, modos, backends, runtimes
+├── src/                    # NÚCLEO (10 pastas)
+│   ├── core/               # kernel, bus, states (máquina de estados)
+│   ├── config/             # loader/validador de configs
+│   ├── models/             # gguf.js (parser binário), quantizer.js, registry.js
+│   ├── runtime/            # detect.js, tfjs.js, transformers.js
+│   ├── api/                # router.js (/api/v1), lmstudio.js, client.js
+│   ├── generators/         # planner.js (jogos/imagem/vídeo), perf.js (FPS + pixels)
+│   ├── repacks/            # manager.js (multi-ferramenta em 1 comando)
+│   ├── security/           # users, roles, session (UI-level)
+│   ├── storage/            # store.js (kv) + fs.js (VFS IndexedDB)
+│   └── shell/              # public-api.js → window.FGUA
+├── Public/                 # INTERFACE (10 pastas)
+│   ├── desktop/            # shell Win11 (index.html, shell.js, wm.js)
+│   ├── apps/               # 12 apps + common.js
+│   ├── styles/             # win11.css (Fluent) + apps.css
+│   ├── assets/             # wallpapers SVG + icons.svg (sprite Fluent)
+│   ├── documentation/      # 7 páginas standalone
+│   ├── presets/            # default-presets.json
+│   ├── templates/          # job-template.json + master-prompt-integration.md
+│   ├── manifests/          # sample-repack.json
+│   ├── locales/            # pt-BR.json, en-US.json
+│   ├── workers/            # gguf.worker.js
+│   └── dashboard.html      # dashboard standalone
+├── tests/                  # 5 suítes + run-all
+└── scripts/                # serve.mjs (:4173) + ci.mjs</pre>
+<h2>Fluxo de boot</h2>
+<p><code class="inline">index.html</code> → shell <code class="inline">Public/desktop/index.html</code> → <code class="inline">shell.js</code> importa <code class="inline">src/shell/public-api.js</code> → <code class="inline">kernel.boot()</code> carrega as 6 configs JSON, detecta capacidades (WebGPU/WebGL/WASM/WebCodecs), restaura sessão e monta o roteador <code class="inline">/api/v1</code> → splash → lock screen → desktop.</p>
+<h2>Princípios</h2>
+<p>1) JSON como fonte única de dados editável. 2) Estados explícitos em toda operação — nada simulado. 3) Guard de permissões por namespace. 4) Parser GGUF lê somente o header (orçamento 32 MB), nunca o corpo. 5) Import absolutamente relativos (<code class="inline">import.meta.url</code>) — funciona em qualquer subcaminho do GitHub Pages.</p>
+<p><a href="index.html">← voltar</a></p>
+</div></body></html>
