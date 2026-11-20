@@ -13,7 +13,17 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
-const ROOT = process.cwd();
+// Raiz dos manifests: se executado de src/scripts, usa src/; se de repo root com src/, detecta src/
+function resolveRoot() {
+  const cwd = process.cwd();
+  const scriptDir = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
+  const fromScript = path.resolve(scriptDir, '..'); // src/
+  if (fs.existsSync(path.join(fromScript, 'api/v1/index.json'))) return fromScript;
+  if (fs.existsSync(path.join(cwd, 'src/api/v1/index.json'))) return path.join(cwd, 'src');
+  if (fs.existsSync(path.join(cwd, 'api/v1/index.json'))) return cwd;
+  return cwd;
+}
+const ROOT = resolveRoot();
 const now = () => new Date().toISOString();
 const rid = () => crypto.randomBytes(4).toString('hex');
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));

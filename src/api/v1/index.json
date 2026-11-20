@@ -58,7 +58,7 @@
     "content": "api/v1/content/index.json",
     "schemas": "schemas/",
     "sdk": "sdk/frame-api.js",
-    "admin": "admin/index.html"
+    "interface": "../../public/dashboard.html"
   },
   "sync": {
     "strategy": "manifest-polling",

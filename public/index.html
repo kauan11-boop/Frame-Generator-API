@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Frame-Generator-API</title>
+  <link rel="stylesheet" href="./css/main.css" />
+</head>
+<body class="landing">
+  <main class="hero">
+    <div class="hero-card">
+      <div class="badge">GitHub Pages • API estática unificada</div>
+      <h1>Frame-Generator-API</h1>
+      <p>Orquestração de <b>modelos de IA</b> (metadados GGUF + carregador), <b>geração de quadros</b> (storyboard, vídeo, dados/UI), <b>pacotes</b> autoajustáveis, <b>comandos JSON</b> e sistema <b>Repack</b> auditável.</p>
+      <div class="actions">
+        <a class="btn primary" href="./dashboard.html">Abrir Dashboard</a>
+        <a class="btn" href="../src/api/v1/index.json">Discovery (JSON)</a>
+        <a class="btn" href="../src/prompts/integration.md">Prompt de integração</a>
+      </div>
+      <div class="grid mini">
+        <div class="mini-card"><h3>Modelos & GGUF</h3><p>Registro, metadados completos e modos: runner externo, WASM experimental e catálogo.</p></div>
+        <div class="mini-card"><h3>Geração de quadros</h3><p>Storyboard, sequência de vídeo, quadros de dados/UI e composições mistas.</p></div>
+        <div class="mini-card"><h3>Comandos & Repack</h3><p>Envelope JSON com allowlist + pipeline scan→diff→plan→simulate→apply→verify.</p></div>
+      </div>
+      <p class="muted small">A API é servida de <code>src/api/v1/</code>. Operações pesadas/execução real usam adaptadores externos.</p>
+    </div>
+  </main>
+</body>
+</html>

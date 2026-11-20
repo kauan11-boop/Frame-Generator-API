@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 import fs from 'fs';
 import path from 'path';
-const ROOT = process.cwd();
+function resolveRoot() {
+  const cwd = process.cwd();
+  const scriptDir = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
+  const fromScript = path.resolve(scriptDir, '..');
+  if (fs.existsSync(path.join(fromScript, 'api/v1/index.json'))) return fromScript;
+  if (fs.existsSync(path.join(cwd, 'src/api/v1/index.json'))) return path.join(cwd, 'src');
+  if (fs.existsSync(path.join(cwd, 'api/v1/index.json'))) return cwd;
+  return cwd;
+}
+const ROOT = resolveRoot();
 const files = [
   'api/v1/index.json','api/v1/system/status.json','api/v1/models/index.json','api/v1/frames/index.json',
   'api/v1/frames/templates.json','api/v1/packages/index.json','api/v1/commands/index.json','api/v1/repack/index.json',

@@ -4,61 +4,50 @@ API unificada **estática** (compatível com GitHub Pages) para orquestração d
 
 > **Importante:** GitHub Pages serve apenas arquivos estáticos. Esta API fornece contratos JSON, catálogos, SDK e adaptadores; operações pesadas (inferência GGUF real, geração de imagens/vídeo, descompilação profunda) são executadas por **runners/servidores externos** conectados via adaptadores.
 
-## O que inclui
-
-- **API estática v1** (`/api/v1/*.json`): descoberta, modelos, quadros, pacotes, comandos, repack, adaptadores e status.
-- **Carregador + metadados de modelos**: registro com metadados completos (arquitetura GGUF, tokenizer, contexto, capacidades, quantização, origem/licença) e modos de execução (externo, WASM experimental, catálogo).
-- **Geração de quadros**: modos `storyboard`, `video_frames` e `data_panels`, com templates e filas/jobs controlados por contrato JSON.
-- **Sistema de pacotes/conteúdos**: manifests versionados; clientes se autoajustam por `version`/`etag`/polling.
-- **Protocolo de comandos JSON** com restrições de envio/recebimento e validação por schema.
-- **Repack**: pipeline auditável de reconstrução/aprimoramento por manifesto (preenchimento de lacunas, merge de overlays, geração de artefatos derivados) — sem auto-modificação oculta do código-fonte.
-- **Painel Admin** (`/admin/`): visão e controle dos registros, comandos e estado.
-- **Prompt de integração** (`/prompts/integration.md` e `/api/v1/prompts/integration.json`).
-
 ## Estrutura
 
-```
-api/v1/                 # Endpoints JSON (discovery + recursos)
-schemas/                # Contratos JSON (request/response/comando)
-sdk/frame-api.js        # SDK cliente (fetch + auto-sync + validação leve)
-admin/                  # Painel de administração/visualização
-data/                   # Manifests e registros fonte
-prompts/integration.md  # Prompt para integrar em projetos com IA
-docs/                   # Documentação adicional
-```
+- **`public/`** — interface web (landing + dashboard) organizada em `css/`, `js/` e `assets/`, consumindo a API estática em `src/api/v1/`.
+- **`src/`** — núcleo da API/conteúdos, organizado em 15 pastas:
+  - `api/` (endpoints estáticos `v1/*.json`), `schemas/`, `sdk/`, `data/`, `prompts/`, `scripts/` (repack/validate, **sem alterações de lógica**), `docs/`, `assets/`, `config/`, `adapters/`, `models/`, `frames/`, `packages/`, `repack/`, `interface/` (referência organizacional da camada de UI).
+- **Raiz** — `index.html` (redireciona para `public/`), `README.md`, `.github/`.
 
-## Uso rápido (GitHub Pages / estático)
+## O que inclui
+
+- **API estática v1** (`src/api/v1/*.json`): descoberta, modelos, quadros, pacotes, comandos, repack, adaptadores, conteúdo e status.
+- **Carregador + metadados de modelos**: GGUF (general/architecture/tokenizer/tensors/inspection) e modos A (runner externo), B (WASM experimental) e C (catálogo).
+- **Geração de quadros**: `storyboard`, `video_frames`, `data_panels` e `composite`, com templates e controle por contrato JSON.
+- **Pacotes/conteúdos autoajustáveis**: manifests versionados; clientes se reidratam por `version`/`etag`.
+- **Protocolo de comandos JSON** com allowlist e validação por schema.
+- **Repack**: pipeline auditável (scan→diff→plan→simulate→apply→verify), sem alteração oculta do código-fonte.
+- **Prompt de integração**: `src/prompts/integration.md` e `src/api/v1/prompts/integration.json` (aba no dashboard).
+
+## Uso rápido
 
 ```js
-import { FrameGeneratorAPI } from './sdk/frame-api.js';
+import { FrameGeneratorAPI } from './src/sdk/frame-api.js';
 
-const api = new FrameGeneratorAPI({ baseUrl: 'https://<user>.github.io/Frame-Generator-API' });
+const api = new FrameGeneratorAPI({ baseUrl: 'https://<user>.github.io/Frame-Generator-API/src' });
 const discovery = await api.discover();
 const models = await api.listModels();
-const job = await api.createFrameJob({
-  mode: 'storyboard',
-  prompt: 'Cena de abertura em floresta neon',
-  frames: 6,
-  model: 'catalog/llama-storyboard-planner',
-  adapter: 'external-http'
-});
 ```
+
+## Desenvolvimento e validação
+
+- Servir localmente: `npx serve .` e abrir `/public/` (ou `/` que redireciona).
+- Validar manifests/schemas: `node src/scripts/validate.mjs`
+- Repack (auditável): `node src/scripts/repack.mjs verify` (ou `scan|plan|simulate|apply --plan <id> --approve`)
 
 ## Modos cobertos (todas as opções)
 
 | Área | Opções suportadas |
 |---|---|
-| Hospedagem/API | A) Estática (Pages) • B) Adaptadores para backend externo (Cloudflare Worker/Node/Python) • C) Híbrido por configuração |
+| Hospedagem/API | A) Estática (Pages) • B) Adaptadores para backend externo • C) Híbrido |
 | Geração de quadros | A) Storyboard • B) Sequência de vídeo/frames • C) Quadros de dados/UI • D) Composto/misto |
 | Modelos GGUF | A) Metadados + runner externo • B) Loader WASM experimental (limitado) • C) Catálogo/metadados apenas |
 
 ## Limites e segurança
 
 - Sem execução de servidor no Pages: inferência/geração real depende de adaptador externo.
-- GGUF: metadados e inspeção de estrutura são suportados no registro; “descompilação” de pesos não é viável — o sistema expõe análise/extração de metadados e grafos de tensores quando fornecidos pelo runner.
-- Repack é **transparente e auditável** (planos, diffs de manifesto, logs em JSON); não altera código-fonte escondido.
-- Comandos seguem allowlist, limites de tamanho e schemas (`schemas/command.schema.json`).
-
-## Desenvolvimento local
-
-Sirva a pasta como site estático (ex.: `npx serve .` ou extensão Live Server) e abra `/admin/`.
+- GGUF: metadados e inspeção de estrutura/índice de tensores suportados; **não há descompilação de pesos**.
+- Repack é **transparente e auditável** (planos, simulação, aprovação, derivados); não altera código-fonte escondido.
+- Comandos seguem allowlist, limites de tamanho e schemas.

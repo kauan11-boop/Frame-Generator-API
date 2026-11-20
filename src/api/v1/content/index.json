@@ -16,12 +16,17 @@
   ],
   "extensibility": {
     "how_to_add_content": [
-      "Adicione/atualize entradas nos manifests em api/v1/* e/ou data/*",
+      "Adicione/atualize entradas nos manifests em src/api/v1/* e/ou src/data/*",
       "Incremente version/updated_at/etag do recurso alterado",
-      "Execute `node scripts/repack.mjs scan && node scripts/repack.mjs plan && node scripts/repack.mjs simulate` para validar",
-      "Com aprovação, gere derivados com `node scripts/repack.mjs apply --plan <id> --approve`",
+      "Execute `node src/scripts/repack.mjs scan && node src/scripts/repack.mjs plan && node src/scripts/repack.mjs simulate` para validar",
+      "Com aprovação, gere derivados com `node src/scripts/repack.mjs apply --plan <id> --approve`",
       "Clientes conectados detectam mudança de etag/version e se autoajustam"
     ],
-    "scaling": "Para milhares de itens, pagine em arquivos (ex.: api/v1/models/page-*.json) e referencie no índice; mantenha etag por página."
+    "scaling": "Para milhares de itens, pagine em arquivos (ex.: src/api/v1/models/page-*.json) e referencie no índice; mantenha etag por página."
+  },
+  "organization": {
+    "root": "src/",
+    "folders": ["adapters","api","assets","config","data","docs","frames","interface","models","packages","prompts","repack","schemas","scripts","sdk"],
+    "public_interface": "public/"
   }
 }
