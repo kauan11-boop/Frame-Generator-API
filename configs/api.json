@@ -36,15 +36,17 @@
       "note": "Cliente WebSocket disponível no navegador; servidor/endpoint real deve ser fornecido e executado fora do GitHub Pages."
     },
     "discord": {
-      "runtime": "nodejs",
+      "runtime": "browser-studio+node-template",
       "library": "discord.js",
+      "browserSimulator": true,
       "staticGenerator": true,
-      "note": "Configuração e geração de templates no site; execução do bot requer ambiente Node.js externo."
+      "note": "Estúdio, simulador e gerador de templates integrados no navegador; conexão real ao gateway/execução do bot requer runtime Node.js externo com token seguro."
     },
     "reactVite": {
-      "templatePath": "integrations/react-vite",
+      "browserDemo": "Public/react-vite.html",
+      "embeddedTemplates": true,
       "githubPagesCompatible": true,
-      "note": "Scaffold React + Vite para integração e deploy estático."
+      "note": "Demo React executável no navegador (ESM/CDN) e fontes/templates embutidos no código para build Vite/GitHub Pages."
     }
   }
 }

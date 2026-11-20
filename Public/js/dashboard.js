@@ -9,7 +9,8 @@ import {
 import { recordToolUse, recordFeatureUse, getTopTools, getUsageStats } from './usage.js';
 import { donutChart } from './charts.js';
 import { WebSocketClient } from './websocket.js';
-import { generateDiscordFiles, getDiscordOptions } from './discord.js';
+import { generateDiscordFiles, getDiscordOptions, simulateDiscordInteraction } from './discord.js';
+import { getReactViteTemplates, getDiscordRuntimeTemplateFiles } from './templates.js';
 
 let app = null;
 let staticData = {};
@@ -213,6 +214,31 @@ function renderOverview() {
           <div class="actions mt">${sectionNavButton('resources', 'Ver capacidades e recursos')}${sectionNavButton('integration', 'Ir para integração')}</div>
         </section>
       </div>
+
+      <section class="card" aria-labelledby="ov-usage-title">
+        <h2 id="ov-usage-title">Ferramentas e recursos mais utilizados</h2>
+        <p class="muted">Gráfico circular com base no uso registrado nesta sessão/navegador (ferramentas do <code>ToolRegistry</code> e ações/seções da interface). O rastreamento é local (localStorage), sem envio automático para servidores.</p>
+        ${(() => {
+          const top = getTopTools(8);
+          const chartData = top.map((i) => ({ label: i.label || i.id, value: i.count, id: i.id }));
+          const total = chartData.reduce((a, b) => a + b.value, 0);
+          const updatedAt = getUsageStats()?.updatedAt;
+          return `
+            <div class="grid-2" style="align-items:start">
+              <div>
+                ${donutChart(chartData, { size: 240, thickness: 36, title: 'Uso de ferramentas e recursos', ariaLabel: 'Gráfico circular de ferramentas e recursos mais utilizados', centerLabel: String(total), centerSub: 'usos' })}
+              </div>
+              <div>
+                ${chartData.length ? table(['Ferramenta/Recurso', 'Categoria', 'Usos', 'Último uso'], chartData.map((d, idx) => {
+                  const src = top[idx] || {};
+                  return [`<strong>${esc(d.label)}</strong><br><code>${esc(src.id || '')}</code>`, esc(src.category || '—'), esc(d.value), formatDate(src.lastUsedAt)];
+                }), 'Ranking de uso', { srCaption: true }) : emptyState('Sem dados de uso ainda', 'Navegue pelas abas ou execute ferramentas registradas para popular o gráfico de uso localmente.')}
+                <p class="section-note mt">${updatedAt ? `Última atualização do rastreamento: ${formatDate(updatedAt)}.` : 'Nenhum evento registrado até o momento.'} ${app?.tools?.list ? `Ferramentas registradas disponíveis: ${esc((app.tools.list() || []).length)}.` : ''}</p>
+                <div class="actions mt"><button class="btn small" type="button" id="usage-refresh" data-feature="usage-refresh">Atualizar gráfico</button><button class="btn small" type="button" id="usage-clear" data-feature="usage-clear">Limpar rastreamento local</button></div>
+              </div>
+            </div>`;
+        })()}
+      </section>
 
       <section class="card" aria-labelledby="ov-caps-title">
         <h2 id="ov-caps-title">Capacidades do navegador (detecção)</h2>
@@ -504,6 +530,44 @@ function renderIntegration() {
         <div id="api-status" class="notice info mt" role="status" aria-live="polite">Nenhuma alteração aplicada nesta sessão ainda.</div>
       </section>
 
+      <section class="card" aria-labelledby="ws-title">
+        <h2 id="ws-title">WebSocket (utilitário cliente, opcional)</h2>
+        <p class="muted">Conecte-se a um endpoint WebSocket compatível quando disponível. O código/token é opcional: você pode conectar sem código ou informar um código para autenticação (enviado como parâmetro de consulta <code>code</code> e, ao abrir, como mensagem <code>{type:"auth",code}</code>, conforme suporte do servidor). Não armazene segredos em arquivos públicos.</p>
+        <div class="notice info" role="note"><p style="margin:0"><strong>Hospedagem estática:</strong> o GitHub Pages não fornece servidor WebSocket. Esta seção é um cliente utilitário para backends/serviços externos compatíveis.</p></div>
+        <form id="ws-form" class="stack mt" novalidate>
+          <div class="form-row">
+            <div class="field" style="flex:2 1 320px">
+              <label for="ws-url">URL WebSocket</label>
+              <input id="ws-url" name="ws-url" type="url" inputmode="url" placeholder="wss://seu-servidor.exemplo/socket" autocomplete="off" />
+              <div class="help-text">Use <code>ws://</code> ou <code>wss://</code>. Deixe vazio se não for utilizar.</div>
+            </div>
+            <div class="field" style="flex:1 1 220px">
+              <label for="ws-code">Código/token (opcional)</label>
+              <input id="ws-code" name="ws-code" type="text" placeholder="Opcional" autocomplete="off" />
+              <div class="help-text">Pode ser deixado em branco. Evite tokens sensíveis em ambientes compartilhados.</div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="ws-connect" type="submit">Conectar</button>
+            <button class="btn" id="ws-disconnect" type="button">Desconectar</button>
+            <span id="ws-state" class="badge info">desconectado</span>
+          </div>
+        </form>
+        <div class="form-row mt" style="align-items:flex-end">
+          <div class="field" style="flex:1 1 320px">
+            <label for="ws-message">Mensagem</label>
+            <input id="ws-message" name="ws-message" type="text" placeholder='{"type":"ping"} ou texto' autocomplete="off" />
+          </div>
+          <div class="field" style="flex:0 0 auto;min-width:auto">
+            <button class="btn" id="ws-send" type="button">Enviar</button>
+          </div>
+        </div>
+        <details class="disclosure mt" open>
+          <summary>Log e mensagens</summary>
+          <div class="details-body"><pre id="ws-log" class="wrap" aria-live="polite">Sem eventos WebSocket.</pre></div>
+        </details>
+      </section>
+
       <section class="card" aria-labelledby="int-payload-title">
         <h2 id="int-payload-title">Payload de integração</h2>
         <p class="muted">Resumo exportável do estado atual, capacidades, recursos registrados e referências de configs/docs. Útil para agentes, pipelines e ferramentas externas.</p>
@@ -521,6 +585,8 @@ function renderIntegration() {
         <section class="card" aria-labelledby="int-cmd-title">
           <h2 id="int-cmd-title">Comandos e verificação</h2>
           ${codeBlock('code-cmd', commandsText, 'Copiar comandos')}
+          <p class="section-note mt">Integrações integradas ao navegador (sem pasta externa): demo React em <code>Public/react-vite.html</code>; estúdio/simulador/gerador Discord e templates embutidos na aba <strong>Discord Bot</strong>.</p>
+          <div class="actions mt"><a class="btn" href="./react-vite.html" target="_blank" rel="noopener noreferrer">Abrir demo React (navegador)</a>${sectionNavButton('discord', 'Abrir Discord Bot')}</div>
         </section>
         <section class="card" aria-labelledby="int-example-title">
           <h2 id="int-example-title">Exemplo de integração (JavaScript)</h2>
@@ -529,6 +595,127 @@ function renderIntegration() {
         </section>
       </div>
     </div>`;
+}
+
+function renderDiscord() {
+  const el = qs('#tab-discord');
+  if (!el) return;
+  const opts = getDiscordOptions();
+  const defaults = {
+    name: 'Meu Bot Discord',
+    packageName: 'meu-bot-discord',
+    clientId: 'COLOQUE_SEU_CLIENT_ID',
+    intents: opts.defaultIntents.slice(),
+    events: ['ready', 'interactionCreate', 'messageCreate'],
+    prefix: '!',
+    useSlash: true,
+    usePrefix: true,
+    commands: [{ name: 'ping', description: 'Responde com Pong!', response: 'Pong!' }],
+    description: 'Bot Discord gerado pelo configurador do Frame-Generator-API.',
+    nodeVersion: '>=18'
+  };
+  const form = { ...defaults, ...(discordState.form || {}) };
+  discordState.form = form;
+  if (!discordState.generated) discordState.generated = generateDiscordFiles(form);
+  if (!Array.isArray(discordState.simLog)) discordState.simLog = [];
+  const gen = discordState.generated;
+  const fileOptions = (gen.files || []).map((f, i) => '<option value="' + i + '">' + esc(f.path) + '</option>').join('');
+  const selectedIndex = Math.min(Math.max(0, Number(discordState.selectedFile || 0)), Math.max(0, (gen.files || []).length - 1));
+  discordState.selectedFile = selectedIndex;
+  const selectedFile = (gen.files || [])[selectedIndex] || { path: '', content: '' };
+
+  const intentChecks = opts.intents.map((it) => {
+    const checked = (form.intents || []).includes(it) ? 'checked' : '';
+    return '<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 10px 4px 0;font-size:0.875rem"><input type="checkbox" name="discord-intent" value="' + escAttr(it) + '" ' + checked + ' /> <code>' + esc(it) + '</code></label>';
+  }).join('');
+  const eventChecks = opts.events.map((ev) => {
+    const checked = (form.events || []).includes(ev) ? 'checked' : '';
+    return '<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 10px 4px 0;font-size:0.875rem"><input type="checkbox" name="discord-event" value="' + escAttr(ev) + '" ' + checked + ' /> <code>' + esc(ev) + '</code></label>';
+  }).join('');
+
+  const filesList = (gen.files || []).length ? '<ul>' + gen.files.map((f) => '<li><code>' + esc(f.path) + '</code></li>').join('') + '</ul>' : '<p class="muted">—</p>';
+  const preview = (gen.files && gen.files.length) ? codeBlock('dc-file-preview', selectedFile.content || '', 'Copiar conteúdo') : emptyState('Nenhum arquivo gerado', 'Clique em "Gerar/atualizar templates".');
+
+  el.innerHTML = ''
+    + '<div class="stack">'
+    + '  <section class="card" aria-labelledby="discord-intro-title">'
+    + '    <h2 id="discord-intro-title">Sistema avançado de configuração de bots Discord</h2>'
+    + '    <div class="notice info" role="note">'
+    + '      <h3>Execução e limites</h3>'
+    + '      <ul>'
+    + '        <li>Este configurador gera <strong>templates e conteúdos discord.js (Node.js)</strong> para você executar em um ambiente Node externo. <strong>Não executa bots no navegador/GitHub Pages.</strong></li>'
+    + '        <li>Não insira tokens reais em arquivos versionados. Use <code>.env</code>/segredos no ambiente de execução do bot.</li>'
+    + '        <li>Intents privilegiados (ex.: <code>GuildMembers</code>, <code>MessageContent</code>, <code>GuildPresences</code>) exigem ativação no Developer Portal e podem exigir verificação.</li>'
+    + '      </ul>'
+    + '    </div>'
+    + '    <p class="section-note mt">Conteúdos integrados diretamente no código do navegador: configuração, geração de arquivos, simulação de comandos/eventos e templates embutidos (preview/cópia/download). Para conexão real ao Discord, exporte os templates e execute em runtime Node.js externo com token seguro.</p>'
+    + '  </section>'
+    + '  <section class="card" aria-labelledby="discord-form-title">'
+    + '    <h2 id="discord-form-title">Configuração do bot e conteúdos</h2>'
+    + '    <form id="discord-form" class="stack" novalidate>'
+    + '      <div class="grid-2">'
+    + '        <div class="field"><label for="dc-name">Nome do bot/projeto</label><input id="dc-name" name="name" type="text" value="' + escAttr(form.name) + '" /></div>'
+    + '        <div class="field"><label for="dc-pkg">Nome do pacote (npm)</label><input id="dc-pkg" name="packageName" type="text" value="' + escAttr(form.packageName) + '" /></div>'
+    + '        <div class="field"><label for="dc-client">Client ID (placeholder/valor)</label><input id="dc-client" name="clientId" type="text" value="' + escAttr(form.clientId) + '" /></div>'
+    + '        <div class="field"><label for="dc-node">Versão Node (engines)</label><input id="dc-node" name="nodeVersion" type="text" value="' + escAttr(form.nodeVersion) + '" /></div>'
+    + '        <div class="field"><label for="dc-prefix">Prefixo (comandos por mensagem)</label><input id="dc-prefix" name="prefix" type="text" value="' + escAttr(form.prefix) + '" /></div>'
+    + '        <div class="field"><label for="dc-desc">Descrição</label><input id="dc-desc" name="description" type="text" value="' + escAttr(form.description) + '" /></div>'
+    + '      </div>'
+    + '      <div class="form-row">'
+    + '        <label style="display:inline-flex;align-items:center;gap:8px"><input type="checkbox" id="dc-slash" name="useSlash" ' + (form.useSlash ? 'checked' : '') + ' /> Habilitar slash commands (recomendado)</label>'
+    + '        <label style="display:inline-flex;align-items:center;gap:8px"><input type="checkbox" id="dc-prefix-enabled" name="usePrefix" ' + (form.usePrefix ? 'checked' : '') + ' /> Habilitar comandos por prefixo</label>'
+    + '      </div>'
+    + '      <div><h3 style="font-size:0.9375rem;margin:8px 0">Intents</h3><div>' + intentChecks + '</div></div>'
+    + '      <div><h3 style="font-size:0.9375rem;margin:8px 0">Eventos</h3><div>' + eventChecks + '</div></div>'
+    + '      <div><h3 style="font-size:0.9375rem;margin:8px 0">Comando personalizado (slash) — adicional</h3>'
+    + '        <div class="grid-2">'
+    + '          <div class="field"><label for="dc-cmd-name">Nome</label><input id="dc-cmd-name" type="text" value="' + escAttr((form.commands && form.commands[0] && form.commands[0].name) || 'ping') + '" placeholder="ex.: status" /></div>'
+    + '          <div class="field"><label for="dc-cmd-desc">Descrição</label><input id="dc-cmd-desc" type="text" value="' + escAttr((form.commands && form.commands[0] && form.commands[0].description) || 'Responde com Pong!') + '" placeholder="Descrição do comando" /></div>'
+    + '          <div class="field" style="grid-column:1/-1"><label for="dc-cmd-resp">Resposta</label><input id="dc-cmd-resp" type="text" value="' + escAttr((form.commands && form.commands[0] && form.commands[0].response) || 'Pong!') + '" placeholder="Texto de resposta" /></div>'
+    + '        </div>'
+    + '      </div>'
+    + '      <div class="actions">'
+    + '        <button class="btn primary" id="dc-generate" type="submit">Gerar/atualizar templates</button>'
+    + '        <button class="btn" id="dc-download-config" type="button">Baixar config (JSON)</button>'
+    + '        <button class="btn" id="dc-download-file" type="button">Baixar arquivo selecionado</button>'
+    + '        <button class="btn" id="dc-copy-file" type="button">Copiar arquivo selecionado</button>'
+    + '      </div>'
+    + '    </form>'
+    + '  </section>'
+    + '  <section class="card" aria-labelledby="discord-files-title">'
+    + '    <h2 id="discord-files-title">Arquivos gerados (prévia)</h2>'
+    + '    <p class="muted">Selecione um arquivo para visualizar, copiar ou baixar. Os arquivos são gerados no navegador a partir da configuração atual.</p>'
+    + '    <div class="form-row"><div class="field" style="flex:1 1 320px"><label for="dc-file-select">Arquivo</label><select id="dc-file-select">' + fileOptions + '</select></div></div>'
+    + '    <div class="mt">' + preview + '</div>'
+    + '    <details class="disclosure mt"><summary>Lista de arquivos gerados</summary><div class="details-body">' + filesList + '</div></details>'
+    + '  </section>'
+    + '  <section class="card" aria-labelledby="discord-sim-title">'
+    + '    <h2 id="discord-sim-title">Simulador de comandos e eventos (navegador)</h2>'
+    + '    <p class="muted">Teste comandos configurados localmente no navegador (ex.: <code>/ping</code>, <code>' + esc(form.prefix || '!') + 'ping</code> ou mensagens). Isto simula respostas/eventos de UI; não conecta ao gateway do Discord.</p>'
+    + '    <div class="form-row" style="align-items:flex-end">'
+    + '      <div class="field" style="flex:1 1 320px"><label for="dc-sim-input">Entrada</label><input id="dc-sim-input" type="text" placeholder="/ping ou ' + escAttr(form.prefix || '!') + 'ping" /></div>'
+    + '      <div class="field" style="flex:0 0 auto;min-width:auto"><button class="btn primary" id="dc-sim-run" type="button">Simular</button></div>'
+    + '      <div class="field" style="flex:0 0 auto;min-width:auto"><button class="btn" id="dc-sim-clear" type="button">Limpar</button></div>'
+    + '    </div>'
+    + '    <pre id="dc-sim-log" class="wrap mt" aria-live="polite">' + esc((discordState.simLog || []).join('\n') || 'Sem simulações.') + '</pre>'
+    + '  </section>'
+    + '  <section class="card" aria-labelledby="discord-embedded-title">'
+    + '    <h2 id="discord-embedded-title">Templates integrados (conteúdo embutido)</h2>'
+    + '    <p class="muted">Fontes/templates embutidos diretamente no código do app para consulta, cópia e download (sem pasta externa). Inclui referência Node.js do bot e fontes React+Vite; a demo React executa no navegador.</p>'
+    + '    <div class="actions mt"><a class="btn primary" href="./react-vite.html" target="_blank" rel="noopener noreferrer">Abrir demo React (navegador)</a></div>'
+    + (() => {
+        const all = [...getDiscordRuntimeTemplateFiles(), ...getReactViteTemplates()];
+        const idx = Math.min(Math.max(0, Number(discordState.embeddedIndex || 0)), Math.max(0, all.length - 1));
+        discordState.embeddedIndex = idx;
+        const opts = all.map((f, i) => '<option value="' + i + '"' + (i === idx ? ' selected' : '') + '>' + esc(f.path) + '</option>').join('');
+        const cur = all[idx] || { path: '', content: '' };
+        return ''
+          + '    <div class="form-row mt"><div class="field" style="flex:1 1 320px"><label for="dc-embed-select">Arquivo embutido</label><select id="dc-embed-select">' + opts + '</select></div></div>'
+          + '    <div class="actions mt"><button class="btn" id="dc-embed-copy" type="button">Copiar embutido</button><button class="btn" id="dc-embed-download" type="button">Baixar embutido</button></div>'
+          + '    <div class="mt">' + codeBlock('dc-embed-preview', cur.content || '', 'Copiar conteúdo') + '</div>';
+      })()
+    + '  </section>'
+    + '</div>';
 }
 
 function renderConfig() {
@@ -646,6 +833,7 @@ function renderAll() {
   renderJobs();
   renderIntegration();
   renderConfig();
+  renderDiscord();
   renderDocs();
   wireInteractions();
   renderNotices();
@@ -719,6 +907,188 @@ function wireInteractions() {
       renderNotices();
     };
   }
+
+  // Usage chart actions
+  const usageRefresh = qs('#usage-refresh');
+  if (usageRefresh) usageRefresh.onclick = () => { recordFeatureUse('usage-refresh', { label: 'Atualizar gráfico de uso', category: 'ação' }); renderOverview(); wireInteractions(); announce('Gráfico de uso atualizado.'); };
+  const usageClear = qs('#usage-clear');
+  if (usageClear) usageClear.onclick = () => {
+    try { localStorage.removeItem('fgua:usage:v1'); } catch {}
+    recordFeatureUse('usage-clear', { label: 'Limpar rastreamento', category: 'ação' });
+    renderOverview(); wireInteractions();
+    announce('Rastreamento local de uso limpo.');
+  };
+
+  // WebSocket utilities
+  if (!wsClient) wsClient = new WebSocketClient();
+  const renderWsState = () => {
+    if (!wsClient) return;
+    const wsStateEl = qs('#ws-state');
+    if (!wsStateEl) return;
+    const st = wsClient.getStatus();
+    wsStateEl.textContent = st.state;
+    wsStateEl.className = 'badge ' + (st.state === 'open' ? 'ok' : st.state === 'error' ? 'err' : st.state === 'connecting' ? 'warn' : 'info');
+  };
+  const appendWsLog = (line) => {
+    const wsLogEl = qs('#ws-log');
+    if (!wsLogEl) return;
+    const prev = wsLogEl.textContent === 'Sem eventos WebSocket.' ? '' : wsLogEl.textContent + '\n';
+    wsLogEl.textContent = (prev + line).split('\n').slice(-120).join('\n');
+  };
+  if (!wsClient._uiBound) {
+    wsClient.on('state', () => renderWsState());
+    wsClient.on('log', (item) => appendWsLog('[' + item.at + '] ' + (item.level || 'info').toUpperCase() + ' ' + (item.message || '')));
+    wsClient.on('message', (msg) => appendWsLog('[mensagem] ' + (typeof msg.text === 'string' ? msg.text : JSON.stringify(msg.parsed ?? msg.raw))));
+    wsClient._uiBound = true;
+  }
+  const wsForm = qs('#ws-form');
+  const wsDisconnect = qs('#ws-disconnect');
+  const wsSend = qs('#ws-send');
+  if (wsForm) wsForm.onsubmit = (e) => {
+    e.preventDefault();
+    const url = (qs('#ws-url')?.value || '').trim();
+    const code = (qs('#ws-code')?.value || '').trim();
+    wsClient.configure({ url: url || null, code: code || '' });
+    const res = wsClient.connect();
+    recordFeatureUse('ws-connect', { label: 'WebSocket: conectar', category: 'integração' });
+    if (!res.ok) appendWsLog('[erro] ' + (res.error?.message || 'Falha ao conectar'));
+    renderWsState();
+  };
+  if (wsDisconnect) wsDisconnect.onclick = () => {
+    wsClient.disconnect(true);
+    recordFeatureUse('ws-disconnect', { label: 'WebSocket: desconectar', category: 'integração' });
+    appendWsLog('[info] Desconexão solicitada.');
+    renderWsState();
+  };
+  if (wsSend) wsSend.onclick = () => {
+    const raw = (qs('#ws-message')?.value || '').trim();
+    if (!raw) return;
+    let payload = raw;
+    try { payload = JSON.parse(raw); } catch {}
+    const res = wsClient.send(payload);
+    recordFeatureUse('ws-send', { label: 'WebSocket: enviar', category: 'integração' });
+    if (!res || !res.ok) appendWsLog('[erro] ' + (res?.error?.message || 'Falha ao enviar'));
+  };
+  renderWsState();
+
+  // Discord configurator
+  const dcForm = qs('#discord-form');
+  if (dcForm) dcForm.onsubmit = (e) => {
+    e.preventDefault();
+    const intents = qsa('input[name="discord-intent"]:checked', dcForm).map((i) => i.value);
+    const events = qsa('input[name="discord-event"]:checked', dcForm).map((i) => i.value);
+    const form = {
+      name: (qs('#dc-name')?.value || '').trim(),
+      packageName: (qs('#dc-pkg')?.value || '').trim(),
+      clientId: (qs('#dc-client')?.value || '').trim(),
+      nodeVersion: (qs('#dc-node')?.value || '').trim(),
+      prefix: (qs('#dc-prefix')?.value || '!').trim(),
+      description: (qs('#dc-desc')?.value || '').trim(),
+      useSlash: !!qs('#dc-slash')?.checked,
+      usePrefix: !!qs('#dc-prefix-enabled')?.checked,
+      intents,
+      events,
+      commands: [{
+        name: (qs('#dc-cmd-name')?.value || 'ping').trim(),
+        description: (qs('#dc-cmd-desc')?.value || 'Responde com Pong!').trim(),
+        response: (qs('#dc-cmd-resp')?.value || 'Pong!').trim(),
+      }],
+    };
+    discordState.form = form;
+    discordState.generated = generateDiscordFiles(form);
+    discordState.selectedFile = 0;
+    recordFeatureUse('discord-generate', { label: 'Discord: gerar templates', category: 'discord' });
+    renderDiscord();
+    wireInteractions();
+    announce('Templates do bot Discord gerados/atualizados.');
+  };
+  const dcSelect = qs('#dc-file-select');
+  if (dcSelect) dcSelect.onchange = () => {
+    discordState.selectedFile = Number(dcSelect.value || 0);
+    recordFeatureUse('discord-select-file', { label: 'Discord: selecionar arquivo', category: 'discord' });
+    renderDiscord();
+    wireInteractions();
+  };
+  const dcDownloadConfig = qs('#dc-download-config');
+  if (dcDownloadConfig) dcDownloadConfig.onclick = () => {
+    recordFeatureUse('discord-download-config', { label: 'Discord: baixar config', category: 'discord' });
+    downloadJson('discord-bot-config.json', discordState.generated?.config || discordState.form || {});
+  };
+  const dcDownloadFile = qs('#dc-download-file');
+  if (dcDownloadFile) dcDownloadFile.onclick = () => {
+    const f = (discordState.generated?.files || [])[Number(discordState.selectedFile || 0)];
+    if (!f) return;
+    try {
+      const blob = new Blob([f.content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (f.path.split('/').pop() || 'arquivo.txt');
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      recordFeatureUse('discord-download-file', { label: 'Discord: baixar arquivo', category: 'discord' });
+      announce('Arquivo preparado para download.');
+    } catch (e) { announce('Falha ao baixar arquivo.', 'assertive'); }
+  };
+  const dcCopyFile = qs('#dc-copy-file');
+  if (dcCopyFile) dcCopyFile.onclick = async () => {
+    const f = (discordState.generated?.files || [])[Number(discordState.selectedFile || 0)];
+    if (!f) return;
+    await copyText(f.content);
+    recordFeatureUse('discord-copy-file', { label: 'Discord: copiar arquivo', category: 'discord' });
+  };
+
+  const dcSimRun = qs('#dc-sim-run');
+  if (dcSimRun) dcSimRun.onclick = () => {
+    const input = (qs('#dc-sim-input')?.value || '').trim();
+    const cfg = discordState.form || discordState.generated?.config || {};
+    const res = simulateDiscordInteraction(cfg, input);
+    const lines = (res.events || []).map((ev) => `[${ev.at}] ${(ev.type || 'info').toUpperCase()} ${ev.message || ''}`);
+    if (res.output && res.output.response != null) lines.push(`[resposta] ${res.output.response}`);
+    discordState.simLog = [...(discordState.simLog || []), `> ${input || '(vazio)'}`, ...lines, ''].slice(-200);
+    recordFeatureUse('discord-simulate', { label: 'Discord: simular comando', category: 'discord' });
+    renderDiscord();
+    wireInteractions();
+  };
+  const dcSimClear = qs('#dc-sim-clear');
+  if (dcSimClear) dcSimClear.onclick = () => {
+    discordState.simLog = [];
+    recordFeatureUse('discord-sim-clear', { label: 'Discord: limpar simulador', category: 'discord' });
+    renderDiscord();
+    wireInteractions();
+  };
+
+  const dcEmbedSelect = qs('#dc-embed-select');
+  if (dcEmbedSelect) dcEmbedSelect.onchange = () => {
+    discordState.embeddedIndex = Number(dcEmbedSelect.value || 0);
+    renderDiscord();
+    wireInteractions();
+  };
+  const getEmbeddedAll = () => [...getDiscordRuntimeTemplateFiles(), ...getReactViteTemplates()];
+  const dcEmbedCopy = qs('#dc-embed-copy');
+  if (dcEmbedCopy) dcEmbedCopy.onclick = async () => {
+    const f = getEmbeddedAll()[Number(discordState.embeddedIndex || 0)];
+    if (!f) return;
+    await copyText(f.content);
+    recordFeatureUse('discord-embed-copy', { label: 'Copiar template embutido', category: 'integração' });
+  };
+  const dcEmbedDownload = qs('#dc-embed-download');
+  if (dcEmbedDownload) dcEmbedDownload.onclick = () => {
+    const f = getEmbeddedAll()[Number(discordState.embeddedIndex || 0)];
+    if (!f) return;
+    try {
+      const blob = new Blob([f.content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (f.path.split('/').pop() || 'template.txt');
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      recordFeatureUse('discord-embed-download', { label: 'Baixar template embutido', category: 'integração' });
+      announce('Arquivo preparado para download.');
+    } catch (e) { announce('Falha ao baixar arquivo.', 'assertive'); }
+  };
+
 }
 
 function handleCopyClick(e) {
@@ -822,6 +1192,17 @@ async function main() {
   }
 
   try { if (typeof window !== 'undefined') window.FGUA = app; } catch {}
+  try {
+    if (app?.tools && typeof app.tools.execute === 'function' && !app.tools._usageWrapped) {
+      const _exec = app.tools.execute.bind(app.tools);
+      app.tools.execute = async (id, input = {}, ctx = {}) => {
+        const res = await _exec(id, input, ctx);
+        try { recordToolUse(id, { label: String(id), category: 'tool', source: 'ToolRegistry' }); } catch {}
+        return res;
+      };
+      app.tools._usageWrapped = true;
+    }
+  } catch {}
   renderAll();
   announce('Dashboard carregado.');
 }

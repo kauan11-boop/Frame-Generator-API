@@ -1,5 +1,5 @@
-// Discord bot configuration generator (static/client-side). Produces Node.js discord.js templates/snippets.
-// No tokens are persisted; generated files are for use in a Node environment (not GitHub Pages).
+// Discord bot studio (browser-side): configuration, content generation and in-browser command/event simulation.
+// Real Discord gateway connection/execution requires an external Node.js runtime; templates are generated for that purpose.
 
 import { esc } from './render.js';
 
@@ -104,4 +104,54 @@ CLIENT_ID=${cfg.clientId || 'COLOQUE_SEU_CLIENT_ID'}
 
 export function renderDiscordFileList(files = []) {
   return `<ul>${files.map((f) => `<li><code>${esc(f.path)}</code> <span class="muted">(${esc(String(f.content.length))} chars)</span></li>`).join('')}</ul>`;
+}
+
+export function simulateDiscordInteraction(cfgInput = {}, inputText = '') {
+  const cfg = buildDiscordConfig(cfgInput);
+  const raw = String(inputText || '').trim();
+  const now = new Date().toISOString();
+  const events = [];
+  if (!raw) {
+    return { ok: false, events: [{ at: now, type: 'warn', message: 'Informe um comando ou mensagem para simular.' }], output: null };
+  }
+
+  const commands = Array.isArray(cfg.commands) ? cfg.commands : [];
+  const findCmd = (name) => commands.find((c) => String(c.name || '').toLowerCase() === String(name || '').toLowerCase())
+    || [{ name: 'ping', description: 'Responde com Pong!', response: 'Pong!' }, { name: 'help', description: 'Ajuda', response: 'Comandos disponíveis no simulador.' }].find((c) => c.name === String(name || '').toLowerCase());
+
+  // Slash-style: /cmd args
+  if (raw.startsWith('/')) {
+    const parts = raw.slice(1).trim().split(/\s+/);
+    const name = (parts.shift() || '').toLowerCase();
+    events.push({ at: now, type: 'event', message: `interactionCreate (slash): /${name}` });
+    const cmd = findCmd(name);
+    if (!cfg.useSlash) events.push({ at: now, type: 'warn', message: 'Slash commands estão desativados na configuração, mas a simulação foi executada.' });
+    if (cmd) {
+      events.push({ at: now, type: 'ok', message: `Comando "${name}" executado no simulador.` });
+      return { ok: true, events, output: { kind: 'slash', command: name, response: String(cmd.response || 'Sem resposta configurada.') } };
+    }
+    events.push({ at: now, type: 'error', message: `Comando "/${name}" não encontrado na configuração/simulador.` });
+    return { ok: false, events, output: { kind: 'slash', command: name, response: 'Comando não encontrado.' } };
+  }
+
+  // Prefix command
+  const prefix = String(cfg.prefix || '!');
+  if (cfg.usePrefix && raw.startsWith(prefix)) {
+    const parts = raw.slice(prefix.length).trim().split(/\s+/);
+    const name = (parts.shift() || '').toLowerCase();
+    events.push({ at: now, type: 'event', message: `messageCreate (prefix): ${prefix}${name}` });
+    const cmd = findCmd(name);
+    if (cmd) {
+      events.push({ at: now, type: 'ok', message: `Comando de prefixo "${name}" processado no simulador.` });
+      return { ok: true, events, output: { kind: 'prefix', command: name, response: String(cmd.response || 'Sem resposta configurada.') } };
+    }
+    events.push({ at: now, type: 'warn', message: `Nenhuma resposta configurada para "${prefix}${name}" no simulador.` });
+    return { ok: false, events, output: { kind: 'prefix', command: name, response: 'Sem resposta configurada.' } };
+  }
+
+  events.push({ at: now, type: 'event', message: 'messageCreate: mensagem recebida (sem comando correspondente no simulador).' });
+  if ((cfg.events || []).includes('messageCreate')) {
+    events.push({ at: now, type: 'info', message: 'Evento messageCreate está habilitado na configuração; lógica personalizada depende do seu código/handlers.' });
+  }
+  return { ok: true, events, output: { kind: 'message', response: null } };
 }
