@@ -1,0 +1,84 @@
+{
+  "generated_at": "2026-11-20T00:13:26.842Z",
+  "root": "C:\\Users\\kauat\\Documents\\GitHub\\Frame-Generator-API",
+  "items": [
+    {
+      "path": "api/v1/index.json",
+      "ok": true,
+      "version": "1.0.0",
+      "etag": "idx-20261119-01",
+      "hash": "d084dafee7c5f9dd"
+    },
+    {
+      "path": "api/v1/models/index.json",
+      "ok": true,
+      "version": "1.0.0",
+      "etag": "mdl-20261119-01",
+      "hash": "7505502f6a77729d"
+    },
+    {
+      "path": "api/v1/frames/index.json",
+      "ok": true,
+      "version": "1.0.0",
+      "etag": "frm-20261119-01",
+      "hash": "09625837662922af"
+    },
+    {
+      "path": "api/v1/frames/templates.json",
+      "ok": true,
+      "version": "1.0.0",
+      "etag": "tpl-20261119-01",
+      "hash": "d0e358bbe5838bea"
+    },
+    {
+      "path": "api/v1/packages/index.json",
+      "ok": true,
+      "version": "1.0.0",
+      "etag": "pkg-20261119-01",
+      "hash": "56e99e34a552c175"
+    },
+    {
+      "path": "api/v1/commands/index.json",
+      "ok": true,
+      "version": "1.0.0",
+      "etag": "cmd-20261119-01",
+      "hash": "c2846d407020f3c0"
+    },
+    {
+      "path": "api/v1/repack/index.json",
+      "ok": true,
+      "version": "1.0.0",
+      "etag": "rpk-20261119-01",
+      "hash": "fffee6f67f8c8bf4"
+    },
+    {
+      "path": "api/v1/adapters/index.json",
+      "ok": true,
+      "version": "1.0.0",
+      "etag": "adp-20261119-01",
+      "hash": "c64cc54e222ecfdc"
+    },
+    {
+      "path": "api/v1/system/status.json",
+      "ok": true,
+      "version": "1.0.0",
+      "etag": "sts-20261119-01",
+      "hash": "788dc814f1eecbf8"
+    },
+    {
+      "path": "api/v1/prompts/integration.json",
+      "ok": true,
+      "version": "1.0.0",
+      "etag": "prm-20261119-01",
+      "hash": "65e6a6351692e907"
+    },
+    {
+      "path": "api/v1/content/index.json",
+      "ok": true,
+      "version": "1.0.0",
+      "etag": "cnt-20261119-01",
+      "hash": "3cf24f1d8977d9fb"
+    }
+  ],
+  "ok": true
+}

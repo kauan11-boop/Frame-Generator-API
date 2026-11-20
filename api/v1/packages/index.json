@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-11-19T00:00:00Z",
+  "etag": "pkg-20261119-01",
+  "auto_adjust": {
+    "enabled": true,
+    "mechanism": "manifest-polling",
+    "client_behavior": "Quando version/etag muda, o SDK recarrega registros dependentes e reidrata caches/configs."
+  },
+  "packages": [
+    { "id": "pkg-model-catalog", "name": "Catálogo de Modelos", "version": "1.0.0", "type": "registry", "provides": ["models.metadata", "gguf.schema"], "requires": [], "entry": "api/v1/models/index.json", "status": "active" },
+    { "id": "pkg-frame-storyboard", "name": "Quadros Storyboard", "version": "1.0.0", "type": "frames", "provides": ["frames.storyboard", "templates.storyboard"], "requires": ["pkg-model-catalog"], "entry": "api/v1/frames/templates.json", "status": "active" },
+    { "id": "pkg-frame-video", "name": "Quadros Sequência de Vídeo", "version": "1.0.0", "type": "frames", "provides": ["frames.video_frames"], "requires": ["pkg-model-catalog"], "entry": "api/v1/frames/templates.json", "status": "active" },
+    { "id": "pkg-frame-datapanel", "name": "Quadros de Dados/UI", "version": "1.0.0", "type": "frames", "provides": ["frames.data_panels"], "requires": [], "entry": "api/v1/frames/templates.json", "status": "active" },
+    { "id": "pkg-gguf-loader", "name": "Loader GGUF (Metadados/WASM)", "version": "1.0.0", "type": "loader", "provides": ["gguf.inspect", "gguf.metadata", "gguf.wasm.experimental"], "requires": [], "entry": "api/v1/adapters/index.json", "status": "active" },
+    { "id": "pkg-repack-core", "name": "Repack Core", "version": "1.0.0", "type": "system", "provides": ["repack.plan", "repack.apply", "repack.audit"], "requires": ["pkg-model-catalog", "pkg-frame-storyboard"], "entry": "api/v1/repack/index.json", "status": "active" },
+    { "id": "pkg-integration-prompt", "name": "Prompt de Integração IA", "version": "1.0.0", "type": "prompt", "provides": ["integration.prompt"], "requires": [], "entry": "api/v1/prompts/integration.json", "status": "active" }
+  ]
+}

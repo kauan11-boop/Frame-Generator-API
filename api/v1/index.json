@@ -1,0 +1,68 @@
+{
+  "name": "Frame-Generator-API",
+  "version": "1.0.0",
+  "etag": "idx-20261119-01",
+  "kind": "static-unified-api",
+  "hosting": {
+    "mode": "hybrid-configurable",
+    "options": {
+      "A_static_pages": true,
+      "B_external_backend_adapters": true,
+      "C_hybrid": true
+    },
+    "notes": "GitHub Pages serve recursos estáticos. Execução pesada via adaptadores externos."
+  },
+  "capabilities": {
+    "model_registry": true,
+    "model_loader_metadata": true,
+    "frame_generation": true,
+    "packages": true,
+    "commands": true,
+    "repack": true,
+    "auto_adjust_manifests": true,
+    "integration_prompt": true
+  },
+  "frame_modes": {
+    "storyboard": { "enabled": true, "description": "Quadros de roteiro visual/cenas com prompts e metadados." },
+    "video_frames": { "enabled": true, "description": "Sequência de frames para vídeo/animação." },
+    "data_panels": { "enabled": true, "description": "Quadros de dados/UI (cards, painéis, tabelas)." },
+    "composite": { "enabled": true, "description": "Composição mista de modos." }
+  },
+  "gguf_modes": {
+    "A_external_runner": { "enabled": true, "runners": ["llama.cpp-server", "ollama", "lm-studio", "openai-compatible", "custom-http"] },
+    "B_wasm_experimental": { "enabled": true, "engines": ["wllama", "llama-cpp-wasm"], "limits": "Modelos pequenos, memória/CPU do navegador, sem descompilação de pesos." },
+    "C_catalog_metadata_only": { "enabled": true }
+  },
+  "protocol": {
+    "format": "application/json",
+    "request_envelope": "schemas/command.schema.json",
+    "response_envelope": "schemas/response.schema.json",
+    "restrictions": {
+      "max_body_bytes": 1048576,
+      "allowlisted_commands": true,
+      "schema_validation": "required",
+      "auth": "adapter-dependent (bearer/api-key/none for public read)"
+    }
+  },
+  "endpoints": {
+    "self": "api/v1/index.json",
+    "models": "api/v1/models/index.json",
+    "frames": "api/v1/frames/index.json",
+    "frame_templates": "api/v1/frames/templates.json",
+    "packages": "api/v1/packages/index.json",
+    "commands": "api/v1/commands/index.json",
+    "repack": "api/v1/repack/index.json",
+    "adapters": "api/v1/adapters/index.json",
+    "system_status": "api/v1/system/status.json",
+    "integration_prompt": "api/v1/prompts/integration.json",
+    "content": "api/v1/content/index.json",
+    "schemas": "schemas/",
+    "sdk": "sdk/frame-api.js",
+    "admin": "admin/index.html"
+  },
+  "sync": {
+    "strategy": "manifest-polling",
+    "fields": ["version", "updated_at", "etag"],
+    "recommended_interval_sec": 60
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-11-19T00:00:00Z",
+  "etag": "tpl-20261119-01",
+  "templates": [
+    {
+      "id": "storyboard-basic",
+      "mode": "storyboard",
+      "title": "Storyboard básico",
+      "scene_schema": {
+        "id": "string",
+        "index": "number",
+        "prompt": "string",
+        "negative_prompt": "string?",
+        "narration": "string?",
+        "camera": "string?",
+        "duration_sec": "number?",
+        "characters": "string[]?",
+        "location": "string?",
+        "lighting": "string?",
+        "transition": "cut|fade|dissolve|wipe",
+        "output_key": "string"
+      },
+      "example": {
+        "mode": "storyboard", "frames": 3, "aspect_ratio": "16:9",
+        "scenes": [
+          { "id": "s1", "index": 1, "prompt": "Plano aberto de cidade futurista ao amanhecer", "transition": "fade", "output_key": "scene1" },
+          { "id": "s2", "index": 2, "prompt": "Personagem observa o horizonte em close", "transition": "cut", "output_key": "scene2" },
+          { "id": "s3", "index": 3, "prompt": "Detalhe de dispositivo holográfico ativando", "transition": "dissolve", "output_key": "scene3" }
+        ]
+      }
+    },
+    {
+      "id": "video-sequence-basic",
+      "mode": "video_frames",
+      "title": "Sequência de frames",
+      "scene_schema": { "shot_id": "string", "start": "number", "end": "number", "fps": "number", "keyframes": "object[]", "motion_prompt": "string" },
+      "example": { "mode": "video_frames", "fps": 24, "frames": 48, "keyframes": [{ "frame": 0, "prompt": "início" }, { "frame": 47, "prompt": "fim" }] }
+    },
+    {
+      "id": "data-panels-basic",
+      "mode": "data_panels",
+      "title": "Quadros de dados/UI",
+      "scene_schema": { "panel_id": "string", "type": "metric|chart|table|card|text", "title": "string", "data_ref": "string?", "layout": "object", "style": "object?" },
+      "example": { "mode": "data_panels", "layout": "grid", "panels": [{ "panel_id": "p1", "type": "metric", "title": "Jobs ativos", "data_ref": "system.jobs.active" }, { "panel_id": "p2", "type": "chart", "title": "Latência" }] }
+    },
+    {
+      "id": "composite-mixed",
+      "mode": "composite",
+      "title": "Composto misto",
+      "scene_schema": { "segments": "array of storyboard|video_frames|data_panels blocks" },
+      "example": { "mode": "composite", "segments": [{ "mode": "storyboard", "frames": 2 }, { "mode": "data_panels", "frames": 1 }] }
+    }
+  ]
+}

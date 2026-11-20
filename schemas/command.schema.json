@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "command.schema.json",
+  "title": "Unified Command Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["command", "request_id", "payload"],
+  "properties": {
+    "command": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.:-]{3,64}$",
+      "description": "Comando allowlisted (ex.: models.list, frames.create, repack.plan)."
+    },
+    "request_id": { "type": "string", "minLength": 8, "maxLength": 64 },
+    "client": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "instance_id": { "type": "string" }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "enum": ["none", "bearer", "api_key", "adapter"] },
+        "token_ref": { "type": "string", "description": "Referência/alias do token; nunca enviar segredo em logs." }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "idempotency_key": { "type": "string" },
+        "dry_run": { "type": "boolean", "default": false },
+        "trace": { "type": "boolean", "default": false }
+      },
+      "additionalProperties": true
+    },
+    "payload": { "type": "object" }
+  }
+}

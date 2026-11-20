@@ -1,0 +1,101 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-11-19T00:00:00Z",
+  "etag": "mdl-20261119-01",
+  "description": "Registro unificado de modelos de IA com metadados completos e modos de carregamento (externo, wasm experimental, catálogo).",
+  "load_modes": ["A_external_runner", "B_wasm_experimental", "C_catalog_metadata_only"],
+  "gguf_metadata_schema": {
+    "general": ["architecture", "name", "author", "version", "license", "url", "description", "file_type", "quantization_version", "size_label"],
+    "architecture": ["{arch}.context_length", "{arch}.embedding_length", "{arch}.block_count", "{arch}.feed_forward_length", "{arch}.attention.head_count", "{arch}.attention.head_count_kv", "{arch}.rope.dimension_count", "{arch}.expert_count"],
+    "tokenizer": ["tokenizer.ggml.model", "tokenizer.ggml.tokens", "tokenizer.ggml.scores", "tokenizer.ggml.token_type", "tokenizer.ggml.bos_token_id", "tokenizer.ggml.eos_token_id", "tokenizer.ggml.padding_token_id", "tokenizer.chat_template"],
+    "tensors": ["count", "types", "total_bytes", "index_ref"],
+    "inspection": ["sha256", "source_uri", "extracted_at", "inspector", "structure_graph_ref"]
+  },
+  "models": [
+    {
+      "id": "catalog/llama-storyboard-planner",
+      "name": "Llama Storyboard Planner",
+      "family": "llama",
+      "format": "gguf",
+      "mode": "A_external_runner",
+      "status": "catalog",
+      "capabilities": { "text": true, "vision": false, "tool_call": false, "json_mode": true, "streaming": true, "frame_planning": true },
+      "context_length": 8192,
+      "quantization": "Q4_K_M",
+      "gguf": {
+        "general": { "architecture": "llama", "name": "Llama Storyboard Planner", "file_type": "Q4_K_M", "license": "open" },
+        "architecture": { "llama.context_length": 8192, "llama.embedding_length": 4096, "llama.block_count": 32, "llama.attention.head_count": 32, "llama.attention.head_count_kv": 8 },
+        "tokenizer": { "tokenizer.ggml.model": "bpe", "tokenizer.ggml.bos_token_id": 1, "tokenizer.ggml.eos_token_id": 2, "tokenizer.chat_template": "chatml" },
+        "tensors": { "count": 291, "types": ["Q4_K", "Q6_K", "F16"], "total_bytes": 4368709120 },
+        "inspection": { "sha256": null, "source_uri": "external://runner/models/llama-storyboard-planner", "inspector": "metadata-only" }
+      },
+      "runners": ["llama.cpp-server", "ollama", "lm-studio"],
+      "adapters": ["adapter-external-http", "adapter-openai-compatible"],
+      "tags": ["planner", "storyboard", "json"]
+    },
+    {
+      "id": "catalog/vision-frame-director",
+      "name": "Vision Frame Director",
+      "family": "multimodal",
+      "format": "gguf",
+      "mode": "A_external_runner",
+      "status": "catalog",
+      "capabilities": { "text": true, "vision": true, "tool_call": true, "json_mode": true, "streaming": true, "frame_planning": true },
+      "context_length": 32768,
+      "quantization": "Q5_K_M",
+      "gguf": {
+        "general": { "architecture": "llama", "name": "Vision Frame Director", "file_type": "Q5_K_M", "license": "provider" },
+        "architecture": { "llama.context_length": 32768, "llama.embedding_length": 5120, "llama.block_count": 40, "llama.attention.head_count": 40 },
+        "tokenizer": { "tokenizer.ggml.model": "bpe", "tokenizer.chat_template": "llama3" },
+        "tensors": { "count": 0, "types": [], "total_bytes": null },
+        "inspection": { "sha256": null, "source_uri": "external://runner/models/vision-frame-director", "inspector": "metadata-only" }
+      },
+      "runners": ["openai-compatible", "custom-http"],
+      "adapters": ["adapter-openai-compatible"],
+      "tags": ["vision", "storyboard", "video_frames"]
+    },
+    {
+      "id": "wasm/tiny-frame-helper",
+      "name": "Tiny Frame Helper (WASM)",
+      "family": "tinyllama",
+      "format": "gguf",
+      "mode": "B_wasm_experimental",
+      "status": "experimental",
+      "capabilities": { "text": true, "vision": false, "tool_call": false, "json_mode": true, "streaming": true, "frame_planning": true },
+      "context_length": 2048,
+      "quantization": "Q4_0",
+      "gguf": {
+        "general": { "architecture": "llama", "name": "Tiny Frame Helper", "file_type": "Q4_0", "license": "open" },
+        "architecture": { "llama.context_length": 2048, "llama.embedding_length": 2048, "llama.block_count": 22, "llama.attention.head_count": 32 },
+        "tokenizer": { "tokenizer.ggml.model": "bpe", "tokenizer.chat_template": "chatml" },
+        "tensors": { "count": 201, "types": ["Q4_0", "F16"], "total_bytes": 620000000 },
+        "inspection": { "sha256": null, "source_uri": "cdn://models/tiny-frame-helper-q4_0.gguf", "inspector": "wasm-header-parse" }
+      },
+      "runners": ["wllama", "llama-cpp-wasm"],
+      "adapters": ["adapter-wasm-browser"],
+      "tags": ["wasm", "small", "planner"],
+      "limits": { "browser_memory_mb": 2048, "recommended": "apenas modelos pequenos; sem descompilação de pesos" }
+    },
+    {
+      "id": "catalog/gguf-inspector",
+      "name": "GGUF Inspector (Metadata/Structure)",
+      "family": "tool",
+      "format": "gguf",
+      "mode": "C_catalog_metadata_only",
+      "status": "catalog",
+      "capabilities": { "text": false, "vision": false, "tool_call": true, "json_mode": true, "streaming": false, "metadata_extract": true, "tensor_index": true, "decompile_weights": false },
+      "context_length": 0,
+      "quantization": null,
+      "gguf": {
+        "general": {},
+        "architecture": {},
+        "tokenizer": {},
+        "tensors": { "count": null, "types": [], "total_bytes": null },
+        "inspection": { "sha256": null, "source_uri": "local-or-remote://user-provided.gguf", "inspector": "header+kv+tensor-index" }
+      },
+      "runners": ["external-inspector", "wasm-header-parser"],
+      "adapters": ["adapter-external-http", "adapter-wasm-browser"],
+      "tags": ["gguf", "metadata", "inspect", "control"]
+    }
+  ]
+}

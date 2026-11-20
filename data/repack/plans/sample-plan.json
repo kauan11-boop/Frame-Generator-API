@@ -1,0 +1,17 @@
+{
+  "plan_id": "plan-sample-0001",
+  "created_at": "2026-11-19T00:00:00Z",
+  "status": "simulated",
+  "strategy": "fill-missing",
+  "target": "api/v1",
+  "inputs": { "manifests": ["models", "frames", "packages", "commands", "adapters"], "overlays": [] },
+  "gaps": [
+    { "resource": "models", "issue": "missing-field", "path": "models[2].gguf.inspection.sha256", "action": "fill-nullable" }
+  ],
+  "actions": [
+    { "op": "normalize", "path": "api/v1/models/index.json", "detail": "garantir campos de inspeção GGUF presentes" },
+    { "op": "merge", "path": "api/v1/packages/index.json", "detail": "alinhar versões de pacotes dependentes" }
+  ],
+  "simulation": { "schema_valid": true, "breaking_changes": false, "notes": "dry-run ok" },
+  "approval": { "required": true, "approved": false, "approved_by": null }
+}

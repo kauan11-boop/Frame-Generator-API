@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Frame-Generator-API — Admin</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Frame-Generator-API</h1>
+      <p class="sub">API unificada estática (GitHub Pages) — modelos, quadros, pacotes, comandos, Repack</p>
+    </div>
+    <div class="status" id="status-pill">carregando…</div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="overview" class="active">Visão geral</button>
+    <button data-tab="models">Modelos & GGUF</button>
+    <button data-tab="frames">Geração de quadros</button>
+    <button data-tab="packages">Pacotes</button>
+    <button data-tab="commands">Comandos JSON</button>
+    <button data-tab="repack">Repack</button>
+    <button data-tab="adapters">Adaptadores</button>
+    <button data-tab="integration">Integração (IA)</button>
+  </nav>
+
+  <main>
+    <section id="tab-overview" class="tab active"></section>
+    <section id="tab-models" class="tab"></section>
+    <section id="tab-frames" class="tab"></section>
+    <section id="tab-packages" class="tab"></section>
+    <section id="tab-commands" class="tab"></section>
+    <section id="tab-repack" class="tab"></section>
+    <section id="tab-adapters" class="tab"></section>
+    <section id="tab-integration" class="tab"></section>
+  </main>
+
+  <footer>
+    <span id="meta"></span>
+    <span>Base: <code id="base"></code></span>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

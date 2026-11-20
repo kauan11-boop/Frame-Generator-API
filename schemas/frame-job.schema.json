@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "frame-job.schema.json",
+  "title": "Frame Generation Job",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mode", "prompt"],
+  "properties": {
+    "mode": { "enum": ["storyboard", "video_frames", "data_panels", "composite"] },
+    "prompt": { "type": "string", "minLength": 1, "maxLength": 8000 },
+    "negative_prompt": { "type": "string" },
+    "frames": { "type": "integer", "minimum": 1, "maximum": 512 },
+    "fps": { "type": "integer", "minimum": 1, "maximum": 120 },
+    "aspect_ratio": { "type": "string", "pattern": "^[0-9]+:[0-9]+$" },
+    "model": { "type": "string" },
+    "adapter": { "type": "string" },
+    "scenes": { "type": "array", "items": { "type": "object" } },
+    "panels": { "type": "array", "items": { "type": "object" } },
+    "segments": { "type": "array", "items": { "type": "object" } },
+    "output": { "type": "object", "additionalProperties": true },
+    "control": {
+      "type": "object",
+      "properties": {
+        "priority": { "enum": ["low", "normal", "high"] },
+        "seed": { "type": "integer" },
+        "safety": { "type": "object", "additionalProperties": true },
+        "callback_url": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
