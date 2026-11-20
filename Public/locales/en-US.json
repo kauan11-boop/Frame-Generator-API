@@ -1,0 +1,18 @@
+{
+  "id": "en-US",
+  "name": "English (US)",
+  "strings": {
+    "app.title": "Frame-Generator-API",
+    "dashboard": "Dashboard",
+    "models": "Models",
+    "generators": "Generators",
+    "engines": "Engines",
+    "repacks": "Repacks",
+    "tools": "Tools",
+    "users": "Users",
+    "settings": "Settings",
+    "status.ready": "Ready",
+    "status.demo": "Demo mode",
+    "status.unavailable": "Unavailable (requires provider/runtime)"
+  }
+}

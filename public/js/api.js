@@ -10,7 +10,7 @@ export async function fetchJson(path) {
 export async function loadLegacy() {
   // Dados legados/controlados (manifests estáticos), quando presentes
   const names = ['index','system_status','models','frames','templates','packages','commands','repack','adapters','prompt','content'];
-  const candidates = (p) => [p, `Legacy/${p}`, `../archive/Legacy/${p}`];
+  const candidates = (p) => [`../archive/Legacy/${p}`, `Legacy/${p}`, p];
   const paths = {
     index: '03_API/v1/index.json',
     system_status: '03_API/v1/system/status.json',

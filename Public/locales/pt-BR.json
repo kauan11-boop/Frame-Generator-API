@@ -1,0 +1,18 @@
+{
+  "id": "pt-BR",
+  "name": "Português (Brasil)",
+  "strings": {
+    "app.title": "Frame-Generator-API",
+    "dashboard": "Dashboard",
+    "models": "Modelos",
+    "generators": "Geradores",
+    "engines": "Engines",
+    "repacks": "Repacks",
+    "tools": "Ferramentas",
+    "users": "Usuários",
+    "settings": "Configurações",
+    "status.ready": "Pronto",
+    "status.demo": "Modo demonstração",
+    "status.unavailable": "Indisponível (requer provedor/runtime)"
+  }
+}

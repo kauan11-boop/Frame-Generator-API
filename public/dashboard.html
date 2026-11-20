@@ -5,54 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dashboard — Frame-Generator-API</title>
   <link rel="stylesheet" href="./css/main.css" />
+  <style>
+    .form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
+    .form-row input,.form-row select{padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;font:13px var(--sans)}
+    .form-row label{font-size:13px;color:var(--muted)}
+    .grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+    .section-note{font-size:13px;color:var(--muted);margin:6px 0 0}
+    .tag-ok{color:var(--ok)} .tag-err{color:var(--err)} .tag-warn{color:var(--warn)}
+  </style>
 </head>
 <body class="dashboard-body">
   <div class="app-shell">
     <aside class="sidebar">
       <div class="sidebar-header">
         <a href="./index.html" class="brand-link">Frame-Generator-API</a>
-        <span class="sub">Administração & controle</span>
+        <span class="sub">Administração unificada</span>
       </div>
 
       <nav class="tabs sidebar-nav" id="tabs" aria-label="Seções">
-        <button data-tab="overview" class="active"><span>Visão geral</span></button>
-        <button data-tab="models"><span>Modelos & GGUF</span></button>
-        <button data-tab="frames"><span>Geração de quadros</span></button>
-        <button data-tab="packages"><span>Pacotes</span></button>
-        <button data-tab="commands"><span>Comandos JSON</span></button>
-        <button data-tab="repack"><span>Repack</span></button>
-        <button data-tab="adapters"><span>Adaptadores</span></button>
-        <button data-tab="integration"><span>Integração IA</span></button>
+        <button data-tab="dashboard" class="active"><span>Dashboard</span></button>
+        <button data-tab="frame"><span>Frame Generator</span></button>
+        <button data-tab="game"><span>Game Generator</span></button>
+        <button data-tab="image"><span>Image Generator</span></button>
+        <button data-tab="video"><span>Video Generator</span></button>
+        <button data-tab="model-manager"><span>Model Manager</span></button>
+        <button data-tab="gguf"><span>GGUF Loader</span></button>
+        <button data-tab="metadata"><span>Metadata</span></button>
+        <button data-tab="quantization"><span>Quantization</span></button>
+        <button data-tab="engines"><span>Engine Manager</span></button>
+        <button data-tab="repacks"><span>Repack Manager</span></button>
+        <button data-tab="tools"><span>Tool Manager</span></button>
+        <button data-tab="api"><span>API Manager</span></button>
+        <button data-tab="users"><span>User Manager</span></button>
+        <button data-tab="settings"><span>Settings</span></button>
       </nav>
 
       <div class="sidebar-footer">
         <div class="status-row"><span class="label">Status</span><div class="status" id="status-pill">carregando…</div></div>
-        <a class="sidebar-link" href="../src/03_API/v1/index.json">Discovery JSON</a>
+        <a class="sidebar-link" href="../configs/api.json">Contrato API</a>
       </div>
     </aside>
 
     <div class="main-area">
       <header class="main-header">
         <div>
-          <h1 class="page-title">Dashboard do sistema</h1>
-          <p class="sub">Conteúdos controlados, API estática <code>src/03_API/v1</code> e administração por manifesto</p>
+          <h1 class="page-title">Frame-Generator-API</h1>
+          <p class="sub">Núcleo modular, API lógica central, gerenciadores e geradores unificados (GitHub Pages / estático)</p>
         </div>
       </header>
 
       <main class="container">
-        <section id="tab-overview" class="tab active"></section>
-        <section id="tab-models" class="tab"></section>
-        <section id="tab-frames" class="tab"></section>
-        <section id="tab-packages" class="tab"></section>
-        <section id="tab-commands" class="tab"></section>
-        <section id="tab-repack" class="tab"></section>
-        <section id="tab-adapters" class="tab"></section>
-        <section id="tab-integration" class="tab"></section>
+        <section id="tab-dashboard" class="tab active"></section>
+        <section id="tab-frame" class="tab"></section>
+        <section id="tab-game" class="tab"></section>
+        <section id="tab-image" class="tab"></section>
+        <section id="tab-video" class="tab"></section>
+        <section id="tab-model-manager" class="tab"></section>
+        <section id="tab-gguf" class="tab"></section>
+        <section id="tab-metadata" class="tab"></section>
+        <section id="tab-quantization" class="tab"></section>
+        <section id="tab-engines" class="tab"></section>
+        <section id="tab-repacks" class="tab"></section>
+        <section id="tab-tools" class="tab"></section>
+        <section id="tab-api" class="tab"></section>
+        <section id="tab-users" class="tab"></section>
+        <section id="tab-settings" class="tab"></section>
       </main>
 
       <footer class="footer">
         <span id="meta"></span>
-        <span>API base: <code id="base"></code></span>
+        <span>Modo: <code id="mode-pill">—</code> · Base: <code id="base"></code></span>
       </footer>
     </div>
   </div>

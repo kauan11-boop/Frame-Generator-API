@@ -1,0 +1,7 @@
+{
+  "id": "template-basic",
+  "name": "Template Básico",
+  "type": "frame-job",
+  "fields": ["operation", "model", "engine", "input", "output", "preset"],
+  "defaults": { "engine": "auto", "preset": null }
+}

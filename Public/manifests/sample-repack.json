@@ -1,0 +1,15 @@
+{
+  "id": "sample-frame-pack",
+  "name": "Sample Frame Pack",
+  "version": "1.0.0",
+  "enabled": true,
+  "modules": [
+    { "id": "image-upscale-adapter", "type": "image-enhancement", "enabled": true },
+    { "id": "video-interpolation-adapter", "type": "frame-interpolation", "enabled": false }
+  ],
+  "dependencies": [],
+  "permissions": ["models.read", "generators.execute"],
+  "configuration": {
+    "note": "Manifesto de exemplo. Módulos sem runtime/backend compatível permanecem indisponíveis para execução."
+  }
+}

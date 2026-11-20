@@ -9,20 +9,20 @@
 <body class="landing">
   <main class="hero">
     <div class="hero-card">
-      <div class="badge">GitHub Pages · API estática unificada</div>
+      <div class="badge">GitHub Pages · Plataforma modular unificada</div>
       <h1>Frame-Generator-API</h1>
-      <p>Orquestração de modelos de IA, geração de quadros, pacotes autoajustáveis, comandos JSON e Repack auditável — em uma interface clara, consumindo <code>src/03_API/v1</code>.</p>
+      <p>Ecossistema web para carregar modelos de IA, analisar metadados GGUF, planejar geração/aprimoramento de quadros (imagem, vídeo, jogo), administrar engines, repacks, ferramentas, usuários e tarefas — com API lógica central e núcleo no navegador.</p>
       <div class="actions">
         <a class="btn primary" href="./dashboard.html">Abrir dashboard</a>
-        <a class="btn" href="../src/03_API/v1/index.json">Discovery JSON</a>
-        <a class="btn" href="../src/02_Configuration/prompts/integration.md">Prompt de integração</a>
+        <a class="btn" href="../configs/api.json">Contrato API</a>
+        <a class="btn" href="./documentation/index.md">Documentação</a>
       </div>
       <div class="grid mini">
-        <div class="mini-card"><h3>Modelos & GGUF</h3><p>Metadados completos e carregamento por runner externo, WASM experimental ou catálogo.</p></div>
-        <div class="mini-card"><h3>Geração de quadros</h3><p>Storyboard, sequência de vídeo, quadros de dados/UI e modo composto.</p></div>
-        <div class="mini-card"><h3>Comandos & Repack</h3><p>Envelope com allowlist e pipeline scan → diff → plan → simulate → apply → verify.</p></div>
+        <div class="mini-card"><h3>Modelos & GGUF</h3><p>Análise real de metadados GGUF no navegador, registro, compatibilidade e quantização (análise/planejamento) com execução delegada a runtime compatível.</p></div>
+        <div class="mini-card"><h3>Geração de quadros</h3><p>Motores unificados para imagem, vídeo e jogo: planejamento, análise e integração com engines/provedores externos quando necessários.</p></div>
+        <div class="mini-card"><h3>Repacks & Ferramentas</h3><p>Manifests JSON validados, registro de ferramentas/repacks e administração modular integrada à API lógica e ao painel.</p></div>
       </div>
-      <p class="muted small">Leitura estática no Pages. Execução e escrita reais são delegadas a adaptadores externos configurados.</p>
+      <p class="muted small">Hospedagem estática no GitHub Pages (modo demonstração/local). Inferência e processamento pesado dependem de engines, runtimes ou backends externos compatíveis configurados — sem simulação de resultados.</p>
     </div>
   </main>
 </body>

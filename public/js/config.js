@@ -1,10 +1,9 @@
-// Configuração da interface: API estática em src/03_API/v1 (arquitetura 01_Core..15_Integration)
+// Configuração da interface (hospedagem estática). O núcleo FGUA e configs são a fonte principal;
+// manifests legados em archive/Legacy podem ser usados como fallback de conteúdo.
 export const CONFIG = {
-  // Caminho relativo da interface (Public/) para a raiz da API estática
   API_ROOT: '../src',
-  API_V1: '../src/03_API/v1',
-  SCHEMAS: '../src/12_Validation',
-  PROMPTS_SRC: '../src/02_Configuration/prompts/integration.md'
+  CONFIGS: '../configs',
+  LEGACY_ROOT: '../archive/Legacy'
 };
 
 export function apiUrl(path) {

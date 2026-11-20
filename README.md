@@ -49,7 +49,7 @@ Frame-Generator-API/
 - **Repacks/Ferramentas:** `ManifestLoader` (validação), `ToolRegistry`, `RepackManager` (importação/registro/validação).
 - **Segurança/Usuários (UI):** `AuthenticationManager`, `PermissionManager`, `ValidationManager` (validação de arquivos/JSON/endpoints; controle de UI em ambiente estático).
 - **Storage/Jobs:** `IndexedDBManager`, `CacheManager`, `HistoryManager` e gerenciador de tarefas/estados no núcleo.
-- **Dashboard (sidebar):** visão de sistema/módulos/capacidades, análise GGUF por upload local, registro de modelos, engines/provedores, geradores/planos, tarefas, repacks/ferramentas, quantização, configs, usuários/permissões e logs.
+- **Dashboard (sidebar, 15 áreas):** Dashboard, Frame/Game/Image/Video Generator, Model Manager, GGUF Loader, Metadata, Quantization, Engine Manager, Repack Manager, Tool Manager, API Manager, User Manager e Settings — integrados ao núcleo (estado, capacidades, análise GGUF, registro, planos, tarefas, engines/provedores, manifests, configs, usuários/permissões e logs).
 
 ## Desenvolvimento local
 

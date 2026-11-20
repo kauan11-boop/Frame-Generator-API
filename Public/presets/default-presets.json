@@ -1,0 +1,8 @@
+{
+  "presets": [
+    { "id": "game-smooth-30-60", "name": "Jogo: 30→60 FPS", "category": "game", "config": { "inputFps": 30, "targetFps": 60, "interpolate": true } },
+    { "id": "video-film-24-60", "name": "Vídeo/Filme: 24→60 FPS", "category": "video", "config": { "inputFps": 24, "targetFps": 60, "interpolate": true, "preserveAudioSync": true } },
+    { "id": "image-upscale-2x", "name": "Imagem: Upscale 2x", "category": "image", "config": { "scale": 2, "denoise": false, "enhance": true } },
+    { "id": "image-upscale-4x-denoise", "name": "Imagem: Upscale 4x + Denoise", "category": "image", "config": { "scale": 4, "denoise": true, "enhance": true } }
+  ]
+}

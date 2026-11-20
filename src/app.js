@@ -31,16 +31,24 @@ import { IndexedDBManager } from './storage/IndexedDBManager.js';
 import { CacheManager } from './storage/CacheManager.js';
 import { HistoryManager } from './storage/HistoryManager.js';
 
-// Task/Job manager simples (fila e estados) para o núcleo
+// Task/Job manager (fila e estados)
 class JobManager {
   constructor(events){ this.events=events; this.tasks=new Map(); this.queue=[]; this.running=0; this.concurrency=2; }
-  create(spec={}){ const t={ id:`job_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`, category:spec.category||'general', engine:spec.engine||null, model:spec.model||null, state:'Pending', progress:0, createdAt:new Date().toISOString(), completedAt:null, result:null, errors:[], _run:spec.run||null }; this.tasks.set(t.id,t); this.queue.push(t.id); this._pump(); return this._pub(t); }
+  create(spec={}){ const t={ id:`job_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`, type:spec.type||spec.category||'general', category:spec.category||spec.type||'general', user:spec.user||null, model:spec.model||null, engine:spec.engine||null, state:'Pending', progress:0, createdAt:new Date().toISOString(), startedAt:null, completedAt:null, result:null, errors:[], metadata:spec.metadata||{}, _run:spec.run||null }; this.tasks.set(t.id,t); this.queue.push(t.id); this._pump(); return this._pub(t); }
   list(){ return [...this.tasks.values()].map(t=>this._pub(t)); }
   get(id){ const t=this.tasks.get(id); return t?this._pub(t):null; }
-  async cancel(id){ const t=this.tasks.get(id); if(t&&t.state==='Pending'){t.state='Cancelled';t.completedAt=new Date().toISOString();} return this.get(id); }
+  async cancel(id){ const t=this.tasks.get(id); if(!t) return null; if(['Pending','Queued'].includes(t.state)){ t.state='Cancelled'; t.completedAt=new Date().toISOString(); this.queue=this.queue.filter(x=>x!==id); } return this.get(id); }
   _pub(t){ const {_run,...r}=t; return {...r}; }
-  async _pump(){ while(this.running<this.concurrency){ const id=this.queue.find(i=>this.tasks.get(i)?.state==='Pending'); if(!id) break; this.queue=this.queue.filter(x=>x!==id); this._runTask(this.tasks.get(id)); } }
-  async _runTask(t){ this.running++; t.state='Running'; t.startedAt=new Date().toISOString(); this.events?.emit('task.progress', this._pub(t)); try{ const update=(p,extra={})=>{t.progress=Math.max(0,Math.min(100,p));Object.assign(t,extra); this.events?.emit('task.progress',this._pub(t));}; if(t._run) t.result=await t._run({update}); else {t.progress=100; t.result={status:'unavailable',message:'Nenhum executor associado.'};} t.state='Completed'; t.progress=100; }catch(e){ t.state='Failed'; t.errors.push({message:e.message}); } finally{ t.completedAt=new Date().toISOString(); this.running--; this._pump(); } }
+  async _pump(){ while(this.running<this.concurrency){ const id=this.queue.find(i=>this.tasks.get(i)?.state==='Pending'); if(!id) break; const t=this.tasks.get(id); t.state='Queued'; this.queue=this.queue.filter(x=>x!==id); this._runTask(t); } }
+  async _runTask(t){ this.running++; try{
+      t.state='Loading'; t.startedAt=new Date().toISOString(); this.events?.emit('task.progress', this._pub(t));
+      const update=(p,extra={})=>{ t.state='Processing'; t.progress=Math.max(0,Math.min(100,p)); if(extra && typeof extra==='object') Object.assign(t, extra); this.events?.emit('task.progress',this._pub(t)); };
+      if(t._run) { t.result = await t._run({update, job:this._pub(t)}); } else { update(100); t.result={ ok:false, status:'unavailable', message:'Nenhum executor associado. Configure engine/provedor compatível.' }; }
+      t.state = (t.result && t.result.ok===false && /unavailable|requires/i.test(String(t.result.status||t.result.state||t.result.error?.code||''))) ? 'Completed' : 'Completed';
+      t.progress=100;
+    } catch(e){ t.state='Failed'; t.errors.push({ message: e.message, at:new Date().toISOString() }); }
+    finally { t.completedAt=new Date().toISOString(); this.running--; this._pump(); }
+  }
 }
 
 class ProviderManager {
@@ -121,12 +129,15 @@ export async function createApp() {
   auth.createUser({ name:'Administrator', role:'Administrator' });
 
   // carregar configs (best effort)
-  const cfgNames = ['api','models','generators','repacks','permissions','settings','system','providers','tools','controllers','presets'];
+  const cfgNames = ['api','models','generators','repacks','permissions','settings'];
   for(const n of cfgNames){ try{ await settings.load(n, `./configs/${n}.json`); }catch{ /* opcional */ } }
 
-  // provedores/controllers a partir de configs se existirem
-  const provCfg = settings.get('providers'); for(const p of (provCfg?.providers||[])) providers.register(p);
+  // provedores a partir de settings/config
+  const settingsCfg = settings.get('settings');
+  for(const p of (settingsCfg?.providers||[])) { if(!providers.get(p.id)) providers.register(p); }
   if(!providers.list().length){ providers.register({id:'browser-local',name:'Browser Local',type:'Browser Local',state:'available',capabilities:['analysis','ui']}); providers.register({id:'webgpu-local',name:'WebGPU Local',type:'WebGPU',state:'detect',capabilities:['gpu-detect']}); providers.register({id:'external-backend',name:'External Backend',type:'Remote REST API',state:'unconfigured',url:null}); }
+  const permCfg = settings.get('permissions');
+  if (permCfg?.roles && permissions?.setRoles) permissions.setRoles(permCfg.roles);
 
   const webgpuInfo = await webgpu.detect();
   const codecsInfo = webcodecs.detect();
@@ -134,7 +145,24 @@ export async function createApp() {
 
   await lifecycle.initialize({ caps });
 
-  const enginesManager = { list: ()=>[webgpu.getStatus(), webcodecs.getStatus(), onnx.getStatus(), backend.getStatus()], select: (c={})=>null, get:(id)=>({webgpu,webcodecs,onnx,backend}[id]||null) };
+  const enginesManager = {
+    list: () => [webgpu.getStatus(), webcodecs.getStatus(), onnx.getStatus(), backend.getStatus()],
+    get: (id) => ({ webgpu, webcodecs, onnx, backend, 'onnx-web': onnx, 'webcodecs': webcodecs, 'webgpu': webgpu, 'backend': backend }[id] || null),
+    detect: async () => ({ webgpu: await webgpu.detect(), webcodecs: webcodecs.detect(), onnx: onnx.detect(), backend: backend.getStatus() }),
+    select: (criteria = {}) => {
+      const c = criteria || {};
+      const fmt = String(c.format || c.modelFormat || '').toLowerCase();
+      const op = String(c.operation || c.type || '').toLowerCase();
+      const needVideo = /video|decode|encode|media|frame/.test(op);
+      const backendOk = !!backend.baseUrl && backend.state !== 'unconfigured';
+      if (c.prefer === 'backend' || c.backend || (fmt && !['gguf','onnx','json-manifest'].includes(fmt) && backendOk)) return { id: 'backend', reason: 'Backend configurado para operação/formato não local.' };
+      if (fmt === 'onnx' && onnx.detect().available) return { id: 'onnx-web', reason: 'Formato ONNX com runtime ONNX Web disponível.' };
+      if (needVideo && webcodecs.detect().available) return { id: 'webcodecs', reason: 'Pipeline de mídia suportado por WebCodecs.' };
+      if (webgpuInfo?.available) return { id: 'webgpu', reason: 'WebGPU disponível para aceleração compatível.' };
+      if (backendOk) return { id: 'backend', reason: 'Fallback para backend configurado.' };
+      return { id: null, reason: 'Nenhum engine compatível/disponível para os critérios informados (pode requerer provedor externo).', criteria: c };
+    }
+  };
   const universalGenerator = frameGenerator;
 
   const app = {
@@ -143,10 +171,10 @@ export async function createApp() {
     quantization, quantizationAnalyzer, generatorRegistry, frameGenerator, imageGenerator, videoGenerator, universalGenerator,
     imageProcessor, videoProcessor, frameProcessor, webgpu, webcodecs, onnx, backend,
     engines: enginesManager, manifestLoader, tools, repacks, auth, users: auth, permissions, validation, security: validation,
-    tasks, providers, caps, webgpuInfo, codecsInfo,
+    tasks, jobs: tasks, providers, caps, webgpuInfo, codecsInfo,
     getStatus(){
       const s=lifecycle.getStatus();
-      return { ...s, capabilities:caps, webgpu:webgpuInfo, webcodecs:codecsInfo, counts:{ models:modelRegistry.list().length, loadedModels:modelLoader.listLoaded().length, tasks:tasks.list().length, providers:providers.list().length, engines:enginesManager.list().length, tools:tools.list().length, repacks:repacks.list().length, users:auth.listUsers().length, generators:generatorRegistry.list().length } };
+      return { ...s, mode: api.mode, capabilities:caps, webgpu:webgpuInfo, webcodecs:codecsInfo, counts:{ models:modelRegistry.list().length, loadedModels:modelLoader.listLoaded().length, tasks:tasks.list().length, providers:providers.list().length, engines:enginesManager.list().length, tools:tools.list().length, repacks:repacks.list().length, users:auth.listUsers().length, generators:generatorRegistry.list().length } };
     }
   };
 
