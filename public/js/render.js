@@ -9,10 +9,12 @@ export function setActiveTab(id) {
 }
 
 export function renderError(container, err) {
-  container.innerHTML = `
+  const target = container || document.getElementById('tab-overview') || document.querySelector('.container') || document.body;
+  const msg = err && err.message ? err.message : (typeof err === 'string' ? err : JSON.stringify(err, null, 2));
+  if (target) target.innerHTML = `
     <div class="card error-box">
       <h3>Erro ao carregar dashboard</h3>
-      <pre>${esc(err.message || err)}</pre>
+      <pre>${esc(msg)}</pre>
       <p class="muted">Sirva o repositório com um servidor estático (ex.: <code>npx serve .</code>) e abra <code>/Public/dashboard.html</code>. O dashboard inicializa o núcleo FGUA e consome conteúdos em <code>src/</code> e <code>configs/</code>.</p>
     </div>`;
 }

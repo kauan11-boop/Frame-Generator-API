@@ -65,11 +65,11 @@ function renderOverview(app){
   const providers = app?.providers?.list ? app.providers.list() : [];
   const generators = app?.generatorRegistry?.list ? app.generatorRegistry.list() : [];
 
-  document.getElementById('status-pill').textContent = s?.status || (app?.error ? 'erro' : 'indisponível');
-  document.getElementById('status-pill').className = 'status ' + (s?.status === 'ready' ? 'ok' : (app?.error ? 'err' : ''));
-  document.getElementById('mode-pill').textContent = app?.api?.mode || s?.mode || 'demo';
-  document.getElementById('base').textContent = new URL('../', location.href).toString();
-  document.getElementById('meta').textContent = s ? `v${s.version} • ${s.modules?.length||0} módulos • ${s.initialized ? 'inicializado' : 'não inicializado'}` : 'núcleo indisponível';
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const sp = document.getElementById('status-pill'); if (sp) { sp.textContent = s?.status || (app?.error ? 'erro' : 'indisponível'); sp.className = 'status ' + (s?.status === 'ready' ? 'ok' : (app?.error ? 'err' : '')); }
+  setText('mode-pill', app?.api?.mode || s?.mode || 'demo');
+  setText('base', new URL('../', location.href).toString());
+  setText('meta', s ? `v${s.version} • ${s.modules?.length||0} módulos • ${s.initialized ? 'inicializado' : 'não inicializado'}` : 'núcleo indisponível');
 
   const countItems = [
     { label: 'Modelos', value: counts.models ?? models.length },
@@ -99,7 +99,8 @@ function renderOverview(app){
 
   const providerItems = providers.length ? providers.map(p=>({label:p.name||p.id, value:1, state:p.state||'—'})) : [];
 
-  document.getElementById('tab-overview').innerHTML = `
+  const overviewEl = document.getElementById('tab-overview'); if (!overviewEl) return;
+  overviewEl.innerHTML = `
     <div class="grid">
       <div class="card"><h3>Estado do sistema</h3><div class="kv">
         <div>Status</div><div>${pill(s?.status||'n/d')}</div>
@@ -239,7 +240,8 @@ Payload: exportado por esta aba ("Baixar payload de integração").`;
 `# Master prompt: Public/documentation/master-prompt.md\n`+
 `# Licença: LICENSE (MIT)`;
 
-  document.getElementById('tab-integration').innerHTML = `
+  const integrationEl = document.getElementById('tab-integration'); if (!integrationEl) return;
+  integrationEl.innerHTML = `
     <div class="grid">
       <div class="card"><h3>Integração de API e informações</h3>
         <p class="muted">Aba dedicada para integrar informações e APIs do Frame-Generator-API em <b>modelos de IA</b> ou em <b>projetos</b> que a IA está desenvolvendo/operando. Exporte o payload e use o contrato <code>/api/v1</code> com um backend/provedor compatível quando necessário.</p>
@@ -331,15 +333,13 @@ Payload: exportado por esta aba ("Baixar payload de integração").`;
 }
 
 (async () => {
-  const overview = document.getElementById('tab-overview');
   try {
     const app = await bootCore();
     window.FGUA = app && !app.error ? app : window.FGUA;
     renderOverview(app);
     await renderIntegration(app);
   } catch (e) {
-    document.getElementById('status-pill').textContent = 'erro';
-    document.getElementById('status-pill').classList.add('err');
-    renderError(overview, e);
+    const sp = document.getElementById('status-pill'); if (sp) { sp.textContent = 'erro'; sp.classList.add('err'); }
+    renderError(document.getElementById('tab-overview'), e);
   }
 })();

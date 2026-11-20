@@ -128,9 +128,14 @@ export async function createApp() {
   // usuário padrão
   auth.createUser({ name:'Administrator', role:'Administrator' });
 
-  // carregar configs (best effort)
+  // carregar configs (best effort) - resolve relativo ao módulo para funcionar a partir de qualquer página
   const cfgNames = ['api','models','generators','repacks','permissions','settings'];
-  for(const n of cfgNames){ try{ await settings.load(n, `./configs/${n}.json`); }catch{ /* opcional */ } }
+  const cfgBase = new URL('../configs/', import.meta.url);
+  for(const n of cfgNames){
+    const primary = new URL(`${n}.json`, cfgBase).href;
+    try { await settings.load(n, primary); }
+    catch { try { await settings.load(n, `./configs/${n}.json`); } catch { try { await settings.load(n, `../configs/${n}.json`); } catch { /* opcional */ } } }
+  }
 
   // provedores a partir de settings/config
   const settingsCfg = settings.get('settings');
