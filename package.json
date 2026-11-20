@@ -17,7 +17,9 @@
     "serve": "node scripts/serve.mjs",
     "test": "node tests/run-all.mjs",
     "ci": "node scripts/ci.mjs",
-    "validate": "node tests/validate-configs.mjs"
+    "validate": "node tests/validate-configs.mjs",
+    "lint:syntax": "node scripts/lint-syntax.mjs",
+    "check:json": "node scripts/check-json.mjs"
   },
   "keywords": [
     "gguf",
