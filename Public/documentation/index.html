@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Documentação — Frame-Generator-API</title>
+  <meta name="description" content="Documentação do Frame-Generator-API: visão geral, módulos, capacidades reais, limitações, contrato /api/v1 e recursos." />
+  <meta name="theme-color" content="#111827" />
+  <link rel="icon" href="../icons/frame-generator-api-icon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="../../manifest.json" />
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body class="landing">
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+  <main id="conteudo" class="hero" style="max-width:1100px">
+    <article class="hero-card prose">
+      <div class="actions" style="margin-bottom:16px">
+        <a class="btn" href="../dashboard.html">Voltar ao dashboard</a>
+        <a class="btn" href="../../index.html">Página inicial</a>
+        <a class="btn" href="./commands.html">Comandos e operações</a>
+      </div>
+      <h1>Documentação — Frame-Generator-API</h1>
+      <p class="lead">Plataforma web modular estática (FGUA) para análise e registro de modelos, inspeção de capacidades/engines/provedores e integração por <strong>contrato lógico</strong> <code>/api/v1</code>. Hospedagem alvo: GitHub Pages.</p>
+
+      <div class="notice info" role="note">
+        <h2>Estado real da interface</h2>
+        <p>O dashboard web atual oferece <strong>visão geral</strong>, <strong>inspeção de recursos/capacidades</strong>, <strong>visualização de registros da sessão</strong> (modelos, geradores, tarefas quando existentes), <strong>configuração de backend na sessão</strong>, <strong>exportação de payload de integração</strong> e acesso a configurações/documentação/artefatos públicos. Não há fluxos completos de upload/execução/gerenciamento administrativo na UI sem runtime/provedor compatível.</p>
+      </div>
+
+      <h2>Modos de operação</h2>
+      <ul>
+        <li><strong><code>demo</code> (padrão):</strong> núcleo local no navegador. Operações remotas retornam indisponibilidade explícita quando não há backend configurado.</li>
+        <li><strong><code>local</code> / <code>remote</code>:</strong> permitem definir URL base de backend compatível (na sessão) para operações que exigem execução externa.</li>
+      </ul>
+      <p><strong>Importante:</strong> inferência, quantização efetiva e processamento pesado não são simulados. Estados como <code>unavailable</code>, <code>requires-provider</code> e <code>requires-runtime</code> indicam dependências ausentes.</p>
+
+      <h2>Contrato e configuração</h2>
+      <ul>
+        <li><strong>Contrato lógico:</strong> <code>configs/api.json</code> (<code>base</code>, <code>mode</code>, <code>backend</code>, <code>namespaces</code>) e <code>ApiController.getContract()</code>.</li>
+        <li><strong>Configurações públicas:</strong> <code>configs/settings.json</code>, <code>configs/models.json</code>, <code>configs/generators.json</code>, <code>configs/repacks.json</code>, <code>configs/permissions.json</code>.</li>
+        <li><strong>Payload de integração:</strong> exportado pelo dashboard com status, capacidades, recursos registrados e referências.</li>
+      </ul>
+
+      <h2>Módulos do núcleo (<code>src/</code>)</h2>
+      <ul>
+        <li><strong>core:</strong> EventBus, ModuleRegistry, LifecycleManager, ApiController, JobManager, ProviderManager, utilitários/contratos.</li>
+        <li><strong>configuration:</strong> JsonManager, SettingsManager.</li>
+        <li><strong>models:</strong> MetadataLoader (GGUF), ModelLoader, ModelRegistry, ModelCompatibility.</li>
+        <li><strong>quantization:</strong> QuantizationAnalyzer, QuantizationManager (análise/planejamento; execução efetiva requer runtime externo).</li>
+        <li><strong>generators:</strong> FrameGenerator, ImageGenerator, VideoGenerator, GeneratorRegistry.</li>
+        <li><strong>processing:</strong> ImageProcessor, VideoProcessor, FrameProcessor.</li>
+        <li><strong>engines:</strong> WebGPUEngine, WebCodecsEngine, ONNXEngine (adapter), BackendAdapter.</li>
+        <li><strong>repacks:</strong> ManifestLoader, RepackManager, ToolRegistry.</li>
+        <li><strong>security:</strong> AuthenticationManager, PermissionManager, ValidationManager (nível de UI/cliente em ambiente estático).</li>
+        <li><strong>storage:</strong> IndexedDBManager, CacheManager, HistoryManager.</li>
+      </ul>
+
+      <h2>Capacidades e limites</h2>
+      <ul>
+        <li><strong>GGUF:</strong> parser no navegador com validações de limites e extração de metadados/tensores (sujeito a tamanho/memória). Carregamento/inferência requer runtime/provedor compatível.</li>
+        <li><strong>ONNX:</strong> dependente de ONNX Runtime Web carregado e compatibilidade de modelo/operadores.</li>
+        <li><strong>WebCodecs/WebGPU:</strong> detectados quando disponíveis; uso efetivo depende de pipeline/modelo/runtime compatível.</li>
+        <li><strong>Jobs/tarefas:</strong> estados explícitos (ex.: <code>pending</code>, <code>queued</code>, <code>running</code>, <code>succeeded</code>, <code>failed</code>, <code>cancelled</code>, <code>unavailable</code>).</li>
+        <li><strong>Segurança:</strong> sem fronteira de servidor no frontend estático; não armazenar segredos em arquivos públicos. Autorização confiável requer backend.</li>
+        <li><strong>Privacidade local:</strong> análises no cliente usam APIs do navegador e arquivos selecionados/fornecidos no contexto da sessão; informações de hardware podem ser aproximadas ou omitidas pelo navegador.</li>
+      </ul>
+
+      <h2>Recursos públicos adicionais</h2>
+      <ul>
+        <li><strong>Presets:</strong> <code>Public/presets/default-presets.json</code> e <code>configs/settings.json</code> (fontes declarativas; podem diferir em escopo).</li>
+        <li><strong>Template de tarefa:</strong> <code>Public/templates/job-template.json</code>.</li>
+        <li><strong>Manifesto de exemplo:</strong> <code>Public/manifests/sample-repack.json</code>.</li>
+        <li><strong>Locales:</strong> <code>Public/locales/pt-BR.json</code>, <code>Public/locales/en-US.json</code> (base de internacionalização).</li>
+      </ul>
+
+      <h2>Links úteis</h2>
+      <ul>
+        <li><a href="./commands.html">Comandos e operações</a></li>
+        <li><a href="./master-prompt.md">Master prompt (Markdown)</a></li>
+        <li><a href="../../configs/api.json">Configuração da API (JSON)</a></li>
+        <li><a href="../../README.md">README</a></li>
+        <li><a href="../../LICENSE">Licença MIT</a></li>
+      </ul>
+    </article>
+  </main>
+</body>
+</html>

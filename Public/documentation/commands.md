@@ -1,43 +1,41 @@
-# Comandos e Operações — Frame-Generator-API
+# Comandos e operações — Frame-Generator-API
 
-## Desenvolvimento e publicação
-- **Servir localmente (estático):** `npx serve .`
-  - Abrir: `http://localhost:3000/` (bootstrap) ou `http://localhost:3000/Public/dashboard.html`
-- **Publicação:** GitHub Pages (branch/main conforme configuração do repositório), raiz do site com `.nojekyll`.
+## Desenvolvimento e verificação
 
-## Configuração (JSON, padrão)
-- `configs/api.json` — contrato/base `/api/v1`, modo (`demo`/`local`/`remote`), backend (local/remote).
-- `configs/settings.json` — sistema, UI, provedores e presets.
-- `configs/models.json` — formatos suportados e catálogo/config de modelos.
+```bash
+npx serve .
+# Abrir: http://localhost:3000/  ou  http://localhost:3000/Public/dashboard.html
+
+npm run lint:syntax   # checagem de sintaxe JS/MJS
+npm run check:json    # validação de JSONs (configs, manifests, presets, locales, templates)
+npm test              # testes automatizados (Node --test)
+npm run ci            # lint:syntax + check:json + test
+```
+
+## Configuração (JSON)
+- `configs/api.json` — contrato/base `/api/v1`, modo (`demo`/`local`/`remote`) e backend.
+- `configs/settings.json` — sistema, UI e provedores/presets declarativos.
+- `configs/models.json` — formatos/catálogo e políticas declarativas.
 - `configs/generators.json` — geradores registrados/configurados.
-- `configs/repacks.json` — repacks/manifests.
-- `configs/permissions.json` — papéis e permissões (UI; autorização real requer backend).
+- `configs/repacks.json` — repacks/manifests declarados.
+- `configs/permissions.json` — papéis/permissões de UI (autorização real requer backend).
 
-## API lógica (contrato `/api/v1`)
-- **System/Config:** `GET /api/v1/system/*`, `GET|PUT /api/v1/config`
-- **Models/Metadata:** `GET /api/v1/models`, `POST /api/v1/models/load|unload|inspect`, `GET /api/v1/models/metadata`
-- **Quantization:** `GET /api/v1/quantization/types`, `POST /api/v1/quantization/analyze|jobs`
-- **Generators/Frames/Images/Videos:** `GET /api/v1/generators`, `POST /api/v1/generators/execute`, `POST /api/v1/frames/*`, `POST /api/v1/images/*`, `POST /api/v1/videos/*`
-- **Engines:** `GET /api/v1/engines`
-- **Repacks/Tools:** `GET|POST /api/v1/repack/*`, `GET|POST /api/v1/tools/*`
-- **Jobs:** `GET /api/v1/jobs`, `POST /api/v1/jobs/{id}/cancel`
-- **Users/Permissions:** `GET|POST /api/v1/users`, `GET|POST /api/v1/permissions`
+## Contrato lógico `/api/v1`
+Namespaces declarados podem incluir: `/api/v1/system/`, `models/`, `metadata/`, `quantization/`, `generators/`, `frames/`, `images/`, `videos/`, `engines/`, `repack/`, `tools/`, `users/`, `permissions/`, `config/`, `jobs/`, `storage/`.
 
-> Em GitHub Pages (sem backend), chamadas retornam indisponibilidade explícita; configure `baseUrl` de backend compatível para execução.
+> Em hospedagem estática sem backend, operações remotas retornam estado indisponível explícito. Configure `baseUrl` de backend compatível para execução real.
 
-## Repacks e ferramentas (multi-ferramenta via JSON)
-- **Manifesto de repack (exemplo):** `Public/manifests/sample-repack.json`
-- **Importar/validar:** via núcleo (`RepackManager.import/validate`) ou integração de projeto consumindo o manifesto JSON e registrando módulos compatíveis.
-- **Ferramentas:** registro em `ToolRegistry` (metadados/handlers quando disponíveis); execução depende de runtime/provedor.
+## Integração
+- **Payload de integração:** Dashboard → *Integração e API* → baixar/copiar payload (JSON).
+- **Configuração de backend (sessão):** definir URL e modo no dashboard (sem validação automática de conectividade).
+- **Artefatos públicos:** `Public/presets/default-presets.json`, `Public/templates/job-template.json`, `Public/manifests/sample-repack.json`, `Public/locales/*.json`.
+- **Documentação:** `Public/documentation/index.html` e `commands.html`.
+- **Master prompt:** `Public/documentation/master-prompt.md`.
 
-## Modelos (GGUF)
-- **Analisar metadados (UI):** Dashboard/Integração → fluxo de análise no núcleo (upload local) ou `ModelLoader.analyzeFile(file)`; parser binário real (GGUF v2/v3), identifica F32/F16/BF16 (sem quantização) e tipos quantizados.
-- **Carregar/Descarregar:** requer runtime/provedor compatível (`ModelLoader.loadModel/unloadModel`).
+## Workers
+- `workers/*.worker.js` e `Public/workers/processing.worker.js` usam protocolo unificado `{id,type,payload}` / `{id,type,ok,state,data?,error?}`.
+- `ping` responde `pong`; comandos não suportados retornam estados explícitos (ex.: `unsupported`, `unavailable`, `requires-provider`).
 
-## Integração em projetos/IA
-- **Exportar payload:** Dashboard → *Integração* → "Baixar payload de integração (JSON)" (`frame-generator-api-integration.json`).
-- **Consumir configs:** `fetch('<site>/configs/api.json')` etc.
-- **Master prompt:** `Public/documentation/master-prompt.md`
-
-## Licença
-- **MIT** — ver `LICENSE`.
+## Publicação
+- GitHub Pages com artefato estático (`.github/workflows/jekyll-gh-pages.yml`) e `.nojekyll`.
+- CI de qualidade em `.github/workflows/ci.yml`.

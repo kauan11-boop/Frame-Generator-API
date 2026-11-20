@@ -1,13 +1,22 @@
-﻿{
-  "system": { "name": "Frame-Generator-API", "version": "1.0.0", "hosting": "github-pages", "site": "https://kauan11-boop.github.io/Frame-Generator-API/" },
-  "ui": { "theme": "light-minimal", "sidebar": true },
+{
+  "system": {
+    "name": "Frame-Generator-API",
+    "version": "1.0.0",
+    "hosting": "github-pages",
+    "site": "https://kauan11-boop.github.io/Frame-Generator-API/"
+  },
+  "ui": {
+    "theme": "light-minimal",
+    "sidebar": true,
+    "language": "pt-BR"
+  },
   "providers": [
-    { "id": "browser-local", "name": "Browser Local", "type": "Browser Local", "state": "available" },
-    { "id": "webgpu-local", "name": "WebGPU Local", "type": "WebGPU", "state": "detect" },
-    { "id": "external-backend", "name": "External Backend", "type": "Remote REST API", "url": null, "state": "unconfigured" }
+    { "id": "browser-local", "name": "Browser Local", "type": "Browser Local", "state": "available", "capabilities": ["analysis", "ui", "storage"] },
+    { "id": "webgpu-local", "name": "WebGPU Local", "type": "WebGPU", "state": "detect", "capabilities": [] },
+    { "id": "external-backend", "name": "External Backend", "type": "Remote REST API", "url": null, "state": "unconfigured", "capabilities": ["remote-execution"] }
   ],
   "presets": [
-    { "id": "video-30-to-60", "name": "Vídeo 30→60 FPS", "category": "video", "config": { "inputFps": 30, "targetFps": 60 } },
-    { "id": "image-upscale-2x", "name": "Imagem Upscale 2x", "category": "image", "config": { "scale": 2 } }
+    { "id": "video-30-to-60", "name": "Vídeo: 30 → 60 FPS", "category": "video", "config": { "inputFps": 30, "targetFps": 60, "interpolate": true } },
+    { "id": "image-upscale-2x", "name": "Imagem: upscale 2x", "category": "image", "config": { "scale": 2, "denoise": false, "enhance": true } }
   ]
 }

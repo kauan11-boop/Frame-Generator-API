@@ -1,10 +1,9 @@
 import { EventBus } from './core/EventBus.js';
-import { ModuleRegistry } from './core/ModuleRegistry.js';
 import { LifecycleManager } from './core/LifecycleManager.js';
 import { ApiController } from './core/ApiController.js';
-import { JsonManager } from './configuration/JsonManager.js';
+import { JobManager } from './core/JobManager.js';
+import { ProviderManager } from './core/ProviderManager.js';
 import { SettingsManager } from './configuration/SettingsManager.js';
-import { MetadataLoader } from './models/MetadataLoader.js';
 import { ModelLoader } from './models/ModelLoader.js';
 import { ModelRegistry } from './models/ModelRegistry.js';
 import { ModelCompatibility } from './models/ModelCompatibility.js';
@@ -21,7 +20,6 @@ import { WebGPUEngine } from './engines/WebGPUEngine.js';
 import { WebCodecsEngine } from './engines/WebCodecsEngine.js';
 import { ONNXEngine } from './engines/ONNXEngine.js';
 import { BackendAdapter } from './engines/BackendAdapter.js';
-import { ManifestLoader } from './repacks/ManifestLoader.js';
 import { ToolRegistry } from './repacks/ToolRegistry.js';
 import { RepackManager } from './repacks/RepackManager.js';
 import { AuthenticationManager } from './security/AuthenticationManager.js';
@@ -30,40 +28,187 @@ import { ValidationManager } from './security/ValidationManager.js';
 import { IndexedDBManager } from './storage/IndexedDBManager.js';
 import { CacheManager } from './storage/CacheManager.js';
 import { HistoryManager } from './storage/HistoryManager.js';
+import { deepMergeSafe, nowIso } from './core/utils.js';
 
-// Task/Job manager (fila e estados)
-class JobManager {
-  constructor(events){ this.events=events; this.tasks=new Map(); this.queue=[]; this.running=0; this.concurrency=2; }
-  create(spec={}){ const t={ id:`job_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`, type:spec.type||spec.category||'general', category:spec.category||spec.type||'general', user:spec.user||null, model:spec.model||null, engine:spec.engine||null, state:'Pending', progress:0, createdAt:new Date().toISOString(), startedAt:null, completedAt:null, result:null, errors:[], metadata:spec.metadata||{}, _run:spec.run||null }; this.tasks.set(t.id,t); this.queue.push(t.id); this._pump(); return this._pub(t); }
-  list(){ return [...this.tasks.values()].map(t=>this._pub(t)); }
-  get(id){ const t=this.tasks.get(id); return t?this._pub(t):null; }
-  async cancel(id){ const t=this.tasks.get(id); if(!t) return null; if(['Pending','Queued'].includes(t.state)){ t.state='Cancelled'; t.completedAt=new Date().toISOString(); this.queue=this.queue.filter(x=>x!==id); } return this.get(id); }
-  _pub(t){ const {_run,...r}=t; return {...r}; }
-  async _pump(){ while(this.running<this.concurrency){ const id=this.queue.find(i=>this.tasks.get(i)?.state==='Pending'); if(!id) break; const t=this.tasks.get(id); t.state='Queued'; this.queue=this.queue.filter(x=>x!==id); this._runTask(t); } }
-  async _runTask(t){ this.running++; try{
-      t.state='Loading'; t.startedAt=new Date().toISOString(); this.events?.emit('task.progress', this._pub(t));
-      const update=(p,extra={})=>{ t.state='Processing'; t.progress=Math.max(0,Math.min(100,p)); if(extra && typeof extra==='object') Object.assign(t, extra); this.events?.emit('task.progress',this._pub(t)); };
-      if(t._run) { t.result = await t._run({update, job:this._pub(t)}); } else { update(100); t.result={ ok:false, status:'unavailable', message:'Nenhum executor associado. Configure engine/provedor compatível.' }; }
-      t.state = (t.result && t.result.ok===false && /unavailable|requires/i.test(String(t.result.status||t.result.state||t.result.error?.code||''))) ? 'Completed' : 'Completed';
-      t.progress=100;
-    } catch(e){ t.state='Failed'; t.errors.push({ message: e.message, at:new Date().toISOString() }); }
-    finally { t.completedAt=new Date().toISOString(); this.running--; this._pump(); }
+const APP_VERSION = '1.0.0';
+const CONFIG_NAMES = ['api', 'models', 'generators', 'repacks', 'permissions', 'settings'];
+
+function createLogger(events, max = 500) {
+  const entries = [];
+  const push = (level, message, data = null, scope = 'app') => {
+    const entry = { ts: nowIso(), level, scope, message, data };
+    entries.push(entry);
+    if (entries.length > max) entries.splice(0, entries.length - max);
+    try { (console[level] || console.log)(`[${level}] ${scope}: ${message}`, data ?? ''); } catch {}
+    try { events?.emit('log', entry); } catch {}
+    return entry;
+  };
+  return {
+    entries,
+    info: (m, d, s) => push('info', m, d, s),
+    warn: (m, d, s) => push('warn', m, d, s),
+    error: (m, d, s) => push('error', m, d, s),
+    debug: (m, d, s) => push('debug', m, d, s),
+    getRecent: (n = 100) => entries.slice(-Math.max(0, n)),
+  };
+}
+
+async function loadConfigs(settings, logger) {
+  const cfgBase = new URL('../configs/', import.meta.url);
+  const diagnostics = {};
+  for (const name of CONFIG_NAMES) {
+    const candidates = [
+      new URL(`${name}.json`, cfgBase).href,
+      `./configs/${name}.json`,
+      `../configs/${name}.json`,
+    ];
+    let loaded = false;
+    let lastError = null;
+    for (const src of candidates) {
+      await settings.load(name, src);
+      const entry = settings.getEntry(name);
+      if (entry && entry.loaded && !entry.error) {
+        diagnostics[name] = { ok: true, source: entry.source, validation: entry.validation || { ok: true, errors: [] } };
+        loaded = true;
+        break;
+      }
+      lastError = entry?.error || lastError;
+    }
+    if (!loaded) {
+      const entry = settings.getEntry(name);
+      diagnostics[name] = {
+        ok: false,
+        source: entry?.source || null,
+        error: lastError || entry?.error || { message: 'Não foi possível carregar a configuração; defaults aplicados quando disponíveis.' },
+        validation: entry?.validation || { ok: true, errors: [] },
+      };
+      logger?.warn(`Config '${name}' não carregada; usando defaults/fallback.`, diagnostics[name].error, 'bootstrap');
+    }
+  }
+  return diagnostics;
+}
+
+function applyApiConfig(api, backend, settings, logger) {
+  const cfg = settings.get('api') || {};
+  try {
+    api.configure({
+      mode: cfg.mode || 'demo',
+      base: cfg.base || '/api/v1',
+      basePath: cfg.base || '/api/v1',
+      namespaces: Array.isArray(cfg.namespaces) ? cfg.namespaces : undefined,
+      backend: cfg.backend || {},
+    });
+    if (cfg.backend && typeof cfg.backend === 'object') {
+      backend.configure({
+        baseUrl: cfg.backend.remoteUrl || cfg.backend.localUrl || null,
+        type: (cfg.mode === 'local') ? 'local' : 'remote',
+        headers: cfg.headers || {},
+      });
+    }
+  } catch (e) {
+    logger?.error('Falha ao aplicar config de API.', { message: e?.message || String(e) }, 'bootstrap');
   }
 }
 
-class ProviderManager {
-  constructor(events){ this.events=events; this.providers=new Map(); }
-  register(p={}){ const pr={ id:p.id||`provider_${Date.now().toString(36)}`, name:p.name||'Provider', type:p.type||'Remote REST API', url:p.url||null, capabilities:p.capabilities||[], formats:p.formats||[], state:p.state||'registered', authRequired:!!p.authRequired, headers:p.headers||{}, ...p }; this.providers.set(pr.id,pr); this.events?.emit('provider.registered',{id:pr.id}); return pr; }
-  list(){ return [...this.providers.values()]; }
-  get(id){ return this.providers.get(id)||null; }
-  select(criteria={}){ const list=this.list(); if(criteria.id) return list.find(p=>p.id===criteria.id)||null; if(criteria.type) return list.find(p=>p.type===criteria.type)||list[0]||null; return list[0]||null; }
+function applyPermissionsConfig(permissions, settings, logger) {
+  const cfg = settings.get('permissions') || {};
+  try {
+    if (cfg.roles && typeof cfg.roles === 'object' && typeof permissions.setRoles === 'function') {
+      permissions.setRoles(cfg.roles);
+    }
+  } catch (e) {
+    logger?.error('Falha ao aplicar config de permissões.', { message: e?.message || String(e) }, 'bootstrap');
+  }
 }
 
-export async function createApp() {
+function syncProviders(providers, settings, capabilities, logger) {
+  const settingsCfg = settings.get('settings') || {};
+  const configured = Array.isArray(settingsCfg.providers) ? settingsCfg.providers : [];
+  for (const p of configured) {
+    try { providers.register({ ...p }); } catch (e) { logger?.warn('Provedor inválido na config.', { id: p?.id, message: e?.message || String(e) }, 'bootstrap'); }
+  }
+
+  const ensure = (id, spec) => { if (!providers.get(id)) providers.register({ id, ...spec }); };
+  ensure('browser-local', { name: 'Browser Local', type: 'Browser Local', state: 'available', capabilities: ['analysis', 'ui', 'storage'] });
+  ensure('webgpu-local', {
+    name: 'WebGPU Local',
+    type: 'WebGPU',
+    state: capabilities?.capabilities?.webgpu ? 'available' : 'unavailable',
+    capabilities: capabilities?.capabilities?.webgpu ? ['gpu-detect', 'compute'] : [],
+  });
+  ensure('external-backend', {
+    name: 'External Backend',
+    type: 'Remote REST API',
+    state: 'unconfigured',
+    url: null,
+    capabilities: ['remote-execution'],
+  });
+
+  // Reconcile states from settings/capabilities
+  for (const p of configured) {
+    if (p?.id && p?.state) providers.update(p.id, { state: p.state, url: p.url ?? providers.get(p.id)?.url ?? null });
+  }
+  if (capabilities?.capabilities?.webgpu) providers.update('webgpu-local', { state: 'available' });
+  else providers.update('webgpu-local', { state: 'unavailable' });
+}
+
+function syncGenerators(generatorRegistry, settings) {
+  const cfg = settings.get('generators') || {};
+  const list = Array.isArray(cfg.generators) ? cfg.generators : [];
+  for (const g of list) {
+    if (!g?.id) continue;
+    try { generatorRegistry.upsert(g); } catch {}
+  }
+  // Ensure defaults
+  const defaults = [
+    { id: 'frame-generator', name: 'Universal Frame Generator', category: 'unified', engine: 'auto', enabled: true },
+    { id: 'image-generator', name: 'Image Generator', category: 'image', engine: 'image', enabled: true },
+    { id: 'video-generator', name: 'Video Generator', category: 'video', engine: 'video', enabled: true },
+    { id: 'game-frame-generator', name: 'Game Frame Generator', category: 'game', engine: 'game', enabled: true },
+  ];
+  for (const g of defaults) if (!generatorRegistry.get(g.id)) generatorRegistry.register(g);
+}
+
+async function detectCapabilities(webgpu, webcodecs, onnx, backend) {
+  const safe = async (fn, fallback) => { try { return await fn(); } catch (e) { return { ...(fallback || {}), available: false, error: e?.message || String(e) }; } };
+  const webgpuInfo = await safe(() => webgpu.detect(), { available: false, reason: 'Detecção indisponível' });
+  const webcodecsInfo = webcodecs.detect ? webcodecs.detect() : { available: false };
+  const onnxInfo = onnx.detect ? onnx.detect() : { available: false };
+  const backendInfo = backend.getStatus ? backend.getStatus() : { id: 'backend', available: false, state: 'unconfigured' };
+  const caps = {
+    capabilities: {
+      webgpu: !!webgpuInfo?.available,
+      wasm: typeof WebAssembly === 'object',
+      webcodecs: !!webcodecsInfo?.available,
+      workers: typeof Worker !== 'undefined',
+      indexedDB: typeof indexedDB !== 'undefined',
+      offscreenCanvas: typeof OffscreenCanvas !== 'undefined',
+      fileApi: typeof File !== 'undefined' && typeof Blob !== 'undefined',
+    },
+    webgpu: webgpuInfo,
+    webcodecs: webcodecsInfo,
+    onnx: onnxInfo,
+    backend: backendInfo,
+    hardware: {
+      deviceMemoryGB: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
+      hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
+      platform: (typeof navigator !== 'undefined' && navigator.platform) || null,
+    },
+    browser: {
+      userAgent: (typeof navigator !== 'undefined' && navigator.userAgent) || null,
+      language: (typeof navigator !== 'undefined' && navigator.language) || null,
+    },
+    detectedAt: nowIso(),
+  };
+  return caps;
+}
+
+export async function createApp(options = {}) {
   const events = new EventBus();
-  const lifecycle = new LifecycleManager({ events, version: '1.0.0' });
+  const logger = options.logger || createLogger(events);
+  const lifecycle = new LifecycleManager({ events, version: APP_VERSION, name: 'Frame-Generator-API', log: logger });
+
   const api = new ApiController({ mode: 'demo' });
-  const json = new JsonManager();
   const settings = new SettingsManager();
   const db = new IndexedDBManager();
   const cache = new CacheManager();
@@ -72,7 +217,9 @@ export async function createApp() {
   const modelLoader = new ModelLoader({ registry: modelRegistry, events });
   const modelCompatibility = new ModelCompatibility();
   const quantizationAnalyzer = new QuantizationAnalyzer();
-  const quantization = new QuantizationManager({ events });
+  const jobs = new JobManager({ events, concurrency: 2 });
+  const providers = new ProviderManager({ events });
+  const quantization = new QuantizationManager({ events, jobs });
   const generatorRegistry = new GeneratorRegistry();
   const frameGenerator = new FrameGenerator();
   const imageGenerator = new ImageGenerator();
@@ -84,107 +231,240 @@ export async function createApp() {
   const webcodecs = new WebCodecsEngine();
   const onnx = new ONNXEngine();
   const backend = new BackendAdapter({ id: 'default-backend', name: 'Default Backend', type: 'remote' });
-  const manifestLoader = new ManifestLoader();
   const tools = new ToolRegistry();
-  const repacks = new RepackManager({ toolRegistry: tools });
+  const repacks = new RepackManager({ toolRegistry: tools, events });
   const auth = new AuthenticationManager();
   const permissions = new PermissionManager();
   const validation = new ValidationManager();
-  const tasks = new JobManager(events);
-  const providers = new ProviderManager(events);
 
-  // logger simples
-  const logger = { entries:[], _e(l,m,d,s){ const e={ts:new Date().toISOString(),level:l,scope:s||'app',message:m,data:d||null}; this.entries.push(e); if(this.entries.length>500)this.entries.splice(0,this.entries.length-500); try{(console[l]||console.log)(`[${l}] ${m}`,d||'');}catch{} return e; }, info(m,d,s){return this._e('info',m,d,s)}, warn(m,d,s){return this._e('warn',m,d,s)}, error(m,d,s){return this._e('error',m,d,s)}, debug(m,d,s){return this._e('debug',m,d,s)}, getRecent(n=100){return this.entries.slice(-n);} };
-
-  lifecycle.registerModule('ApiController', api, {category:'core'});
-  lifecycle.registerModule('SettingsManager', settings, {category:'configuration'});
-  lifecycle.registerModule('ModelLoader', modelLoader, {category:'models'});
-  lifecycle.registerModule('ModelRegistry', modelRegistry, {category:'models'});
-  lifecycle.registerModule('QuantizationManager', quantization, {category:'quantization'});
-  lifecycle.registerModule('FrameGenerator', frameGenerator, {category:'generators'});
-  lifecycle.registerModule('ImageGenerator', imageGenerator, {category:'generators'});
-  lifecycle.registerModule('VideoGenerator', videoGenerator, {category:'generators'});
-  lifecycle.registerModule('WebGPUEngine', webgpu, {category:'engines'});
-  lifecycle.registerModule('WebCodecsEngine', webcodecs, {category:'engines'});
-  lifecycle.registerModule('ONNXEngine', onnx, {category:'engines'});
-  lifecycle.registerModule('BackendAdapter', backend, {category:'engines'});
-  lifecycle.registerModule('RepackManager', repacks, {category:'repacks'});
-  lifecycle.registerModule('ToolRegistry', tools, {category:'repacks'});
-  lifecycle.registerModule('AuthenticationManager', auth, {category:'security'});
-  lifecycle.registerModule('PermissionManager', permissions, {category:'security'});
-  lifecycle.registerModule('ValidationManager', validation, {category:'security'});
-  lifecycle.registerModule('IndexedDBManager', db, {category:'storage'});
-  lifecycle.registerModule('CacheManager', cache, {category:'storage'});
-  lifecycle.registerModule('HistoryManager', history, {category:'storage'});
-  lifecycle.registerModule('JobManager', tasks, {category:'jobs'});
-  lifecycle.registerModule('ProviderManager', providers, {category:'providers'});
-
-  // registrar geradores
-  generatorRegistry.register({id:'frame-generator',name:'Universal Frame Generator',category:'unified',engine:'auto'});
-  generatorRegistry.register({id:'image-generator',name:'Image Generator',category:'image',engine:'image'});
-  generatorRegistry.register({id:'video-generator',name:'Video Generator',category:'video',engine:'video'});
-  generatorRegistry.register({id:'game-frame-generator',name:'Game Frame Generator',category:'game',engine:'game'});
-
-  // usuário padrão
-  auth.createUser({ name:'Administrator', role:'Administrator' });
-
-  // carregar configs (best effort) - resolve relativo ao módulo para funcionar a partir de qualquer página
-  const cfgNames = ['api','models','generators','repacks','permissions','settings'];
-  const cfgBase = new URL('../configs/', import.meta.url);
-  for(const n of cfgNames){
-    const primary = new URL(`${n}.json`, cfgBase).href;
-    try { await settings.load(n, primary); }
-    catch { try { await settings.load(n, `./configs/${n}.json`); } catch { try { await settings.load(n, `../configs/${n}.json`); } catch { /* opcional */ } } }
+  // Register modules for lifecycle observability
+  const moduleEntries = [
+    ['ApiController', api, { category: 'core' }],
+    ['SettingsManager', settings, { category: 'configuration' }],
+    ['ModelLoader', modelLoader, { category: 'models' }],
+    ['ModelRegistry', modelRegistry, { category: 'models' }],
+    ['QuantizationManager', quantization, { category: 'quantization' }],
+    ['FrameGenerator', frameGenerator, { category: 'generators' }],
+    ['ImageGenerator', imageGenerator, { category: 'generators' }],
+    ['VideoGenerator', videoGenerator, { category: 'generators' }],
+    ['GeneratorRegistry', generatorRegistry, { category: 'generators' }],
+    ['WebGPUEngine', webgpu, { category: 'engines' }],
+    ['WebCodecsEngine', webcodecs, { category: 'engines' }],
+    ['ONNXEngine', onnx, { category: 'engines' }],
+    ['BackendAdapter', backend, { category: 'engines' }],
+    ['RepackManager', repacks, { category: 'repacks' }],
+    ['ToolRegistry', tools, { category: 'repacks' }],
+    ['AuthenticationManager', auth, { category: 'security' }],
+    ['PermissionManager', permissions, { category: 'security' }],
+    ['ValidationManager', validation, { category: 'security' }],
+    ['IndexedDBManager', db, { category: 'storage' }],
+    ['CacheManager', cache, { category: 'storage' }],
+    ['HistoryManager', history, { category: 'storage' }],
+    ['JobManager', jobs, { category: 'jobs' }],
+    ['ProviderManager', providers, { category: 'providers' }],
+  ];
+  for (const [name, instance, meta] of moduleEntries) {
+    try { lifecycle.registerModule(name, instance, meta); } catch (e) { logger.warn(`Falha ao registrar módulo ${name}`, { message: e?.message || String(e) }); }
   }
 
-  // provedores a partir de settings/config
-  const settingsCfg = settings.get('settings');
-  for(const p of (settingsCfg?.providers||[])) { if(!providers.get(p.id)) providers.register(p); }
-  if(!providers.list().length){ providers.register({id:'browser-local',name:'Browser Local',type:'Browser Local',state:'available',capabilities:['analysis','ui']}); providers.register({id:'webgpu-local',name:'WebGPU Local',type:'WebGPU',state:'detect',capabilities:['gpu-detect']}); providers.register({id:'external-backend',name:'External Backend',type:'Remote REST API',state:'unconfigured',url:null}); }
-  const permCfg = settings.get('permissions');
-  if (permCfg?.roles && permissions?.setRoles) permissions.setRoles(permCfg.roles);
+  // Keep lifecycle registries in sync (counts/visibility)
+  try {
+    lifecycle.getRegistry('generators')?.clear();
+    lifecycle.getRegistry('providers')?.clear();
+    lifecycle.getRegistry('jobs')?.clear();
+  } catch {}
 
-  const webgpuInfo = await webgpu.detect();
-  const codecsInfo = webcodecs.detect();
-  const caps = { capabilities:{ webgpu: !!webgpuInfo.available, wasm: typeof WebAssembly==='object', webcodecs: !!codecsInfo.available, workers: typeof Worker!=='undefined', indexedDB: typeof indexedDB!=='undefined', offscreenCanvas: typeof OffscreenCanvas!=='undefined' }, webgpu: webgpuInfo, webcodecs: codecsInfo, hardware:{ deviceMemoryGB: navigator.deviceMemory||null, hardwareConcurrency: navigator.hardwareConcurrency||null }, browser:{ userAgent: navigator.userAgent, platform: navigator.platform } };
+  // Load and apply configs
+  const configDiagnostics = await loadConfigs(settings, logger);
+  applyApiConfig(api, backend, settings, logger);
+  applyPermissionsConfig(permissions, settings, logger);
 
-  await lifecycle.initialize({ caps });
+  // Default user/session (UI-level only in static hosting)
+  try { if (!auth.listUsers().length) auth.createUser({ name: 'Administrator', role: 'Administrator' }); } catch {}
 
+  syncGenerators(generatorRegistry, settings);
+
+  // Capability detection
+  const caps = await detectCapabilities(webgpu, webcodecs, onnx, backend);
+  syncProviders(providers, settings, caps, logger);
+
+  // Engines manager facade
   const enginesManager = {
     list: () => [webgpu.getStatus(), webcodecs.getStatus(), onnx.getStatus(), backend.getStatus()],
-    get: (id) => ({ webgpu, webcodecs, onnx, backend, 'onnx-web': onnx, 'webcodecs': webcodecs, 'webgpu': webgpu, 'backend': backend }[id] || null),
-    detect: async () => ({ webgpu: await webgpu.detect(), webcodecs: webcodecs.detect(), onnx: onnx.detect(), backend: backend.getStatus() }),
+    get: (id) => ({ webgpu, webcodecs, onnx, 'onnx-web': onnx, backend, 'default-backend': backend }[id] || null),
+    detect: async () => detectCapabilities(webgpu, webcodecs, onnx, backend),
     select: (criteria = {}) => {
       const c = criteria || {};
       const fmt = String(c.format || c.modelFormat || '').toLowerCase();
       const op = String(c.operation || c.type || '').toLowerCase();
-      const needVideo = /video|decode|encode|media|frame/.test(op);
-      const backendOk = !!backend.baseUrl && backend.state !== 'unconfigured';
-      if (c.prefer === 'backend' || c.backend || (fmt && !['gguf','onnx','json-manifest'].includes(fmt) && backendOk)) return { id: 'backend', reason: 'Backend configurado para operação/formato não local.' };
-      if (fmt === 'onnx' && onnx.detect().available) return { id: 'onnx-web', reason: 'Formato ONNX com runtime ONNX Web disponível.' };
-      if (needVideo && webcodecs.detect().available) return { id: 'webcodecs', reason: 'Pipeline de mídia suportado por WebCodecs.' };
-      if (webgpuInfo?.available) return { id: 'webgpu', reason: 'WebGPU disponível para aceleração compatível.' };
-      if (backendOk) return { id: 'backend', reason: 'Fallback para backend configurado.' };
-      return { id: null, reason: 'Nenhum engine compatível/disponível para os critérios informados (pode requerer provedor externo).', criteria: c };
-    }
+      const backendOk = !!(backend.baseUrl || api.baseUrl) && backend.state !== 'unconfigured';
+      const needVideo = /video|decode|encode|media|frame|interpol/.test(op);
+      if (c.prefer === 'backend' && backendOk) return { id: 'backend', reason: 'Backend preferido e configurado.', state: 'selected' };
+      if (fmt === 'onnx' && onnx.detect?.()?.available) return { id: 'onnx-web', reason: 'Modelo ONNX com runtime ONNX Web detectado.', state: 'selected' };
+      if (needVideo && webcodecs.detect?.()?.available) return { id: 'webcodecs', reason: 'Operação de mídia com WebCodecs disponível.', state: 'selected' };
+      if (caps?.capabilities?.webgpu && /gpu|compute|image|frame/.test(op || '')) return { id: 'webgpu', reason: 'WebGPU disponível para operações compatíveis.', state: 'selected' };
+      if (backendOk) return { id: 'backend', reason: 'Backend configurado como alternativa.', state: 'selected' };
+      return { id: null, reason: 'Nenhum engine compatível/disponível no ambiente atual; pode requerer runtime/provedor externo.', state: 'unavailable', criteria: c };
+    },
   };
-  const universalGenerator = frameGenerator;
+
+  // Sync lifecycle registries for visibility
+  try {
+    for (const g of generatorRegistry.list()) lifecycle.getRegistry('generators')?.upsert(g.id, { id: g.id, name: g.name, category: g.category, enabled: g.enabled });
+    for (const p of providers.list()) lifecycle.getRegistry('providers')?.upsert(p.id, { id: p.id, name: p.name, type: p.type, state: p.state });
+  } catch {}
+
+  events.on('job.created', (job) => { try { lifecycle.getRegistry('jobs')?.upsert(job.id, { id: job.id, type: job.type, state: job.state }); } catch {} });
+  events.on('job.completed', (job) => { try { lifecycle.getRegistry('jobs')?.upsert(job.id, { id: job.id, type: job.type, state: job.state }); } catch {} });
+  events.on('provider.registered', ({ id, provider }) => { try { lifecycle.getRegistry('providers')?.upsert(id, { id, name: provider?.name, type: provider?.type, state: provider?.state }); } catch {} });
+
+  const lifecycleStatus = await lifecycle.initialize({ caps, logger, settings, api, providers, engines: enginesManager, jobs });
+
+  function getStatus() {
+    const s = lifecycle.getStatus();
+    let models = 0, loadedModels = 0, taskList = [], providerList = [], engineList = [], toolList = [], repackList = [], userList = [], generatorList = [];
+    try { models = modelRegistry.list().length; } catch {}
+    try { loadedModels = modelLoader.listLoaded().length; } catch {}
+    try { taskList = jobs.list(); } catch {}
+    try { providerList = providers.list(); } catch {}
+    try { engineList = enginesManager.list(); } catch {}
+    try { toolList = tools.list(); } catch {}
+    try { repackList = repacks.list(); } catch {}
+    try { userList = auth.listUsers(); } catch {}
+    try { generatorList = generatorRegistry.list(); } catch {}
+    const jobStates = taskList.reduce((acc, j) => { acc[j.state] = (acc[j.state] || 0) + 1; return acc; }, {});
+    return {
+      ...s,
+      version: APP_VERSION,
+      mode: api.mode,
+      api: api.getConfig(),
+      capabilities: caps,
+      webgpu: caps.webgpu,
+      webcodecs: caps.webcodecs,
+      onnx: caps.onnx,
+      backend: backend.getStatus(),
+      config: { diagnostics: configDiagnostics, loaded: settings.list() },
+      counts: {
+        modules: s.modules?.length || 0,
+        models,
+        loadedModels,
+        tasks: taskList.length,
+        providers: providerList.length,
+        engines: engineList.length,
+        tools: toolList.length,
+        repacks: repackList.length,
+        users: userList.length,
+        generators: generatorList.length,
+      },
+      jobs: { states: jobStates },
+      enginesState: engineList,
+      providersState: providerList,
+      generatorsState: generatorList,
+      updatedAt: nowIso(),
+    };
+  }
+
+  function getIntegrationPayload(siteBase = '') {
+    const status = getStatus();
+    const contract = api.getContract();
+    const base = siteBase || (typeof location !== 'undefined' ? new URL('../', location.href).toString() : './');
+    const models = modelRegistry.list().map((m) => ({
+      id: m.id, name: m.name || m.fileName, format: m.format, architecture: m.architecture,
+      quantization: m.quantization, quantized: m.quantized, unquantized: m.unquantized, precision: m.precision,
+      contextLength: m.contextLength, size: m.size, state: m.state, runtimeCompatible: m.runtimeCompatible || [],
+    }));
+    return {
+      project: 'Frame-Generator-API',
+      generatedAt: nowIso(),
+      site: base,
+      mode: api.mode,
+      contract,
+      backend: { baseUrl: api.baseUrl, configured: !!api.baseUrl, state: backend.getStatus().state },
+      status: { status: status.status, initialized: status.initialized, version: status.version, counts: status.counts, jobs: status.jobs },
+      capabilities: status.capabilities,
+      models,
+      engines: enginesManager.list(),
+      providers: providers.list(),
+      generators: generatorRegistry.list(),
+      repacks: repacks.list(),
+      tools: tools.list(),
+      configs: {
+        api: new URL('configs/api.json', base).toString(),
+        models: new URL('configs/models.json', base).toString(),
+        generators: new URL('configs/generators.json', base).toString(),
+        repacks: new URL('configs/repacks.json', base).toString(),
+        permissions: new URL('configs/permissions.json', base).toString(),
+        settings: new URL('configs/settings.json', base).toString(),
+      },
+      docs: {
+        masterPrompt: new URL('Public/documentation/master-prompt.md', base).toString(),
+        commands: new URL('Public/documentation/commands.md', base).toString(),
+        documentation: new URL('Public/documentation/index.md', base).toString(),
+      },
+      notes: [
+        'Hospedagem estática: /api/v1 é contrato lógico; operações remotas requerem backend/provedor compatível configurado.',
+        'Inferência, quantização efetiva e processamento pesado não são simulados; estados unavailable/requires-provider/runtime indicam dependências ausentes.',
+        'GGUF: metadados podem ser analisados no cliente quando suportado; execução requer runtime/provedor compatível.',
+      ],
+    };
+  }
 
   const app = {
-    core: lifecycle, lifecycle, events, logger, api, json, config: settings, settings,
-    db, storage: db, cache, history, modelRegistry, modelLoader, modelCompatibility,
-    quantization, quantizationAnalyzer, generatorRegistry, frameGenerator, imageGenerator, videoGenerator, universalGenerator,
-    imageProcessor, videoProcessor, frameProcessor, webgpu, webcodecs, onnx, backend,
-    engines: enginesManager, manifestLoader, tools, repacks, auth, users: auth, permissions, validation, security: validation,
-    tasks, jobs: tasks, providers, caps, webgpuInfo, codecsInfo,
-    getStatus(){
-      const s=lifecycle.getStatus();
-      return { ...s, mode: api.mode, capabilities:caps, webgpu:webgpuInfo, webcodecs:codecsInfo, counts:{ models:modelRegistry.list().length, loadedModels:modelLoader.listLoaded().length, tasks:tasks.list().length, providers:providers.list().length, engines:enginesManager.list().length, tools:tools.list().length, repacks:repacks.list().length, users:auth.listUsers().length, generators:generatorRegistry.list().length } };
-    }
+    version: APP_VERSION,
+    events,
+    logger,
+    lifecycle,
+    core: lifecycle,
+    api,
+    settings,
+    config: settings,
+    db,
+    storage: db,
+    cache,
+    history,
+    modelRegistry,
+    modelLoader,
+    modelCompatibility,
+    quantization,
+    quantizationAnalyzer,
+    generatorRegistry,
+    frameGenerator,
+    imageGenerator,
+    videoGenerator,
+    universalGenerator: frameGenerator,
+    imageProcessor,
+    videoProcessor,
+    frameProcessor,
+    webgpu,
+    webcodecs,
+    onnx,
+    backend,
+    engines: enginesManager,
+    tools,
+    repacks,
+    auth,
+    users: auth,
+    permissions,
+    validation,
+    security: validation,
+    jobs,
+    tasks: jobs,
+    providers,
+    caps,
+    capabilities: caps,
+    webgpuInfo: caps.webgpu,
+    codecsInfo: caps.webcodecs,
+    configDiagnostics,
+    getStatus,
+    getIntegrationPayload,
   };
 
-  if(typeof window!=='undefined') window.FGUA = app;
-  logger.info('Núcleo FGUA inicializado', {status: lifecycle.status});
+  if (typeof window !== 'undefined') {
+    window.FGUA = app;
+    window.FGUA_APP = app;
+  }
+
+  logger.info('Núcleo FGUA inicializado.', { status: lifecycleStatus.status, version: APP_VERSION }, 'bootstrap');
   return app;
 }
 

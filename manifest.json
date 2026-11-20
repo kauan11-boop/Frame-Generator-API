@@ -1,9 +1,27 @@
 {
+  "id": "./",
   "name": "Frame-Generator-API",
   "short_name": "FGUA",
-  "start_url": ".",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f6f7f9",
   "theme_color": "#111827",
-  "description": "Plataforma universal de geração de quadros, processamento gráfico e gerenciamento de modelos de IA."
+  "description": "Plataforma web estática para análise de modelos, inspeção de capacidades e integração por contrato lógico /api/v1. Execução real de inferência/processamento requer runtime ou provedor compatível.",
+  "lang": "pt-BR",
+  "categories": ["developer", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "./Public/icons/frame-generator-api-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./Public/icons/frame-generator-api-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
 }

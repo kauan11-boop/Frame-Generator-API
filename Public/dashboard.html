@@ -4,64 +4,91 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dashboard — Frame-Generator-API</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23111827'/%3E%3Cpath d='M18 20h28v6H18zm0 9h28v6H18zm0 9h18v6H18z' fill='%23fff'/%3E%3C/svg%3E" />
+  <meta name="description" content="Dashboard do Frame-Generator-API: status do núcleo, capacidades do navegador, recursos registrados, configurações públicas e integração por contrato /api/v1." />
+  <meta name="theme-color" content="#111827" />
+  <link rel="icon" href="./icons/frame-generator-api-icon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="../manifest.json" />
   <link rel="stylesheet" href="./css/main.css" />
-  <style>
-    .form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
-    .form-row input,.form-row select{padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;font:13px var(--sans)}
-    .form-row label{font-size:13px;color:var(--muted)}
-    .grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
-    .section-note{font-size:13px;color:var(--muted);margin:6px 0 0}
-    .chart-wrap{display:flex;flex-direction:column;gap:8px}
-    .chart-title{font-size:12px;color:var(--muted);font-weight:500}
-    .chart-legend{display:flex;flex-wrap:wrap;gap:8px 12px;font-size:12px;color:var(--muted)}
-    .legend-item{display:inline-flex;align-items:center;gap:6px}
-    .legend-dot{width:10px;height:10px;border-radius:3px;display:inline-block}
-    .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
-    .code-block{position:relative}
-    .copy-btn{position:absolute;top:8px;right:8px;font-size:12px;padding:4px 8px}
-    .integration-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
-  </style>
 </head>
-<body class="dashboard-body">
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <a href="./index.html" class="brand-link">Frame-Generator-API</a>
-        <span class="sub">Informações e integração</span>
-      </div>
+<body>
+  <a class="skip-link" href="#main-content">Pular para o conteúdo principal</a>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Navegação do dashboard">
+      <a class="brand" href="../index.html">
+        <img class="brand-mark" src="./icons/frame-generator-api-icon.svg" alt="" width="32" height="32" />
+        <span class="brand-text">
+          <strong>Frame-Generator-API</strong>
+          <span>Dashboard · sessão no navegador</span>
+        </span>
+      </a>
 
-      <nav class="tabs sidebar-nav" id="tabs" aria-label="Seções">
-        <button data-tab="overview" class="active"><span>Visão geral</span></button>
-        <button data-tab="integration"><span>Integração</span></button>
+      <nav class="nav" aria-label="Seções do dashboard">
+        <div id="tabs" class="nav" role="tablist" aria-orientation="vertical" aria-label="Seções">
+          <button type="button" class="nav-item active" role="tab" id="tab-btn-overview" aria-selected="true" aria-controls="tab-overview" tabindex="0" data-tab="overview">Visão geral</button>
+          <button type="button" class="nav-item" role="tab" id="tab-btn-resources" aria-selected="false" aria-controls="tab-resources" tabindex="-1" data-tab="resources">Recursos e capacidades</button>
+          <button type="button" class="nav-item" role="tab" id="tab-btn-models" aria-selected="false" aria-controls="tab-models" tabindex="-1" data-tab="models">Modelos (sessão)</button>
+          <button type="button" class="nav-item" role="tab" id="tab-btn-generators" aria-selected="false" aria-controls="tab-generators" tabindex="-1" data-tab="generators">Geradores e presets</button>
+          <button type="button" class="nav-item" role="tab" id="tab-btn-jobs" aria-selected="false" aria-controls="tab-jobs" tabindex="-1" data-tab="jobs">Tarefas</button>
+          <button type="button" class="nav-item" role="tab" id="tab-btn-integration" aria-selected="false" aria-controls="tab-integration" tabindex="-1" data-tab="integration">Integração e API</button>
+          <button type="button" class="nav-item" role="tab" id="tab-btn-config" aria-selected="false" aria-controls="tab-config" tabindex="-1" data-tab="config">Configurações e permissões</button>
+          <button type="button" class="nav-item" role="tab" id="tab-btn-docs" aria-selected="false" aria-controls="tab-docs" tabindex="-1" data-tab="docs">Documentação e recursos</button>
+        </div>
+
+        <div class="nav-group" aria-label="Links úteis">
+          <div class="nav-group-title">Links</div>
+          <a class="nav-item" href="../index.html">Página inicial</a>
+          <a class="nav-item" href="./documentation/index.html">Documentação (HTML)</a>
+          <a class="nav-item" href="../configs/api.json">Contrato <code>configs/api.json</code></a>
+          <a class="nav-item" href="../LICENSE">Licença (MIT)</a>
+        </div>
       </nav>
 
-      <div class="sidebar-footer">
-        <div class="status-row"><span class="label">Status</span><div class="status" id="status-pill">carregando…</div></div>
-        <a class="sidebar-link" href="../configs/api.json">Contrato API</a>
+      <div class="side-meta" aria-label="Estado resumido">
+        <div><strong>Status:</strong> <span id="side-status" class="badge info">carregando…</span></div>
+        <div><strong>Modo:</strong> <span id="side-mode">—</span></div>
+        <div><strong>Backend:</strong> <span id="side-backend">—</span></div>
+        <p class="section-note" style="margin-top:8px">Dados desta sessão no navegador. Hospedagem estática: sem servidor REST nativo.</p>
       </div>
     </aside>
 
-    <div class="main-area">
-      <header class="main-header">
-        <div>
-          <h1 class="page-title">Frame-Generator-API</h1>
-          <p class="sub">Gráficos de informações do sistema e integração de APIs/informações em modelos de IA e projetos</p>
+    <main class="main" id="main-content" tabindex="-1">
+      <div class="main-inner">
+        <header class="page-header">
+          <div>
+            <h1 id="page-title">Visão geral</h1>
+            <p id="page-subtitle">Estado do núcleo, diagnóstico e contexto da sessão atual.</p>
+          </div>
+          <div class="header-meta">
+            <span id="status-pill" class="status info" role="status" aria-live="polite">Carregando…</span>
+            <span class="badge" id="mode-pill">demo</span>
+            <span class="badge" id="hosting-pill">GitHub Pages · estático</span>
+          </div>
+        </header>
+
+        <div id="global-notices" class="stack" aria-live="polite"></div>
+
+        <div class="tab-panels">
+          <section id="tab-overview" class="tab active" role="tabpanel" aria-labelledby="tab-btn-overview" tabindex="0">
+            <div class="card"><h2>Carregando dashboard</h2><p class="muted">Inicializando núcleo e carregando dados da sessão…</p></div>
+          </section>
+          <section id="tab-resources" class="tab" role="tabpanel" aria-labelledby="tab-btn-resources" tabindex="0" hidden></section>
+          <section id="tab-models" class="tab" role="tabpanel" aria-labelledby="tab-btn-models" tabindex="0" hidden></section>
+          <section id="tab-generators" class="tab" role="tabpanel" aria-labelledby="tab-btn-generators" tabindex="0" hidden></section>
+          <section id="tab-jobs" class="tab" role="tabpanel" aria-labelledby="tab-btn-jobs" tabindex="0" hidden></section>
+          <section id="tab-integration" class="tab" role="tabpanel" aria-labelledby="tab-btn-integration" tabindex="0" hidden></section>
+          <section id="tab-config" class="tab" role="tabpanel" aria-labelledby="tab-btn-config" tabindex="0" hidden></section>
+          <section id="tab-docs" class="tab" role="tabpanel" aria-labelledby="tab-btn-docs" tabindex="0" hidden></section>
         </div>
-      </header>
 
-      <main class="container">
-        <section id="tab-overview" class="tab active"></section>
-        <section id="tab-integration" class="tab"></section>
-      </main>
+        <div id="live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
-      <footer class="footer">
-        <span id="meta"></span>
-        <span>Modo: <code id="mode-pill">—</code> · Base: <code id="base"></code></span>
-      </footer>
-    </div>
+        <footer class="footer" aria-label="Metadados da sessão">
+          <span id="meta">Base: —</span>
+          <span id="updated-at"></span>
+        </footer>
+      </div>
+    </main>
   </div>
-
   <script type="module" src="./js/dashboard.js"></script>
 </body>
 </html>

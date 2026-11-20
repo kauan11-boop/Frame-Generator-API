@@ -1,4 +1,4 @@
-﻿{
+{
   "generators": [
     { "id": "frame-generator", "name": "Universal Frame Generator", "category": "unified", "enabled": true },
     { "id": "image-generator", "name": "Image Generator", "category": "image", "enabled": true },

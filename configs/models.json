@@ -1,4 +1,8 @@
-﻿{
-  "defaults": { "supportedFormats": ["gguf","onnx","safetensors","bin","pt","pth","json-manifest"], "ggufAnalysis": "native-browser-parser", "execution": "requires-compatible-runtime-or-provider" },
+{
+  "defaults": {
+    "supportedFormats": ["gguf", "onnx", "safetensors", "bin", "pt", "pth", "json-manifest"],
+    "ggufAnalysis": "browser-parser-with-bounds",
+    "execution": "requires-compatible-runtime-or-provider"
+  },
   "models": []
 }

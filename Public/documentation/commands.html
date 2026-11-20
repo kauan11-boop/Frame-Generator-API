@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Comandos e operações — Frame-Generator-API</title>
+  <meta name="description" content="Comandos de desenvolvimento, verificação, configuração e integração do Frame-Generator-API." />
+  <meta name="theme-color" content="#111827" />
+  <link rel="icon" href="../icons/frame-generator-api-icon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="../../manifest.json" />
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body class="landing">
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+  <main id="conteudo" class="hero" style="max-width:1100px">
+    <article class="hero-card prose">
+      <div class="actions" style="margin-bottom:16px">
+        <a class="btn" href="../dashboard.html">Voltar ao dashboard</a>
+        <a class="btn" href="./index.html">Documentação</a>
+        <a class="btn" href="../../index.html">Página inicial</a>
+      </div>
+      <h1>Comandos e operações</h1>
+      <p>Referência prática para executar, verificar e integrar o Frame-Generator-API em ambiente estático.</p>
+
+      <h2>Desenvolvimento e verificação</h2>
+      <pre><code>npx serve .
+# Abrir: http://localhost:3000/  ou  http://localhost:3000/Public/dashboard.html
+
+npm run lint:syntax   # checagem de sintaxe JS/MJS
+npm run check:json    # validação de JSONs (configs, manifests, presets, locales, templates)
+npm test              # testes automatizados (Node --test)
+npm run ci            # lint:syntax + check:json + test</code></pre>
+
+      <h2>Configuração (JSON público)</h2>
+      <ul>
+        <li><code>configs/api.json</code> — contrato/base <code>/api/v1</code>, modo (<code>demo</code>/<code>local</code>/<code>remote</code>) e backend.</li>
+        <li><code>configs/settings.json</code> — sistema, UI e provedores/presets declarativos.</li>
+        <li><code>configs/models.json</code> — formatos e políticas declarativas.</li>
+        <li><code>configs/generators.json</code> — geradores registrados/configurados.</li>
+        <li><code>configs/repacks.json</code> — repacks/manifests declarados.</li>
+        <li><code>configs/permissions.json</code> — papéis/permissões de UI (autorização real requer backend).</li>
+      </ul>
+
+      <h2>Contrato lógico <code>/api/v1</code></h2>
+      <p>Namespaces declarados podem incluir: <code>/api/v1/system/</code>, <code>models/</code>, <code>metadata/</code>, <code>quantization/</code>, <code>generators/</code>, <code>frames/</code>, <code>images/</code>, <code>videos/</code>, <code>engines/</code>, <code>repack/</code>, <code>tools/</code>, <code>users/</code>, <code>permissions/</code>, <code>config/</code>, <code>jobs/</code>, <code>storage/</code>.</p>
+      <div class="notice warn" role="note">
+        <p><strong>Hospedagem estática:</strong> não há implementação REST nativa no GitHub Pages. Operações remotas retornam estado indisponível quando não há backend compatível configurado.</p>
+      </div>
+
+      <h2>Integração</h2>
+      <ul>
+        <li><strong>Payload de integração:</strong> Dashboard → <em>Integração e API</em> → baixar/copiar payload JSON.</li>
+        <li><strong>Configuração de backend (sessão):</strong> defina URL e modo no dashboard; a UI não valida conectividade automaticamente.</li>
+        <li><strong>Artefatos públicos:</strong> <code>Public/presets/default-presets.json</code>, <code>Public/templates/job-template.json</code>, <code>Public/manifests/sample-repack.json</code>, <code>Public/locales/*.json</code>.</li>
+        <li><strong>Master prompt:</strong> <a href="./master-prompt.md">Public/documentation/master-prompt.md</a>.</li>
+      </ul>
+
+      <h2>Workers</h2>
+      <ul>
+        <li><code>workers/*.worker.js</code> e <code>Public/workers/processing.worker.js</code> usam protocolo unificado <code>{id,type,payload}</code> / <code>{id,type,ok,state,data?,error?}</code>.</li>
+        <li><code>ping</code> responde <code>pong</code>; comandos não suportados retornam estados explícitos (ex.: <code>unsupported</code>, <code>unavailable</code>, <code>requires-provider</code>).</li>
+      </ul>
+
+      <h2>Publicação</h2>
+      <ul>
+        <li>GitHub Pages com artefato estático (<code>.github/workflows/jekyll-gh-pages.yml</code>) e <code>.nojekyll</code>.</li>
+        <li>CI de qualidade em <code>.github/workflows/ci.yml</code>.</li>
+      </ul>
+    </article>
+  </main>
+</body>
+</html>

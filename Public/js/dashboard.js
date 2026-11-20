@@ -1,350 +1,823 @@
-import { bootCore } from './api.js';
-import { esc, pill, pre, pills, setActiveTab, renderError } from './render.js';
+import { bootCore, getSiteBase, fetchJson } from './api.js';
+import { configUrl } from './config.js';
+import { initI18n } from './i18n.js';
+import {
+  esc, escAttr, formatBytes, formatDate, boolPill, statePill, pills,
+  announce, setActiveTab, renderError, emptyState, loadingCard, codeBlock,
+  table, copyText, downloadJson
+} from './render.js';
 
-document.getElementById('tabs').addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-tab]');
-  if (b) setActiveTab(b.dataset.tab);
-});
+let app = null;
+let staticData = {};
+let loadErrors = {};
+let masterPrompt = { text: '', url: '', error: null };
 
-async function copyText(text) {
-  try { await navigator.clipboard.writeText(String(text ?? '')); } catch {}
+const CONFIG_FILES = [
+  { key: 'api', name: 'configs/api.json', desc: 'Contrato lógico /api/v1, modo e backend.' },
+  { key: 'models', name: 'configs/models.json', desc: 'Formatos suportados e políticas declarativas de modelos.' },
+  { key: 'generators', name: 'configs/generators.json', desc: 'Geradores registrados/configurados.' },
+  { key: 'repacks', name: 'configs/repacks.json', desc: 'Repacks/manifests declarados no registro de configuração.' },
+  { key: 'permissions', name: 'configs/permissions.json', desc: 'Papéis e permissões de UI (autorização real requer backend).' },
+  { key: 'settings', name: 'configs/settings.json', desc: 'Sistema, UI, provedores e presets declarativos.' },
+];
+
+function qs(sel, root = document) { return root.querySelector(sel); }
+function qsa(sel, root = document) { return [...root.querySelectorAll(sel)]; }
+
+function getStatus() {
+  try { return app?.getStatus ? app.getStatus() : null; } catch { return null; }
 }
 
-function getStatus(app){ try { return app?.getStatus ? app.getStatus() : null; } catch { return null; } }
+function getSite() { return getSiteBase(); }
 
-function barChart(items, opts = {}) {
-  const data = (items || []).filter(d => (d.value ?? 0) >= 0);
-  const w = opts.width || 520, h = opts.height || 180, padL = 90, padR = 16, padT = 10, padB = 24;
-  if (!data.length) return `<div class="muted">Sem dados para gráfico.</div>`;
-  const max = Math.max(1, ...data.map(d => Number(d.value) || 0));
-  const innerW = w - padL - padR, innerH = h - padT - padB;
-  const barH = Math.max(10, Math.min(22, (innerH / data.length) - 6));
-  const colors = ['#111827','#374151','#6b7280','#2563eb','#059669','#d97706','#dc2626','#7c3aed'];
-  const rows = data.map((d, i) => {
-    const v = Number(d.value) || 0;
-    const bw = Math.round((v / max) * innerW);
-    const y = padT + i * (innerH / data.length) + ((innerH / data.length) - barH) / 2;
-    const color = d.color || colors[i % colors.length];
-    return `
-      <text x="${padL - 8}" y="${y + barH * 0.75}" text-anchor="end" font-size="11" fill="#6b7280">${esc(d.label)}</text>
-      <rect x="${padL}" y="${y}" width="${innerW}" height="${barH}" rx="4" fill="#f3f4f6"></rect>
-      <rect x="${padL}" y="${y}" width="${Math.max(v ? 2 : 0, bw)}" height="${barH}" rx="4" fill="${color}"></rect>
-      <text x="${padL + Math.max(v ? 2 : 0, bw) + 6}" y="${y + barH * 0.75}" font-size="11" fill="#374151">${esc(String(v))}</text>`;
-  }).join('');
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="${esc(opts.title||'Gráfico')}">${rows}</svg>`;
+async function loadStaticJson(key, relativeCandidates) {
+  for (const rel of relativeCandidates) {
+    try {
+      const url = new URL(rel, import.meta.url).href;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return { ok: true, data: await res.json(), url };
+    } catch (e) {
+      loadErrors[key] = e?.message || String(e);
+    }
+  }
+  return { ok: false, data: null, url: null };
 }
 
-function donutChart(items, opts = {}) {
-  const data = (items || []).filter(d => (Number(d.value) || 0) > 0);
-  const size = opts.size || 180, cx = size / 2, cy = size / 2, r = 62, sw = 22;
-  const colors = ['#111827','#2563eb','#059669','#d97706','#dc2626','#7c3aed','#0891b2','#6b7280'];
-  if (!data.length) return `<div class="muted">Sem dados para gráfico.</div>`;
-  const total = data.reduce((a,d)=>a + (Number(d.value)||0), 0) || 1;
-  let offset = 0;
-  const circ = 2 * Math.PI * r;
-  const segs = data.map((d,i)=>{
-    const v = Number(d.value)||0; const frac = v/total; const dash = frac*circ; const gap = circ-dash;
-    const el = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color||colors[i%colors.length]}" stroke-width="${sw}" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"></circle>`;
-    offset += dash; return el;
-  }).join('');
-  const legend = data.map((d,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${d.color||colors[i%colors.length]}"></span>${esc(d.label)}: <b>${esc(String(d.value))}</b></span>`).join('');
-  return `<div class="chart-wrap"><svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="${esc(opts.title||'Gráfico')}">
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#f3f4f6" stroke-width="${sw}"></circle>
-    ${segs}
-    <text x="${cx}" y="${cy-2}" text-anchor="middle" font-size="18" font-weight="600" fill="#111827">${esc(String(total))}</text>
-    <text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="10" fill="#6b7280">${esc(opts.centerLabel||'total')}</text>
-  </svg><div class="chart-legend">${legend}</div></div>`;
+async function loadMasterPrompt() {
+  const candidates = [
+    '../documentation/master-prompt.md',
+    './documentation/master-prompt.md',
+    '../../Public/documentation/master-prompt.md',
+  ];
+  for (const rel of candidates) {
+    try {
+      const url = new URL(rel, import.meta.url).href;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const text = await res.text();
+      masterPrompt = { text, url, error: null };
+      return masterPrompt;
+    } catch (e) {
+      masterPrompt.error = e?.message || String(e);
+    }
+  }
+  masterPrompt = { text: '', url: new URL('../documentation/master-prompt.md', import.meta.url).href, error: masterPrompt.error || 'Arquivo não encontrado.' };
+  return masterPrompt;
 }
 
-function renderOverview(app){
-  const s = getStatus(app); const caps = s?.capabilities || app?.caps || {}; const c = caps.capabilities || {};
-  const counts = s?.counts || {};
-  const tasks = app?.tasks?.list ? app.tasks.list() : (app?.jobs?.list ? app.jobs.list() : []);
+async function loadAllStatic() {
+  const [presets, template, sampleManifest, master] = await Promise.all([
+    loadStaticJson('presets', ['../presets/default-presets.json']),
+    loadStaticJson('jobTemplate', ['../templates/job-template.json']),
+    loadStaticJson('sampleManifest', ['../manifests/sample-repack.json']),
+    loadMasterPrompt(),
+  ]);
+  staticData.presets = presets.data;
+  staticData.presetsUrl = presets.url;
+  staticData.jobTemplate = template.data;
+  staticData.jobTemplateUrl = template.url;
+  staticData.sampleManifest = sampleManifest.data;
+  staticData.sampleManifestUrl = sampleManifest.url;
+
+  // Load configs via fetchJson (configUrl aware) with fallback
+  const cfgs = {};
+  for (const c of CONFIG_FILES) {
+    try {
+      cfgs[c.key] = await fetchJson(`configs/${c.key}.json`);
+    } catch (e) {
+      loadErrors[`config:${c.key}`] = e?.message || String(e);
+      cfgs[c.key] = null;
+    }
+  }
+  staticData.configs = cfgs;
+  return staticData;
+}
+
+function setGlobalStatus(kind, text) {
+  const pill = qs('#status-pill');
+  const side = qs('#side-status');
+  if (pill) {
+    pill.textContent = text;
+    pill.className = 'status ' + (kind || 'info');
+  }
+  if (side) {
+    side.textContent = text;
+    side.className = 'badge ' + (kind || 'info');
+  }
+}
+
+function updateChrome() {
+  const s = getStatus() || {};
+  const mode = app?.api?.mode || s?.mode || 'demo';
+  const backendConfigured = !!(app?.api?.baseUrl || s?.api?.baseUrl);
+  const backendState = s?.backend?.state || (backendConfigured ? 'configurado' : 'não configurado');
+  const statusKind = s?.status === 'ready' ? 'ok' : (s?.status === 'degraded' || s?.partiallyInitialized ? 'warn' : (s?.error ? 'err' : 'info'));
+
+  setGlobalStatus(statusKind, s?.status || (app?.error ? 'erro' : 'indisponível'));
+  const modePill = qs('#mode-pill'); if (modePill) modePill.textContent = mode;
+  const sideMode = qs('#side-mode'); if (sideMode) sideMode.textContent = mode;
+  const sideBackend = qs('#side-backend'); if (sideBackend) sideBackend.textContent = backendState;
+  const meta = qs('#meta'); if (meta) meta.textContent = `Base do site: ${getSite()}`;
+  const updated = qs('#updated-at'); if (updated) updated.textContent = s?.updatedAt ? `Atualizado: ${formatDate(s.updatedAt)}` : '';
+}
+
+function renderNotices() {
+  const el = qs('#global-notices');
+  if (!el) return;
+  const notices = [];
+  const s = getStatus();
+  if (s?.partiallyInitialized || s?.status === 'degraded') {
+    notices.push(`<div class="notice warn" role="status"><h3>Núcleo inicializado com avisos</h3><p>Alguns módulos ou configurações podem estar indisponíveis. Consulte o diagnóstico em Visão geral para detalhes e próximos passos.</p></div>`);
+  }
+  if ((app?.api?.mode || 'demo') === 'demo') {
+    notices.push(`<div class="notice info" role="note"><h3>Modo demonstração/estático</h3><p>Operações que exigem servidor, inferência, quantização efetiva ou processamento pesado retornam estado indisponível/requer runtime quando não há backend/provedor compatível. Nenhum resultado é simulado.</p></div>`);
+  }
+  const cfgFails = CONFIG_FILES.filter((c) => loadErrors[`config:${c.key}`] || s?.config?.diagnostics?.[c.key]?.ok === false);
+  if (cfgFails.length) {
+    notices.push(`<div class="notice warn" role="status"><h3>Configurações com falha ou fallback</h3><p>Não foi possível carregar/validar: ${esc(cfgFails.map((c) => c.name).join(', '))}. O núcleo pode operar com defaults; verifique os arquivos em <code>configs/</code>.</p></div>`);
+  }
+  el.innerHTML = notices.join('');
+}
+
+function sectionNavButton(targetTab, label) {
+  return `<button class="btn" type="button" data-goto-tab="${escAttr(targetTab)}">${esc(label)}</button>`;
+}
+
+function renderOverview() {
+  const el = qs('#tab-overview');
+  if (!el) return;
+  const s = getStatus() || {};
+  const caps = s.capabilities || {};
+  const c = caps.capabilities || {};
+  const counts = s.counts || {};
+  const diagnostics = s.config?.diagnostics || {};
+  const moduleErrors = Array.isArray(s.moduleErrors) ? s.moduleErrors : (Array.isArray(s.errors) ? s.errors : []);
+  const tasks = app?.jobs?.list ? app.jobs.list() : [];
   const models = app?.modelRegistry?.list ? app.modelRegistry.list() : [];
   const engines = app?.engines?.list ? app.engines.list() : [];
-  const providers = app?.providers?.list ? app.providers.list() : [];
-  const generators = app?.generatorRegistry?.list ? app.generatorRegistry.list() : [];
 
-  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  const sp = document.getElementById('status-pill'); if (sp) { sp.textContent = s?.status || (app?.error ? 'erro' : 'indisponível'); sp.className = 'status ' + (s?.status === 'ready' ? 'ok' : (app?.error ? 'err' : '')); }
-  setText('mode-pill', app?.api?.mode || s?.mode || 'demo');
-  setText('base', new URL('../', location.href).toString());
-  setText('meta', s ? `v${s.version} • ${s.modules?.length||0} módulos • ${s.initialized ? 'inicializado' : 'não inicializado'}` : 'núcleo indisponível');
-
-  const countItems = [
-    { label: 'Modelos', value: counts.models ?? models.length },
-    { label: 'Geradores', value: counts.generators ?? generators.length },
-    { label: 'Engines', value: counts.engines ?? engines.length },
-    { label: 'Tarefas', value: counts.tasks ?? tasks.length },
-    { label: 'Provedores', value: counts.providers ?? providers.length },
-    { label: 'Repacks', value: counts.repacks ?? 0 },
-    { label: 'Ferramentas', value: counts.tools ?? 0 },
-  ];
-
-  const stateMap = {};
-  for (const t of tasks) { const k = t.state || 'Unknown'; stateMap[k] = (stateMap[k]||0)+1; }
-  const stateItems = Object.entries(stateMap).map(([k,v])=>({label:k, value:v}));
-  if (!stateItems.length) stateItems.push({label:'Sem tarefas', value:0, color:'#d1d5db'});
-
-  const capItems = [
-    { label:'WebGPU', value: c.webgpu ? 1 : 0 },
-    { label:'WebAssembly', value: c.wasm ? 1 : 0 },
-    { label:'WebCodecs', value: c.webcodecs ? 1 : 0 },
-    { label:'Workers', value: c.workers ? 1 : 0 },
-    { label:'IndexedDB', value: c.indexedDB ? 1 : 0 },
-    { label:'OffscreenCanvas', value: c.offscreenCanvas ? 1 : 0 },
-  ].map(i=>({ ...i, valueText: i.value ? 'disponível' : 'indisponível' }));
-
-  const engineItems = engines.length ? engines.map(e=>({ label: e.name || e.id, value: (e.available===true || e.state==='available' || e.state==='configured') ? 1 : 0, state: e.available===true?'disponível':(e.available===false?'indisponível':(e.state||'—')) })) : [];
-
-  const providerItems = providers.length ? providers.map(p=>({label:p.name||p.id, value:1, state:p.state||'—'})) : [];
-
-  const overviewEl = document.getElementById('tab-overview'); if (!overviewEl) return;
-  overviewEl.innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>Estado do sistema</h3><div class="kv">
-        <div>Status</div><div>${pill(s?.status||'n/d')}</div>
-        <div>Modo</div><div>${pill(app?.api?.mode||'demo')}</div>
-        <div>Hospedagem</div><div>${pill('GitHub Pages')} ${pill('estático')}</div>
-        <div>Backend API</div><div>${pill(app?.api?.baseUrl ? 'configurado' : 'não conectado')}</div>
-        <div>Início</div><div class="muted">${esc(s?.startedAt||'—')}</div>
-      </div></div>
-      <div class="card"><h3>Resumo</h3><div class="kv">
-        <div>Modelos</div><div>${pill(counts.models ?? models.length)}</div>
-        <div>Geradores</div><div>${pill(counts.generators ?? generators.length)}</div>
-        <div>Engines</div><div>${pill(counts.engines ?? engines.length)}</div>
-        <div>Tarefas</div><div>${pill(counts.tasks ?? tasks.length)}</div>
-        <div>Provedores</div><div>${pill(counts.providers ?? providers.length)}</div>
-      </div><p class="section-note">Dados reais do núcleo FGUA (sessão atual no navegador).</p></div>
-      <div class="card"><h3>Recursos do navegador</h3>
-        <table><thead><tr><th>Capacidade</th><th>Estado</th></tr></thead><tbody>
-        ${capItems.map(i=>`<tr><td>${esc(i.label)}</td><td>${pill(i.value?'disponível':'indisponível')}</td></tr>`).join('')}
-        </tbody></table>
-        <div class="kv mt"><div>CPU cores</div><div>${pill(caps.hardware?.hardwareConcurrency ?? 'n/d')}</div>
-        <div>Memória</div><div>${pill(caps.hardware?.deviceMemoryGB ? caps.hardware.deviceMemoryGB+' GB' : 'n/d')}</div></div>
-      </div>
-    </div>
-
-    <div class="charts-grid mt">
-      <div class="card"><h3>Recursos registrados (contagem)</h3>
-        ${barChart(countItems, { title: 'Contagens', width: 520, height: 220 })}
-      </div>
-      <div class="card"><h3>Tarefas por estado</h3>
-        ${donutChart(stateItems, { title: 'Estados das tarefas', size: 180, centerLabel: 'tarefas' })}
-      </div>
-    </div>
-
-    <div class="grid mt">
-      <div class="card"><h3>Engines</h3>
-        ${engineItems.length ? `<table><thead><tr><th>Engine</th><th>Disponibilidade</th></tr></thead><tbody>${engineItems.map(e=>`<tr><td>${esc(e.label)}</td><td>${pill(e.state)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Nenhuma engine registrada.</p>'}
-      </div>
-      <div class="card"><h3>Provedores</h3>
-        ${providerItems.length ? `<table><thead><tr><th>Provedor</th><th>Estado</th></tr></thead><tbody>${providerItems.map(p=>`<tr><td>${esc(p.label)}</td><td>${pill(p.state)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Nenhum provedor registrado.</p>'}
-      </div>
-      <div class="card"><h3>Modelos registrados</h3>
-        ${models.length ? `<table><thead><tr><th>Nome</th><th>Formato</th><th>Estado</th></tr></thead><tbody>${models.slice(0,8).map(m=>`<tr><td>${esc(m.name||m.fileName||m.id)}</td><td>${pill(m.format||'—')}</td><td>${pill(m.state||'—')}</td></tr>`).join('')}</tbody></table>${models.length>8?`<p class="muted mt">+${models.length-8} outros (ver payload de integração).</p>`:''}` : '<p class="muted">Nenhum modelo analisado/registrado nesta sessão.</p>'}
-      </div>
-    </div>`;
-}
-
-function buildIntegrationPayload(app, siteBase) {
-  const s = getStatus(app) || {};
-  const models = app?.modelRegistry?.list ? app.modelRegistry.list().map(m=>({id:m.id,name:m.name||m.fileName,format:m.format,architecture:m.architecture,quantization:m.quantization,quantized:m.quantized,unquantized:m.unquantized,precision:m.precision,contextLength:m.contextLength,size:m.size,state:m.state,runtimeCompatible:m.runtimeCompatible||[]})) : [];
-  const engines = app?.engines?.list ? app.engines.list() : [];
-  const providers = app?.providers?.list ? app.providers.list() : [];
-  const generators = app?.generatorRegistry?.list ? app.generatorRegistry.list() : [];
-  const contract = app?.api?.getContract ? app.api.getContract() : { base:'/api/v1', namespaces: [] };
-  return {
-    project: 'Frame-Generator-API',
-    site: siteBase,
-    generatedAt: new Date().toISOString(),
-    mode: app?.api?.mode || 'demo',
-    backend: { baseUrl: app?.api?.baseUrl || null, configured: !!app?.api?.baseUrl },
-    contract,
-    status: { status: s.status, initialized: s.initialized, version: s.version, counts: s.counts || {} },
-    capabilities: s.capabilities || app?.caps || {},
-    models,
-    engines,
-    providers,
-    generators,
-    integration: {
-      masterPrompt: siteBase + 'Public/documentation/master-prompt.md',
-      commands: siteBase + 'Public/documentation/commands.md',
-      configs: {
-        api: siteBase + 'configs/api.json',
-        models: siteBase + 'configs/models.json',
-        generators: siteBase + 'configs/generators.json',
-        repacks: siteBase + 'configs/repacks.json',
-        permissions: siteBase + 'configs/permissions.json',
-        settings: siteBase + 'configs/settings.json'
-      },
-      license: { type: 'MIT', file: siteBase + 'LICENSE' }
-    },
-    notes: [
-      'Hospedagem estática: /api/v1 é contrato lógico; operações remotas requerem backend/provedor configurado.',
-      'Inferência/processamento pesado requer runtime/engine compatível; sem simulação de resultados.',
-      'GGUF: metadados analisados no cliente; modelos sem quantização (F32/F16/BF16) identificados quando aplicável. Execução requer runtime/provedor.',
-      'Use este payload para integrar informações e endpoints em modelos de IA ou em projetos externos.'
-    ]
-  };
-}
-
-async function renderIntegration(app){
-  const siteBase = new URL('../', location.href).toString();
-  const payload = buildIntegrationPayload(app, siteBase);
-  const contract = payload.contract || { base:'/api/v1', namespaces: [] };
-  const endpoints = [
-    'GET  /api/v1/models', 'POST /api/v1/models/load', 'POST /api/v1/models/unload', 'GET  /api/v1/models/metadata',
-    'GET  /api/v1/quantization/types', 'POST /api/v1/quantization/analyze', 'POST /api/v1/quantization/jobs',
-    'GET  /api/v1/generators', 'POST /api/v1/generators/execute', 'POST /api/v1/frames/interpolate', 'POST /api/v1/images/upscale',
-    'POST /api/v1/videos/process', 'GET  /api/v1/jobs', 'POST /api/v1/jobs/{id}/cancel',
-    'GET  /api/v1/engines', 'GET  /api/v1/repack', 'GET  /api/v1/tools', 'GET  /api/v1/config'
-  ];
-  const jsExample =
-`// Integração com Frame-Generator-API (contrato /api/v1)
-// Hospedagem estática: defina baseUrl de um backend compatível quando disponível.
-const API_BASE = '${(app?.api?.baseUrl || siteBase + 'api/v1').replace(/'/g, "\\'")}';
-
-async function api(path, options = {}) {
-  const res = await fetch(API_BASE.replace(/\\/$/, '') + path, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers||{}) },
-    ...options
+  const cfgRows = CONFIG_FILES.map((cfg) => {
+    const d = diagnostics[cfg.key] || {};
+    const ok = d.ok !== false && !loadErrors[`config:${cfg.key}`];
+    const status = ok ? 'carregado' : 'falha/fallback';
+    const src = d.source ? esc(String(d.source).split('/').slice(-2).join('/')) : '—';
+    const err = d.error?.message || loadErrors[`config:${cfg.key}`] || '';
+    return [esc(cfg.name), statePill(status), src, err ? `<span class="muted">${esc(err)}</span>` : '—'];
   });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  return res.json();
-}
 
-// Exemplos (requerem backend/provedor compatível):
-// const models = await api('/models');
-// const job = await api('/generators/execute', { method:'POST', body: JSON.stringify({ generator:'image-generator', input:{...} }) });
+  const capList = [
+    ['WebGPU', !!c.webgpu, 'Aceleração GPU no navegador (quando suportada).'],
+    ['WebAssembly (WASM)', !!c.wasm, 'Execução de runtimes compilados no navegador.'],
+    ['WebCodecs', !!c.webcodecs, 'Acesso a codecs de mídia (quando suportado).'],
+    ['Web Workers', !!c.workers, 'Processamento em segundo plano.'],
+    ['IndexedDB', !!c.indexedDB, 'Armazenamento local estruturado.'],
+    ['OffscreenCanvas', !!c.offscreenCanvas, 'Renderização fora da thread principal (quando suportado).'],
+    ['File API / Blob', !!c.fileApi, 'Leitura de arquivos locais selecionados pelo usuário.'],
+  ];
 
-// Consumir informações/configurações estáticas publicadas:
-// fetch('${siteBase}configs/api.json').then(r=>r.json())
-// fetch('${siteBase}configs/models.json').then(r=>r.json())`;
+  el.innerHTML = `
+    <div class="stack">
+      <div class="grid">
+        <section class="card" aria-labelledby="ov-status-title">
+          <h2 id="ov-status-title">Estado da sessão</h2>
+          <div class="kv">
+            <div>Status do núcleo</div><div>${statePill(s.status || 'indisponível')}</div>
+            <div>Versão</div><div><code>${esc(s.version || app?.version || '1.0.0')}</code></div>
+            <div>Modo</div><div>${statePill(app?.api?.mode || s.mode || 'demo')}</div>
+            <div>Backend (URL definida)</div><div>${statePill(app?.api?.baseUrl ? 'configurado' : 'não configurado')} ${app?.api?.baseUrl ? `<br><code>${esc(app.api.baseUrl)}</code>` : '<span class="muted">Nenhuma URL de backend configurada nesta sessão.</span>'}</div>
+            <div>Contrato lógico</div><div><code>${esc(app?.api?.getContract?.()?.base || '/api/v1')}</code> <span class="muted">(sem servidor REST nativo no GitHub Pages)</span></div>
+            <div>Iniciado em</div><div>${formatDate(s.startedAt)}</div>
+          </div>
+          <p class="section-note">"Backend configurado" indica URL definida na sessão; não comprova conectividade sem teste em runtime/backend compatível.</p>
+        </section>
+        <section class="card" aria-labelledby="ov-counts-title">
+          <h2 id="ov-counts-title">Resumo de recursos (sessão)</h2>
+          <div class="kv">
+            <div>Módulos</div><div>${esc(counts.modules ?? 0)}</div>
+            <div>Modelos registrados</div><div>${esc(counts.models ?? models.length)}</div>
+            <div>Modelos carregados</div><div>${esc(counts.loadedModels ?? 0)}</div>
+            <div>Geradores</div><div>${esc(counts.generators ?? 0)}</div>
+            <div>Engines</div><div>${esc(counts.engines ?? engines.length)}</div>
+            <div>Provedores</div><div>${esc(counts.providers ?? 0)}</div>
+            <div>Tarefas</div><div>${esc(counts.tasks ?? tasks.length)}</div>
+            <div>Repacks</div><div>${esc(counts.repacks ?? 0)}</div>
+            <div>Ferramentas</div><div>${esc(counts.tools ?? 0)}</div>
+          </div>
+          <div class="actions mt">${sectionNavButton('resources', 'Ver capacidades e recursos')}${sectionNavButton('integration', 'Ir para integração')}</div>
+        </section>
+      </div>
 
-  const projectExample =
-`# Uso em projetos (ex.: pipelines de IA / orquestradores)
-# 1) Consuma o payload de integração (JSON) para descobrir modelos, engines, provedores e endpoints.
-# 2) Configure backend compatível (api.baseUrl) para execução real; sem backend, operações retornam indisponível.
-# 3) Envie requisições ao contrato /api/v1 com o gerador/modelo/engine adequados.
-# 4) Trate estados: ready, unavailable, requires-provider/runtime (sem resultados simulados).
-
-Payload: exportado por esta aba ("Baixar payload de integração").`;
-
-  let masterPrompt = 'Master prompt indisponível (abra ./documentation/master-prompt.md).';
-  const mpCandidates = ['./documentation/master-prompt.md', 'documentation/master-prompt.md', `${siteBase}Public/documentation/master-prompt.md`, `${siteBase}public/documentation/master-prompt.md`, '../Public/documentation/master-prompt.md'];
-  let masterPromptUrl = './documentation/master-prompt.md';
-  for (const u of mpCandidates) {
-    try { const r = await fetch(u, { cache: 'no-store' }); if (r.ok) { masterPrompt = await r.text(); masterPromptUrl = u; break; } } catch {}
-  }
-  const commandsText = `npx serve .                      # servir localmente (GitHub Pages/estático)\n`+
-`# Configs JSON: configs/api.json, settings.json, models.json, generators.json, repacks.json, permissions.json\n`+
-`# API lógica: /api/v1/* (contrato; requer backend/provedor para execução remota)\n`+
-`# Exportar integração: Dashboard → Integração → Baixar payload (JSON)\n`+
-`# Master prompt: Public/documentation/master-prompt.md\n`+
-`# Licença: LICENSE (MIT)`;
-
-  const integrationEl = document.getElementById('tab-integration'); if (!integrationEl) return;
-  integrationEl.innerHTML = `
-    <div class="grid">
-      <div class="card"><h3>Integração de API e informações</h3>
-        <p class="muted">Aba dedicada para integrar informações e APIs do Frame-Generator-API em <b>modelos de IA</b> ou em <b>projetos</b> que a IA está desenvolvendo/operando. Exporte o payload e use o contrato <code>/api/v1</code> com um backend/provedor compatível quando necessário.</p>
+      <section class="card" aria-labelledby="ov-caps-title">
+        <h2 id="ov-caps-title">Capacidades do navegador (detecção)</h2>
+        <p class="muted">Detecção local para orientar compatibilidade. "Disponível" não garante que uma operação específica será executada sem modelo/runtime/provedor adequado.</p>
+        ${table(['Capacidade', 'Estado', 'Impacto prático'], capList.map(([name, ok, impact]) => [esc(name), boolPill(ok), `<span class="muted">${esc(impact)}</span>`]), 'Capacidades detectadas no navegador', { srCaption: true })}
         <div class="kv mt">
-          <div>Modo</div><div>${pill(payload.mode)}</div>
-          <div>Contrato</div><div><code>${esc(contract.base||'/api/v1')}</code></div>
-          <div>Backend</div><div>${pill(payload.backend.configured?'configurado':'não conectado')} <span class="muted">${esc(payload.backend.baseUrl||'')}</span></div>
-          <div>Modelos</div><div>${pill(payload.models.length)}</div>
-          <div>Engines</div><div>${pill(payload.engines.length)}</div>
-          <div>Provedores</div><div>${pill(payload.providers.length)}</div>
+          <div>Núcleos lógicos (CPU)</div><div>${esc(caps.hardware?.hardwareConcurrency ?? 'não informado')}</div>
+          <div>Memória aproximada</div><div>${esc(caps.hardware?.deviceMemoryGB ? `${caps.hardware.deviceMemoryGB} GB` : 'não informado pelo navegador')}</div>
+          <div>Plataforma</div><div>${esc(caps.hardware?.platform ?? 'não informado')}</div>
         </div>
-        <div class="integration-actions">
-          <button class="btn primary" id="dl-payload">Baixar payload de integração (JSON)</button>
-          <button class="btn" id="copy-payload">Copiar payload</button>
-          <a class="btn" id="dl-master" href="./documentation/master-prompt.md" download>Baixar Master Prompt</a>
-        </div>
-      </div>
-      <div class="card"><h3>Conexão (backend/API)</h3>
-        <p class="muted">Configure a URL base de um backend compatível para executar operações remotas. Em modo estático/demo, chamadas sem backend retornam indisponibilidade explícita.</p>
-        <div class="form-row"><input id="api-base" placeholder="https://seu-backend.exemplo/api/v1" style="min-width:260px" value="${esc(app?.api?.baseUrl||'')}" />
-          <select id="api-mode"><option value="demo">demo</option><option value="local">local</option><option value="remote">remote</option></select>
-          <button class="btn primary" id="api-save">Aplicar</button></div>
-        <div class="muted" id="api-status" style="margin-top:8px">Configuração aplicada apenas nesta sessão do navegador.</div>
-        <div class="mt"><div class="chart-title">Namespaces</div>${pills(contract.namespaces||[])||'<span class="muted">—</span>'}</div>
-      </div>
-    </div>
+        <p class="section-note">Informações de hardware/navegador são expostas localmente pela API do navegador e podem ser aproximadas ou omitidas por privacidade.</p>
+      </section>
 
-    <div class="grid mt">
-      <div class="card"><h3>Endpoints (contrato /api/v1)</h3>${pre(endpoints)}</div>
-      <div class="card"><h3>Recursos para integração</h3>
-        <table><thead><tr><th>Tipo</th><th>Itens</th><th>Exemplos</th></tr></thead><tbody>
-          <tr><td>Modelos</td><td>${pill(payload.models.length)}</td><td class="muted">${esc(payload.models.slice(0,3).map(m=>m.name||m.id).join(', ')||'—')}</td></tr>
-          <tr><td>Engines</td><td>${pill(payload.engines.length)}</td><td class="muted">${esc(payload.engines.slice(0,3).map(e=>e.name||e.id).join(', ')||'—')}</td></tr>
-          <tr><td>Provedores</td><td>${pill(payload.providers.length)}</td><td class="muted">${esc(payload.providers.slice(0,3).map(p=>p.name||p.id).join(', ')||'—')}</td></tr>
-          <tr><td>Geradores</td><td>${pill(payload.generators.length)}</td><td class="muted">${esc(payload.generators.slice(0,3).map(g=>g.name||g.id).join(', ')||'—')}</td></tr>
-        </tbody></table>
-        <div class="mt"><div class="chart-title">Configs públicas (estáticas)</div>
-          ${pills(['configs/api.json','configs/models.json','configs/generators.json','configs/repacks.json','configs/permissions.json','configs/settings.json'])}
-        </div>
-      </div>
-    </div>
-
-    <div class="grid mt">
-      <div class="card"><h3>Comandos necessários</h3>
-        <div class="code-block"><button class="btn copy-btn" id="copy-cmd">Copiar</button><pre id="code-cmd">${esc(commandsText)}</pre></div>
-        <p class="section-note">Mais detalhes: <a href="./documentation/commands.md">documentation/commands.md</a></p>
-      </div>
-      <div class="card"><h3>Licença</h3>
-        <div class="kv"><div>Tipo</div><div>${pill('MIT')}</div><div>Arquivo</div><div><a href="../LICENSE">LICENSE</a></div><div>Uso</div><div class="muted">Permite uso, cópia, modificação e distribuição conforme termos MIT (ver arquivo).</div></div>
-        <p class="section-note">Ao integrar em projetos/IA, mantenha aviso de copyright e licença.</p>
-      </div>
-    </div>
-
-    <div class="card mt"><h3>Master Prompt (integração IA / projetos)</h3>
-      <p class="muted">Prompt para conectar/adaptar esta API e seus componentes em modelos de IA ou em projetos que a IA está criando.</p>
-      <div class="code-block"><button class="btn copy-btn" id="copy-master">Copiar</button><pre id="code-master">${esc(masterPrompt)}</pre></div>
-    </div>
-
-    <div class="card mt"><h3>Exemplo: integração em código (projetos / modelos de IA)</h3>
-      <div class="code-block"><button class="btn copy-btn" id="copy-js">Copiar</button><pre id="code-js">${esc(jsExample)}</pre></div>
-    </div>
-    <div class="card mt"><h3>Exemplo: uso em projetos de IA</h3>
-      <div class="code-block"><button class="btn copy-btn" id="copy-proj">Copiar</button><pre id="code-proj">${esc(projectExample)}</pre></div>
-    </div>
-    <div class="card mt"><h3>Payload de integração (prévia)</h3>
-      <pre id="payload-pre">${esc(JSON.stringify(payload, null, 2))}</pre>
+      <section class="card" aria-labelledby="ov-cfg-title">
+        <h2 id="ov-cfg-title">Diagnóstico de configurações</h2>
+        ${table(['Arquivo', 'Estado', 'Origem', 'Observação'], cfgRows, 'Diagnóstico de carregamento das configurações', { srCaption: true })}
+        ${moduleErrors.length ? `<div class="notice warn mt"><h3>Erros/avisos de módulos</h3><ul>${moduleErrors.map((e) => `<li>${esc(typeof e === 'string' ? e : (e?.message || JSON.stringify(e)))}</li>`).join('')}</ul></div>` : ''}
+      </section>
     </div>`;
-
-  const modeSel = document.getElementById('api-mode'); if(modeSel) modeSel.value = app?.api?.mode||'demo';
-  document.getElementById('api-save')?.addEventListener('click', async ()=>{
-    const base = document.getElementById('api-base')?.value?.trim() || null;
-    const mode = document.getElementById('api-mode')?.value || 'demo';
-    const r = app?.api?.configure?.({ baseUrl: base, mode });
-    document.getElementById('api-status').textContent = 'Configuração aplicada: ' + JSON.stringify(r||{});
-    document.getElementById('mode-pill').textContent = app?.api?.mode || mode;
-    await renderIntegration(app); // re-render com payload atualizado
-  });
-  document.getElementById('dl-payload')?.addEventListener('click', ()=>{
-    const data = buildIntegrationPayload(app, siteBase);
-    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'frame-generator-api-integration.json'; a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
-  });
-  document.getElementById('copy-payload')?.addEventListener('click', ()=>copyText(JSON.stringify(buildIntegrationPayload(app, siteBase), null, 2)));
-  document.getElementById('copy-js')?.addEventListener('click', ()=>copyText(document.getElementById('code-js')?.textContent||''));
-  document.getElementById('copy-proj')?.addEventListener('click', ()=>copyText(document.getElementById('code-proj')?.textContent||''));
-  document.getElementById('copy-master')?.addEventListener('click', ()=>copyText(document.getElementById('code-master')?.textContent||''));
-  document.getElementById('copy-cmd')?.addEventListener('click', ()=>copyText(document.getElementById('code-cmd')?.textContent||''));
-  const dlMaster = document.getElementById('dl-master'); if (dlMaster && masterPromptUrl) dlMaster.href = masterPromptUrl;
 }
 
-(async () => {
-  try {
-    const app = await bootCore();
-    window.FGUA = app && !app.error ? app : window.FGUA;
-    renderOverview(app);
-    await renderIntegration(app);
-  } catch (e) {
-    const sp = document.getElementById('status-pill'); if (sp) { sp.textContent = 'erro'; sp.classList.add('err'); }
-    renderError(document.getElementById('tab-overview'), e);
+function renderResources() {
+  const el = qs('#tab-resources');
+  if (!el) return;
+  const s = getStatus() || {};
+  const engines = app?.engines?.list ? app.engines.list() : (s.enginesState || []);
+  const providers = app?.providers?.list ? app.providers.list() : (s.providersState || []);
+  const caps = s.capabilities || {};
+  const wc = caps.webcodecs || {};
+  const webgpu = caps.webgpu || {};
+
+  const engineRows = engines.length ? engines.map((e) => [
+    `<strong>${esc(e.name || e.id || 'Engine')}</strong><br><code>${esc(e.id || '—')}</code>`,
+    statePill(e.state || (e.available ? 'available' : 'unavailable')),
+    esc(e.reason || e.note || e.type || (e.available === false ? 'Indisponível ou não detectada neste ambiente.' : '—')),
+  ]) : null;
+
+  const providerRows = providers.length ? providers.map((p) => [
+    `<strong>${esc(p.name || p.id || 'Provedor')}</strong><br><code>${esc(p.id || '—')}</code>`,
+    esc(p.type || '—'),
+    statePill(p.state || '—'),
+    `<span class="muted">${p.url ? esc(p.url) : 'Sem URL configurada.'}${Array.isArray(p.capabilities) && p.capabilities.length ? `<br>Capacidades: ${esc(p.capabilities.join(', '))}` : ''}</span>`,
+  ]) : null;
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="res-engines-title">
+        <h2 id="res-engines-title">Engines (detecção/estado)</h2>
+        <p class="muted">Engines representam mecanismos de execução/integração. Disponibilidade depende do navegador, runtime e configuração.</p>
+        ${engineRows ? table(['Engine', 'Estado', 'Detalhes'], engineRows, 'Engines registradas', { srCaption: true }) : emptyState('Nenhuma engine registrada', 'O núcleo não reportou engines nesta sessão. Recarregue o dashboard ou verifique o diagnóstico na Visão geral.', sectionNavButton('overview', 'Abrir diagnóstico'))}
+      </section>
+
+      <section class="card" aria-labelledby="res-providers-title">
+        <h2 id="res-providers-title">Provedores (registro/configuração)</h2>
+        <p class="muted">Provedores definem onde operações podem ser executadas (navegador local, backend externo etc.). Estados como <code>unconfigured</code> ou <code>unavailable</code> indicam que não há execução pronta sem configuração adicional.</p>
+        ${providerRows ? table(['Provedor', 'Tipo', 'Estado', 'Detalhes'], providerRows, 'Provedores registrados', { srCaption: true }) : emptyState('Nenhum provedor registrado', 'Nenhum provedor foi encontrado. Verifique configs/settings.json e o estado do núcleo.', sectionNavButton('config', 'Ver configurações'))}
+      </section>
+
+      <div class="grid-2">
+        <section class="card" aria-labelledby="res-webgpu-title">
+          <h2 id="res-webgpu-title">Detalhes WebGPU</h2>
+          <div class="kv">
+            <div>Disponível</div><div>${boolPill(!!webgpu.available)}</div>
+            <div>Estado</div><div>${statePill(webgpu.state || (webgpu.available ? 'available' : 'unavailable'))}</div>
+            <div>Motivo/nota</div><div>${esc(webgpu.reason || webgpu.message || '—')}</div>
+          </div>
+          <p class="section-note">Mesmo com WebGPU disponível, inferência/processamento depende de pipelines, modelos e runtimes compatíveis.</p>
+        </section>
+        <section class="card" aria-labelledby="res-webcodecs-title">
+          <h2 id="res-webcodecs-title">Detalhes WebCodecs / Mídia</h2>
+          <div class="kv">
+            <div>Disponível</div><div>${boolPill(!!wc.available)}</div>
+            <div>VideoDecoder</div><div>${boolPill(!!wc.videoDecoder)}</div>
+            <div>VideoEncoder</div><div>${boolPill(!!wc.videoEncoder)}</div>
+            <div>VideoFrame</div><div>${boolPill(!!wc.videoFrame)}</div>
+          </div>
+          <p class="section-note">Suporte a APIs não implica suporte a todos os codecs, perfis ou fluxos de encode/decode.</p>
+        </section>
+      </div>
+    </div>`;
+}
+
+function renderModels() {
+  const el = qs('#tab-models');
+  if (!el) return;
+  const models = app?.modelRegistry?.list ? app.modelRegistry.list() : [];
+  const loaded = app?.modelLoader?.listLoaded ? app.modelLoader.listLoaded() : [];
+  const supported = staticData.configs?.models?.defaults?.supportedFormats || ['gguf','onnx','safetensors','bin','pt','pth','json-manifest'];
+
+  const rows = models.map((m) => [
+    `<strong>${esc(m.name || m.fileName || m.id)}</strong><br><code>${esc(m.id)}</code>`,
+    esc(m.format || '—'),
+    esc(m.architecture || '—'),
+    esc(m.quantization || m.precision || '—'),
+    m.size ? `${esc(formatBytes(m.size))}` : '—',
+    statePill(m.state || 'registered'),
+    `<span class="muted">${esc((m.runtimeCompatible || []).join(', ') || '—')}${Array.isArray(m.warnings) && m.warnings.length ? `<br>Avisos: ${esc(m.warnings[0])}${m.warnings.length > 1 ? ` (+${m.warnings.length - 1})` : ''}` : ''}</span>`,
+  ]);
+
+  const loadedInfo = loaded.length ? `<p><strong>Carregados nesta sessão:</strong> ${esc(loaded.join(', '))}</p>` : '<p class="muted">Nenhum modelo marcado como carregado nesta sessão.</p>';
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="models-info-title">
+        <h2 id="models-info-title">Análise e registro de modelos (estado real)</h2>
+        <div class="notice info">
+          <h3>O que esta UI oferece</h3>
+          <ul>
+            <li>Exibe modelos <strong>registrados/analisados nesta sessão</strong> pelo núcleo, quando houver.</li>
+            <li>Formatos declarados em configuração: ${pills(supported)}.</li>
+            <li>Análise de metadados GGUF pode ocorrer no navegador (com limites de tamanho/memória). <strong>Análise não é inferência.</strong></li>
+          </ul>
+        </div>
+        <div class="notice warn mt">
+          <h3>Limitações importantes</h3>
+          <ul>
+            <li>Esta interface web estática <strong>não inclui</strong> um fluxo completo de upload/execução de inferência por padrão.</li>
+            <li>Carregamento de pesos e inferência requerem runtime/provedor compatível (local ou backend) configurado.</li>
+            <li>Quantização/conversão efetiva não é executada no cliente estático; arquivos originais devem ser preservados.</li>
+          </ul>
+        </div>
+        <p class="section-note mt">Para integrações programáticas, use o núcleo exposto (<code>window.FGUA</code> / <code>FGUA_APP</code>), APIs do <code>ModelLoader</code>/<code>ModelRegistry</code> e o payload de integração, respeitando estados retornados.</p>
+      </section>
+
+      <section class="card" aria-labelledby="models-list-title">
+        <h2 id="models-list-title">Modelos na sessão</h2>
+        ${loadedInfo}
+        ${rows.length ? table(['Modelo', 'Formato', 'Arquitetura', 'Quantização/Precisão', 'Tamanho', 'Estado', 'Runtime/avisos'], rows, 'Modelos registrados na sessão', { srCaption: true }) : emptyState('Nenhum modelo registrado nesta sessão', 'Quando um modelo for analisado/registrado pelo núcleo nesta sessão, ele aparecerá aqui com metadados e estado. Em modo demo, é esperado não haver modelos carregados.', sectionNavButton('integration', 'Ver opções de integração'))}
+      </section>
+    </div>`;
+}
+
+function renderGenerators() {
+  const el = qs('#tab-generators');
+  if (!el) return;
+  const generators = app?.generatorRegistry?.list ? app.generatorRegistry.list() : [];
+  const presetsFromConfig = staticData.configs?.settings?.presets || [];
+  const presetsPublic = staticData.presets?.presets || [];
+  const template = staticData.jobTemplate;
+
+  const genRows = generators.map((g) => [
+    `<strong>${esc(g.name || g.id)}</strong><br><code>${esc(g.id)}</code>`,
+    esc(g.category || '—'),
+    statePill(g.enabled === false ? 'disabled' : (g.status || 'registered')),
+    `<span class="muted">${esc(g.engine ? `Engine preferencial: ${g.engine}` : 'Sem engine preferencial definida.')}</span>`,
+  ]);
+
+  const renderPresetRows = (items, sourceLabel) => (items || []).map((p) => [
+    `<strong>${esc(p.name || p.id)}</strong><br><code>${esc(p.id || '—')}</code>`,
+    esc(p.category || '—'),
+    `<code>${esc(JSON.stringify(p.config || {}))}</code>`,
+    esc(sourceLabel),
+  ]);
+
+  const presetRows = [...renderPresetRows(presetsFromConfig, 'configs/settings.json'), ...renderPresetRows(presetsPublic, 'Public/presets/default-presets.json')];
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="gen-reg-title">
+        <h2 id="gen-reg-title">Geradores registrados</h2>
+        <p class="muted">Registro de geradores planejados/suportados pelo núcleo. Registro não implica execução disponível sem engine/modelo/provedor compatível.</p>
+        ${genRows.length ? table(['Gerador', 'Categoria', 'Estado', 'Detalhes'], genRows, 'Geradores registrados', { srCaption: true }) : emptyState('Nenhum gerador registrado', 'Verifique configs/generators.json e o bootstrap do núcleo.', sectionNavButton('config', 'Ver configurações'))}
+      </section>
+
+      <section class="card" aria-labelledby="gen-presets-title">
+        <h2 id="gen-presets-title">Presets (configuração e artefatos públicos)</h2>
+        <p class="muted">Presets são parâmetros reutilizáveis. Podem existir em <code>configs/settings.json</code> e/ou em <code>Public/presets/default-presets.json</code>; diferenças refletem as fontes atuais do repositório e devem ser tratadas conforme o seu fluxo de integração.</p>
+        ${presetRows.length ? table(['Preset', 'Categoria', 'Configuração', 'Fonte'], presetRows, 'Presets disponíveis', { srCaption: true }) : emptyState('Nenhum preset encontrado', 'Não foram encontrados presets nas fontes esperadas.', sectionNavButton('config', 'Ver configurações'))}
+      </section>
+
+      <section class="card" aria-labelledby="gen-template-title">
+        <h2 id="gen-template-title">Template de tarefa (artefato público)</h2>
+        ${template ? `
+          <div class="kv">
+            <div>ID</div><div><code>${esc(template.id || '—')}</code></div>
+            <div>Nome</div><div>${esc(template.name || '—')}</div>
+            <div>Tipo</div><div>${esc(template.type || '—')}</div>
+            <div>Campos</div><div>${pills(template.fields || []) || '<span class="muted">—</span>'}</div>
+          </div>
+          ${codeBlock('job-template-json', JSON.stringify(template, null, 2), 'Copiar template JSON')}
+          <p class="section-note">Template de referência para estruturar tarefas em integrações; não executa processamento por si só.</p>
+        ` : emptyState('Template indisponível', 'Não foi possível carregar Public/templates/job-template.json.', '')}
+      </section>
+    </div>`;
+}
+
+function renderJobs() {
+  const el = qs('#tab-jobs');
+  if (!el) return;
+  const jobs = app?.jobs?.list ? app.jobs.list() : [];
+  const rows = jobs.map((j) => [
+    `<code>${esc(j.id)}</code>`,
+    esc(j.type || j.category || '—'),
+    statePill(j.state || '—'),
+    `${esc(j.progress ?? 0)}%`,
+    formatDate(j.createdAt),
+    formatDate(j.completedAt),
+    `<span class="muted">${esc(j.message || j.error?.message || '—')}</span>`,
+  ]);
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="jobs-title">
+        <h2 id="jobs-title">Tarefas da sessão</h2>
+        <p class="muted">Tarefas são gerenciadas em memória nesta sessão. Estados refletem execução real reportada pelo núcleo (ex.: <code>unavailable</code>, <code>requires-provider/runtime</code>, <code>failed</code>, <code>cancelled</code>, <code>succeeded</code>). Nenhuma execução é simulada.</p>
+        ${rows.length ? table(['ID', 'Tipo', 'Estado', 'Progresso', 'Criada', 'Concluída', 'Mensagem'], rows, 'Tarefas da sessão', { srCaption: true }) : emptyState('Nenhuma tarefa nesta sessão', 'Tarefas aparecerão aqui quando criadas por integrações ou componentes do núcleo. Em uso apenas visual/demo, é normal que a lista esteja vazia.', sectionNavButton('integration', 'Ver integração e contrato'))}
+      </section>
+      <section class="card" aria-labelledby="jobs-help-title">
+        <h2 id="jobs-help-title">Como criar/acompanhar tarefas</h2>
+        <ul class="prose">
+          <li>Use a API do núcleo exposta em <code>window.FGUA.jobs</code> (quando disponível) em ambientes compatíveis.</li>
+          <li>Para execução real, configure engine/provedor/backend apropriados; sem eles, tarefas podem terminar como indisponíveis por design.</li>
+          <li>Consulte o payload de integração e a documentação para contratos, requisitos e limites.</li>
+        </ul>
+      </section>
+    </div>`;
+}
+
+function renderIntegration() {
+  const el = qs('#tab-integration');
+  if (!el) return;
+  const s = getStatus() || {};
+  const contract = app?.api?.getContract ? app.api.getContract() : (staticData.configs?.api ? { base: staticData.configs.api.base || '/api/v1', namespaces: staticData.configs.api.namespaces || [] } : { base: '/api/v1', namespaces: [] });
+  const namespaces = Array.isArray(contract.namespaces) ? contract.namespaces : [];
+  const site = getSite();
+  const payload = app?.getIntegrationPayload ? app.getIntegrationPayload(site) : { project: 'Frame-Generator-API', generatedAt: new Date().toISOString(), site, contract, status: s, capabilities: s.capabilities || {}, models: [], engines: [], providers: [], generators: [], notes: ['Payload gerado sem núcleo completo.'] };
+
+  const backendUrl = app?.api?.baseUrl || '';
+  const mode = app?.api?.mode || 'demo';
+
+  const commandsText = `# Servir localmente (site estático)\n`+
+`npx serve .\n`+
+`# Abrir: http://localhost:3000/  ou  http://localhost:3000/Public/dashboard.html\n\n`+
+`# Verificação do repositório\n`+
+`npm run lint:syntax\n`+
+`npm run check:json\n`+
+`npm test\n`+
+`npm run ci\n\n`+
+`# Arquivos úteis\n`+
+`# Configs: configs/api.json, settings.json, models.json, generators.json, repacks.json, permissions.json\n`+
+`# Docs:   Public/documentation/index.html, commands.html, master-prompt.md\n`+
+`# Contrato lógico: ${contract.base || '/api/v1'} (requere backend/provedor compatível para execução remota)\n`;
+
+  const jsExample = `// Exemplo: consumir informações públicas e respeitar estados reais\nconst siteBase = '${site}';\n\nasync function getPublicJson(path) {\n  const res = await fetch(new URL(path, siteBase));\n  if (!res.ok) throw new Error('Falha ao carregar ' + path + ': ' + res.status);\n  return res.json();\n}\n\n// Config/contrato publicados estaticamente\nconst apiConfig = await getPublicJson('configs/api.json');\n\n// Para operações remotas, configure um backend compatível (não incluído no GitHub Pages)\nconst BACKEND_BASE_URL = '${backendUrl.replace(/'/g, "\\'")}'; // vazio => sem backend configurado\n\nasync function callBackend(contractPath, init = {}) {\n  if (!BACKEND_BASE_URL) {\n    return { ok: false, state: 'unavailable', error: { code: 'BACKEND_UNAVAILABLE', message: 'Backend não configurado.' } };\n  }\n  const url = new URL(contractPath, BACKEND_BASE_URL.endsWith('/') ? BACKEND_BASE_URL : BACKEND_BASE_URL + '/');\n  const res = await fetch(url, { headers: { Accept: 'application/json', ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}) }, ...init });\n  const data = await res.json().catch(() => null);\n  return data ?? { ok: res.ok, state: res.ok ? 'ok' : 'error' };\n}\n`;
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="int-contract-title">
+        <h2 id="int-contract-title">Contrato lógico e estado de integração</h2>
+        <div class="grid">
+          <div>
+            <div class="kv">
+              <div>Contrato base</div><div><code>${esc(contract.base || '/api/v1')}</code></div>
+              <div>Modo atual (sessão)</div><div>${statePill(mode)}</div>
+              <div>URL de backend</div><div>${backendUrl ? `<code>${esc(backendUrl)}</code>` : '<span class="muted">Não configurada</span>'}</div>
+              <div>Backend reportado</div><div>${statePill(s?.backend?.state || (backendUrl ? 'configurado' : 'unconfigured'))}</div>
+            </div>
+            <p class="section-note">Em GitHub Pages, <code>/api/v1/*</code> é um contrato lógico. Chamadas reais exigem backend compatível acessível pela rede/CORS conforme seu ambiente.</p>
+          </div>
+          <div>
+            <h3 style="font-size:0.9375rem;margin:0 0 8px">Namespaces declarados</h3>
+            ${namespaces.length ? `<div>${pills(namespaces)}</div>` : emptyState('Sem namespaces declarados', 'Verifique configs/api.json.')}
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="int-config-title">
+        <h2 id="int-config-title">Configurar backend (apenas nesta sessão)</h2>
+        <p class="muted">Defina a URL base de um backend compatível para testes/integração. A configuração não é persistida entre recarregamentos e não valida conectividade automaticamente.</p>
+        <form id="api-config-form" class="form-row" novalidate>
+          <div class="field" style="flex:2 1 320px">
+            <label for="api-base-url">URL base do backend</label>
+            <input id="api-base-url" name="api-base-url" type="url" inputmode="url" placeholder="https://seu-backend.exemplo" value="${escAttr(backendUrl)}" autocomplete="off" />
+            <div class="help-text" id="api-base-help">Use a origem/base esperada pelo seu backend compatível. Deixe vazio para permanecer sem backend.</div>
+          </div>
+          <div class="field" style="flex:1 1 180px">
+            <label for="api-mode">Modo</label>
+            <select id="api-mode" name="api-mode">
+              <option value="demo" ${mode === 'demo' ? 'selected' : ''}>demo (sem backend)</option>
+              <option value="local" ${mode === 'local' ? 'selected' : ''}>local</option>
+              <option value="remote" ${mode === 'remote' ? 'selected' : ''}>remote</option>
+            </select>
+            <div class="help-text">Afeta como o núcleo resolve o backend para operações remotas.</div>
+          </div>
+          <div class="field" style="flex:0 0 auto;min-width:auto">
+            <button class="btn primary" id="api-save" type="submit">Aplicar na sessão</button>
+          </div>
+        </form>
+        <div id="api-status" class="notice info mt" role="status" aria-live="polite">Nenhuma alteração aplicada nesta sessão ainda.</div>
+      </section>
+
+      <section class="card" aria-labelledby="int-payload-title">
+        <h2 id="int-payload-title">Payload de integração</h2>
+        <p class="muted">Resumo exportável do estado atual, capacidades, recursos registrados e referências de configs/docs. Útil para agentes, pipelines e ferramentas externas.</p>
+        <div class="actions">
+          <button class="btn primary" id="dl-payload" type="button">Baixar payload (JSON)</button>
+          <button class="btn" id="copy-payload" type="button" data-copy-target="payload-pre" data-copy-label="Copiar payload JSON">Copiar payload</button>
+        </div>
+        <details class="disclosure mt" open>
+          <summary>Prévia do payload (JSON)</summary>
+          <div class="details-body">${codeBlock('payload-pre', JSON.stringify(payload, null, 2), 'Copiar payload JSON')}</div>
+        </details>
+      </section>
+
+      <div class="grid-2">
+        <section class="card" aria-labelledby="int-cmd-title">
+          <h2 id="int-cmd-title">Comandos e verificação</h2>
+          ${codeBlock('code-cmd', commandsText, 'Copiar comandos')}
+        </section>
+        <section class="card" aria-labelledby="int-example-title">
+          <h2 id="int-example-title">Exemplo de integração (JavaScript)</h2>
+          ${codeBlock('code-js', jsExample, 'Copiar exemplo JS')}
+          <p class="section-note">O exemplo trata ausência de backend como estado indisponível. Adapte autenticação, CORS e tratamento de erros ao seu backend real.</p>
+        </section>
+      </div>
+    </div>`;
+}
+
+function renderConfig() {
+  const el = qs('#tab-config');
+  if (!el) return;
+  const diagnostics = getStatus()?.config?.diagnostics || {};
+  const configs = staticData.configs || {};
+  const permissions = configs.permissions || null;
+  const settings = configs.settings || null;
+  const repacks = configs.repacks || null;
+
+  const rows = CONFIG_FILES.map((c) => {
+    const d = diagnostics[c.key] || {};
+    const ok = d.ok !== false && configs[c.key];
+    const url = new URL(`../../${c.name}`, import.meta.url).href;
+    return [
+      `<strong>${esc(c.name)}</strong><br><span class="muted">${esc(c.desc)}</span>`,
+      statePill(ok ? 'carregado' : 'falha/fallback'),
+      `<a href="${escAttr(url)}" target="_blank" rel="noopener noreferrer">Abrir JSON</a>`,
+      d.error?.message ? `<span class="muted">${esc(d.error.message)}</span>` : '—',
+    ];
+  });
+
+  const roleRows = permissions?.roles ? Object.entries(permissions.roles).map(([role, def]) => [
+    `<strong>${esc(role)}</strong>`,
+    pills(def?.allow || []),
+  ]) : [];
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="cfg-files-title">
+        <h2 id="cfg-files-title">Arquivos de configuração públicos</h2>
+        <p class="muted">Arquivos JSON servidos estaticamente. São carregados pelo núcleo (quando possível) e podem ser consumidos por integrações. Não armazene segredos em arquivos públicos.</p>
+        ${table(['Arquivo / descrição', 'Estado no núcleo', 'Acesso', 'Observação'], rows, 'Configurações públicas', { srCaption: true })}
+      </section>
+
+      <div class="grid-2">
+        <section class="card" aria-labelledby="cfg-perms-title">
+          <h2 id="cfg-perms-title">Permissões (nível de UI)</h2>
+          <p class="muted">${esc(permissions?.note || 'Em hospedagem estática, permissões/papéis são informativos para UI; autorização confiável requer backend.')}</p>
+          ${roleRows.length ? table(['Papel', 'Permissões permitidas'], roleRows, 'Papéis e permissões', { srCaption: true }) : emptyState('Permissões não carregadas', 'Não foi possível carregar configs/permissions.json.')}
+        </section>
+        <section class="card" aria-labelledby="cfg-sys-title">
+          <h2 id="cfg-sys-title">Sistema e provedores declarados</h2>
+          <div class="kv">
+            <div>Nome</div><div>${esc(settings?.system?.name || '—')}</div>
+            <div>Versão (config)</div><div>${esc(settings?.system?.version || '—')}</div>
+            <div>Hospedagem</div><div>${esc(settings?.system?.hosting || '—')}</div>
+            <div>Site</div><div>${settings?.system?.site ? `<a href="${escAttr(settings.system.site)}" target="_blank" rel="noopener noreferrer">${esc(settings.system.site)}</a>` : '—'}</div>
+          </div>
+          <h3 class="mt" style="font-size:0.9375rem">Provedores em settings.json</h3>
+          ${(settings?.providers || []).length ? `<ul>${settings.providers.map((p) => `<li><strong>${esc(p.name || p.id)}</strong> — tipo: ${esc(p.type || '—')}, estado declarado: ${statePill(p.state || '—')}${p.url ? `, URL: <code>${esc(p.url)}</code>` : ''}</li>`).join('')}</ul>` : emptyState('Nenhum provedor declarado', 'configs/settings.json não contém provedores declarados.')}
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="cfg-repacks-title">
+        <h2 id="cfg-repacks-title">Repacks declarados (config)</h2>
+        ${(repacks?.repacks?.length || repacks?.manifests?.length) ? `<pre>${esc(JSON.stringify(repacks, null, 2))}</pre>` : emptyState('Nenhum repack declarado em configs/repacks.json', 'Para exemplos de manifesto, consulte a aba Documentação e recursos.', sectionNavButton('docs', 'Abrir documentação e recursos'))}
+      </section>
+    </div>`;
+}
+
+function renderDocs() {
+  const el = qs('#tab-docs');
+  if (!el) return;
+  const sampleManifest = staticData.sampleManifest;
+  const docs = [
+    { title: 'Documentação (índice)', href: './documentation/index.html', desc: 'Visão geral, módulos, capacidades, limites e referências.' },
+    { title: 'Comandos e operações', href: './documentation/commands.html', desc: 'Execução local, verificação, contrato e publicação.' },
+    { title: 'Master prompt (Markdown)', href: masterPrompt.url || './documentation/master-prompt.md', desc: 'Prompt técnico para integração com IA/agentes/projetos.' },
+    { title: 'README do repositório', href: '../README.md', desc: 'Resumo do projeto, estrutura, limites e verificação.' },
+  ];
+
+  const mpContent = masterPrompt.text ? codeBlock('master-prompt-pre', masterPrompt.text, 'Copiar master prompt', { wrap: true }) : emptyState('Master prompt não carregado', `Não foi possível carregar o master prompt automaticamente. ${masterPrompt.error ? 'Motivo: ' + masterPrompt.error : ''}`, `<a class="btn" href="./documentation/master-prompt.md" target="_blank" rel="noopener noreferrer">Abrir arquivo</a>`);
+
+  el.innerHTML = `
+    <div class="stack">
+      <section class="card" aria-labelledby="docs-links-title">
+        <h2 id="docs-links-title">Documentação e guias</h2>
+        <div class="table-wrap"><table><caption class="sr-only">Documentos disponíveis</caption><thead><tr><th scope="col">Documento</th><th scope="col">Descrição</th><th scope="col">Acesso</th></tr></thead><tbody>
+          ${docs.map((d) => `<tr><td><strong>${esc(d.title)}</strong></td><td class="muted">${esc(d.desc)}</td><td><a href="${escAttr(d.href)}" target="_blank" rel="noopener noreferrer">Abrir</a></td></tr>`).join('')}
+        </tbody></table></div>
+        <p class="section-note">Alguns arquivos são servidos como Markdown/JSON estático; a visualização depende do navegador/servidor. Use "Abrir" para acessar o conteúdo original.</p>
+      </section>
+
+      <section class="card" aria-labelledby="docs-master-title">
+        <h2 id="docs-master-title">Master prompt (referência)</h2>
+        <p class="muted">Conteúdo orientado a integração técnica. Revise e adapte antes de usar em agentes ou pipelines.</p>
+        ${mpContent}
+      </section>
+
+      <div class="grid-2">
+        <section class="card" aria-labelledby="docs-manifest-title">
+          <h2 id="docs-manifest-title">Manifesto de repack (exemplo)</h2>
+          ${sampleManifest ? `${codeBlock('sample-manifest-pre', JSON.stringify(sampleManifest, null, 2), 'Copiar manifesto de exemplo')}<p class="section-note">Exemplo em <code>Public/manifests/sample-repack.json</code>. Importação/ativação depende de fluxos e runtime compatíveis; o registro em <code>configs/repacks.json</code> pode estar vazio.</p>` : emptyState('Manifesto de exemplo indisponível', 'Não foi possível carregar Public/manifests/sample-repack.json.')}
+        </section>
+        <section class="card" aria-labelledby="docs-privacy-title">
+          <h2 id="docs-privacy-title">Privacidade, segurança e limites</h2>
+          <ul class="prose">
+            <li><strong>Processamento local:</strong> análises realizadas pelo núcleo no navegador ocorrem no cliente, mas dependem dos arquivos/configurações fornecidos e das APIs do navegador.</li>
+            <li><strong>Sem backend confiável embutido:</strong> autenticação/permissões no frontend são controles de UI; não trate como fronteira de segurança.</li>
+            <li><strong>Sem segredos em público:</strong> não coloque tokens/chaves em configs, manifests ou URLs versionadas.</li>
+            <li><strong>Sem simulação:</strong> inferência, quantização efetiva e pipelines pesados exigem runtime/provedor compatível e devem reportar estados reais.</li>
+          </ul>
+        </section>
+      </div>
+    </div>`;
+}
+
+function renderAll() {
+  renderOverview();
+  renderResources();
+  renderModels();
+  renderGenerators();
+  renderJobs();
+  renderIntegration();
+  renderConfig();
+  renderDocs();
+  wireInteractions();
+  renderNotices();
+  updateChrome();
+}
+
+function wireInteractions() {
+  // Copy buttons (delegation)
+  document.removeEventListener('click', handleCopyClick);
+  document.addEventListener('click', handleCopyClick);
+  document.removeEventListener('click', handleGotoClick);
+  document.addEventListener('click', handleGotoClick);
+
+  const dl = qs('#dl-payload');
+  if (dl) {
+    dl.onclick = () => {
+      const payload = app?.getIntegrationPayload ? app.getIntegrationPayload(getSite()) : { error: 'Núcleo indisponível' };
+      downloadJson('frame-generator-api-integration.json', payload);
+    };
   }
-})();
+
+  const form = qs('#api-config-form');
+  if (form) {
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const baseInput = qs('#api-base-url');
+      const modeSel = qs('#api-mode');
+      const statusEl = qs('#api-status');
+      const raw = (baseInput?.value || '').trim();
+      const modeVal = modeSel?.value || 'demo';
+      let baseUrl = null;
+      if (raw) {
+        try {
+          const u = new URL(raw);
+          baseUrl = u.toString().replace(/\/$/, '');
+        } catch {
+          if (statusEl) {
+            statusEl.className = 'notice err mt';
+            statusEl.textContent = 'URL inválida. Informe uma URL absoluta válida (ex.: https://seu-backend.exemplo) ou deixe em branco.';
+          }
+          baseInput?.focus();
+          announce('URL de backend inválida.', 'assertive');
+          return;
+        }
+      }
+      try {
+        if (app?.api?.configure) {
+          app.api.configure({ baseUrl, mode: modeVal, backend: { remoteUrl: baseUrl, localUrl: baseUrl, connected: !!baseUrl } });
+        }
+        if (app?.backend?.configure) {
+          app.backend.configure({ baseUrl, type: modeVal === 'local' ? 'local' : 'remote' });
+        }
+      } catch (err) {
+        if (statusEl) {
+          statusEl.className = 'notice err mt';
+          statusEl.textContent = `Falha ao aplicar configuração: ${err?.message || err}`;
+        }
+        return;
+      }
+      if (statusEl) {
+        statusEl.className = 'notice ok mt';
+        statusEl.textContent = baseUrl
+          ? `Configuração aplicada nesta sessão: modo ${modeVal}, URL ${baseUrl}. Conectividade real não verificada.`
+          : `Configuração aplicada nesta sessão: modo ${modeVal}, sem URL de backend.`;
+      }
+      announce('Configuração de backend aplicada na sessão.');
+      updateChrome();
+      // Re-render only integration payload preview and notices
+      const pre = qs('#payload-pre');
+      if (pre && app?.getIntegrationPayload) pre.textContent = JSON.stringify(app.getIntegrationPayload(getSite()), null, 2);
+      renderNotices();
+    };
+  }
+}
+
+function handleCopyClick(e) {
+  const btn = e.target.closest('[data-copy-target]');
+  if (!btn) return;
+  const id = btn.getAttribute('data-copy-target');
+  const el = id ? document.getElementById(id) : null;
+  const label = btn.getAttribute('data-copy-label') || 'Copiar';
+  if (!el) return;
+  copyText(el.textContent || '').then((res) => {
+    const original = btn.textContent;
+    btn.textContent = res.ok ? 'Copiado' : 'Falha ao copiar';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = label || original; btn.disabled = false; }, 1800);
+  });
+}
+
+function handleGotoClick(e) {
+  const btn = e.target.closest('[data-goto-tab]');
+  if (!btn) return;
+  const tab = btn.getAttribute('data-goto-tab');
+  if (tab) {
+    setActiveTab(tab, { focus: true });
+    qs('#main-content')?.focus({ preventScroll: false });
+  }
+}
+
+function syncTabsOrientation() {
+  const list = qs('#tabs');
+  if (!list) return;
+  const vertical = window.matchMedia('(min-width: 901px)').matches;
+  list.setAttribute('aria-orientation', vertical ? 'vertical' : 'horizontal');
+}
+
+function setupTabs() {
+  const tabsContainer = qs('#tabs');
+  if (!tabsContainer) return;
+  const getTabs = () => qsa('[role="tab"][data-tab]', tabsContainer);
+  syncTabsOrientation();
+  window.addEventListener('resize', syncTabsOrientation, { passive: true });
+
+  tabsContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('[role="tab"][data-tab]');
+    if (!btn) return;
+    setActiveTab(btn.dataset.tab, { focus: false });
+  });
+
+  tabsContainer.addEventListener('keydown', (e) => {
+    const tabs = getTabs();
+    const current = e.target.closest('[role="tab"][data-tab]');
+    if (!current) return;
+    const idx = tabs.indexOf(current);
+    if (idx < 0) return;
+    let nextIdx = idx;
+    const key = e.key;
+    const isVertical = tabsContainer.getAttribute('aria-orientation') === 'vertical';
+    if (key === 'ArrowRight' || (isVertical && key === 'ArrowDown')) nextIdx = (idx + 1) % tabs.length;
+    else if (key === 'ArrowLeft' || (isVertical && key === 'ArrowUp')) nextIdx = (idx - 1 + tabs.length) % tabs.length;
+    else if (key === 'Home') nextIdx = 0;
+    else if (key === 'End') nextIdx = tabs.length - 1;
+    else if (key === 'Enter' || key === ' ') { e.preventDefault(); setActiveTab(current.dataset.tab, { focus: false }); return; }
+    else return;
+    e.preventDefault();
+    const next = tabs[nextIdx];
+    if (next) setActiveTab(next.dataset.tab, { focus: true });
+  });
+}
+
+function applyInitialTabFromHash() {
+  const hash = (location.hash || '').replace('#', '').trim();
+  const valid = ['overview', 'resources', 'models', 'generators', 'jobs', 'integration', 'config', 'docs'];
+  setActiveTab(valid.includes(hash) ? hash : 'overview');
+}
+
+async function main() {
+  setupTabs();
+  applyInitialTabFromHash();
+  qs('#tab-overview').innerHTML = loadingCard('Inicializando dashboard');
+
+  await initI18n(document.documentElement.lang || 'pt-BR');
+
+  try {
+    app = await bootCore();
+  } catch (e) {
+    app = { error: e };
+  }
+
+  await loadAllStatic();
+
+  if (!app || app.error) {
+    setGlobalStatus('err', 'erro');
+    updateChrome();
+    renderAll();
+    renderError(qs('#tab-overview'), app?.error || new Error('Falha ao inicializar o núcleo.'));
+    announce('Falha ao inicializar o núcleo do dashboard.', 'assertive');
+    return;
+  }
+
+  try { if (typeof window !== 'undefined') window.FGUA = app; } catch {}
+  renderAll();
+  announce('Dashboard carregado.');
+}
+
+main().catch((e) => {
+  console.error(e);
+  setGlobalStatus('err', 'erro');
+  renderError(qs('#tab-overview'), e);
+});

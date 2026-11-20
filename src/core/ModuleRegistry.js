@@ -1,28 +1,57 @@
+function clonePlain(value) {
+  if (value && typeof value === 'object') return Array.isArray(value) ? [...value] : { ...value };
+  return value;
+}
+
 export class ModuleRegistry {
   constructor(name = 'registry') {
     this.name = name;
     this.items = new Map();
   }
 
-  register(id, item) {
+  register(id, item = {}, options = {}) {
     if (!id) throw new Error(`[${this.name}] id obrigatório`);
-    if (this.items.has(id)) throw new Error(`[${this.name}] duplicado: ${id}`);
-    this.items.set(id, { id, ...item, registeredAt: new Date().toISOString() });
-    return this.items.get(id);
+    if (this.items.has(id) && !options.replace) throw new Error(`[${this.name}] duplicado: ${id}`);
+    const now = new Date().toISOString();
+    const prev = this.items.get(id) || null;
+    const rec = {
+      ...clonePlain(item),
+      id,
+      registeredAt: prev?.registeredAt || now,
+      updatedAt: now,
+    };
+    this.items.set(id, rec);
+    return { ...rec };
   }
 
-  upsert(id, item) {
+  upsert(id, item = {}) {
     if (!id) throw new Error(`[${this.name}] id obrigatório`);
-    const prev = this.items.get(id) || {};
-    this.items.set(id, { ...prev, id, ...item, updatedAt: new Date().toISOString() });
-    return this.items.get(id);
+    const now = new Date().toISOString();
+    const prev = this.items.get(id) || null;
+    const rec = {
+      ...(prev || {}),
+      ...clonePlain(item),
+      id,
+      registeredAt: prev?.registeredAt || now,
+      updatedAt: now,
+    };
+    this.items.set(id, rec);
+    return { ...rec };
   }
 
-  get(id) { return this.items.get(id) || null; }
+  get(id) {
+    const v = this.items.get(id);
+    return v ? { ...v } : null;
+  }
+
   has(id) { return this.items.has(id); }
-  list() { return [...this.items.values()]; }
+
+  list() { return [...this.items.values()].map((v) => ({ ...v })); }
+
   remove(id) { return this.items.delete(id); }
+
   clear() { this.items.clear(); }
+
   count() { return this.items.size; }
 }
 

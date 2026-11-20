@@ -3,48 +3,102 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Frame-Generator-API</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23111827'/%3E%3Cpath d='M18 20h28v6H18zm0 9h28v6H18zm0 9h18v6H18z' fill='%23fff'/%3E%3C/svg%3E" />
+  <title>Frame-Generator-API — Plataforma web modular para análise e integração de geração de quadros</title>
+  <meta name="description" content="Frame-Generator-API (FGUA): núcleo web estático para analisar modelos (incl. GGUF no navegador, com limites), inspecionar capacidades, configurar contrato lógico /api/v1 e integrar backends/runtimes compatíveis. Hospedado no GitHub Pages." />
+  <meta name="theme-color" content="#111827" />
+  <meta property="og:title" content="Frame-Generator-API" />
+  <meta property="og:description" content="Dashboard e contrato de integração para análise de modelos e planejamento de geração/aprimoramento de quadros no navegador, com execução real dependente de runtime/provedor compatível." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="./Public/icons/frame-generator-api-icon.svg" type="image/svg+xml" />
   <link rel="manifest" href="./manifest.json" />
   <link rel="stylesheet" href="./Public/css/main.css" />
-  <style>
-    .boot-wrap{min-height:100vh;display:grid;place-items:center;padding:24px;background:#f6f7f9;color:#111827;font-family:Inter,system-ui,Arial,sans-serif}
-    .boot-card{max-width:720px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px}
-    .boot-card h1{margin:0 0 8px;font-size:28px;letter-spacing:-.02em}
-    .boot-card p{margin:0 0 14px;color:#6b7280}
-    .boot-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-    .bbtn{display:inline-flex;padding:9px 14px;border-radius:8px;border:1px solid #d1d5db;background:#fff;color:#111827;text-decoration:none;font-weight:500;font-size:14px}
-    .bbtn.primary{background:#111827;color:#fff;border-color:#111827}
-    .boot-meta{margin-top:14px;font-size:13px;color:#6b7280}
-  </style>
 </head>
-<body>
-  <div class="boot-wrap">
-    <div class="boot-card">
-      <h1>Frame-Generator-API</h1>
-      <p>Plataforma universal de geração de quadros, processamento gráfico e gerenciamento de modelos de IA (FGUA). Inicializando núcleo modular no navegador…</p>
-      <div id="boot-status" class="boot-meta">Carregando módulos…</div>
-      <div class="boot-actions">
-        <a class="bbtn primary" href="./Public/dashboard.html">Abrir Dashboard</a>
-        <a class="bbtn" href="./Public/index.html">Interface</a>
-        <a class="bbtn" href="./configs/api.json">Contrato API (JSON)</a>
+<body class="landing">
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+  <main id="conteudo" class="hero">
+    <article class="hero-card">
+      <div class="badge-row" aria-label="Contexto do projeto">
+        <span class="badge info">GitHub Pages · site estático</span>
+        <span class="badge">Contrato lógico <code>/api/v1</code></span>
+        <span class="badge">Execução real requer runtime/provedor compatível</span>
       </div>
-      <div class="boot-meta">Hospedagem estática (GitHub Pages). Operações de inferência/execução pesada requerem runtime ou provedor externo compatível.</div>
-    </div>
-  </div>
+      <div class="hero-head">
+        <img class="hero-logo" src="./Public/images/frame-generator-api-logo.svg" alt="Frame-Generator-API" width="420" height="103" />
+      </div>
+      <h1>Frame-Generator-API</h1>
+      <p class="lead">Núcleo web modular para <strong>análise e registro de modelos</strong> (incluindo metadados GGUF no navegador, sujeito a limites), inspeção de <strong>capacidades/engines/provedores</strong>, gerenciamento de configurações públicas e <strong>integração por contrato</strong> (<code>/api/v1</code>).</p>
+      <p>Esta interface é honesta sobre o que está disponível: em hospedagem estática não há servidor REST nativo. Inferência, quantização efetiva e processamento pesado de imagem/vídeo <strong>não são simulados</strong> e dependem de backend, engine ou provedor compatível configurado.</p>
+
+      <div class="actions" role="group" aria-label="Ações principais">
+        <a class="btn primary" href="./Public/dashboard.html">Abrir dashboard</a>
+        <a class="btn" href="./Public/documentation/index.html">Ler documentação</a>
+        <a class="btn" href="./configs/api.json">Ver contrato/config da API (JSON)</a>
+        <a class="btn" href="https://github.com/kauan11-boop/Frame-Generator-API" rel="noopener noreferrer">Repositório no GitHub</a>
+      </div>
+
+      <section class="mt" aria-labelledby="inicio-rapido-title">
+        <h2 id="inicio-rapido-title" style="font-size:1.125rem;margin:0 0 8px;color:var(--text-strong)">Por onde começar</h2>
+        <div class="mini-grid">
+          <div class="mini">
+            <h3>1. Verificar ambiente</h3>
+            <p>Abra o dashboard para ver status do núcleo, capacidades do navegador (WebGPU, WebCodecs, WASM, etc.) e recursos registrados na sessão.</p>
+          </div>
+          <div class="mini">
+            <h3>2. Explorar recursos</h3>
+            <p>Consulte geradores, engines, provedores, presets, templates, manifests e configurações públicas expostos pelo projeto.</p>
+          </div>
+          <div class="mini">
+            <h3>3. Integrar backend</h3>
+            <p>Na aba Integração, configure a URL base de um backend compatível (modo local/remoto) para operações que exigem execução externa.</p>
+          </div>
+          <div class="mini">
+            <h3>4. Exportar payload</h3>
+            <p>Baixe o payload de integração (JSON) e use a documentação/master prompt para conectar IA, agentes ou pipelines ao contrato real.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt" aria-labelledby="boot-title">
+        <h2 id="boot-title" style="font-size:1.125rem;margin:0 0 8px;color:var(--text-strong)">Verificação rápida do núcleo (navegador)</h2>
+        <p class="section-note">Opcional: inicializa o núcleo nesta página para confirmar carregamento de módulos e configs. Para uso completo, utilize o dashboard.</p>
+        <div class="actions" style="margin-top:10px">
+          <button class="btn" id="boot-run" type="button">Verificar núcleo agora</button>
+        </div>
+        <div id="boot-status" class="notice info mt" role="status" aria-live="polite">Pronto para verificar. Nenhum módulo foi inicializado automaticamente nesta página.</div>
+      </section>
+
+      <footer class="footer mt" aria-label="Informações do projeto">
+        <span>Licença: <a href="./LICENSE">MIT</a></span>
+        <span>Configs: <a href="./configs/api.json">api.json</a></span>
+        <span>Documentação: <a href="./Public/documentation/index.html">índice</a></span>
+      </footer>
+    </article>
+  </main>
   <script type="module">
-    import { createApp } from './src/app.js';
-    const el = document.getElementById('boot-status');
-    try {
-      const app = await createApp();
-      const s = app.getStatus();
-      el.textContent = `Núcleo pronto: ${s.status} • módulos: ${s.modules.length} • engines: ${s.counts.engines} • provedores: ${s.counts.providers} • WebGPU: ${app.webgpuInfo?.available ? 'disponível' : 'indisponível'}`;
-      // mantém na página inicial; dashboard pode consumir window.FGUA se aberto no mesmo contexto não é garantido,
-      // mas app expõe estado e pode ser inicializado também pelo dashboard.
-    } catch (e) {
-      console.error(e);
-      el.textContent = 'Falha ao inicializar núcleo: ' + (e && e.message ? e.message : e);
+    const statusEl = document.getElementById('boot-status');
+    const btn = document.getElementById('boot-run');
+    function setStatus(kind, text) {
+      statusEl.className = 'notice ' + (kind || 'info') + ' mt';
+      statusEl.textContent = text;
     }
+    btn?.addEventListener('click', async () => {
+      btn.disabled = true;
+      setStatus('info', 'Carregando e inicializando módulos do núcleo…');
+      try {
+        const mod = await import('./src/app.js');
+        const app = await mod.createApp();
+        const s = app?.getStatus ? app.getStatus() : null;
+        if (app && app.error) throw app.error;
+        const counts = s?.counts || {};
+        setStatus('ok', `Núcleo pronto (v${s?.version || '1.0.0'}). Módulos: ${counts.modules ?? 0}, geradores: ${counts.generators ?? 0}, engines: ${counts.engines ?? 0}, provedores: ${counts.providers ?? 0}. Modo: ${s?.mode || app?.api?.mode || 'demo'}.`);
+      } catch (err) {
+        const msg = err?.message || String(err);
+        setStatus('err', `Falha ao inicializar o núcleo: ${msg}. Verifique se está servindo os arquivos via HTTP (ex.: npx serve .) e consulte a documentação para solução de problemas.`);
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+      }
+    });
   </script>
 </body>
 </html>

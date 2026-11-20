@@ -1,6 +1,27 @@
-﻿{
+{
   "base": "/api/v1",
   "mode": "demo",
-  "backend": { "localUrl": null, "remoteUrl": null, "connected": false },
-  "namespaces": ["/api/v1/system/","/api/v1/models/","/api/v1/metadata/","/api/v1/quantization/","/api/v1/generators/","/api/v1/frames/","/api/v1/images/","/api/v1/videos/","/api/v1/engines/","/api/v1/repack/","/api/v1/tools/","/api/v1/users/","/api/v1/permissions/","/api/v1/config/","/api/v1/jobs/","/api/v1/storage/"]
+  "backend": {
+    "localUrl": null,
+    "remoteUrl": null,
+    "connected": false
+  },
+  "namespaces": [
+    "/api/v1/system/",
+    "/api/v1/models/",
+    "/api/v1/metadata/",
+    "/api/v1/quantization/",
+    "/api/v1/generators/",
+    "/api/v1/frames/",
+    "/api/v1/images/",
+    "/api/v1/videos/",
+    "/api/v1/engines/",
+    "/api/v1/repack/",
+    "/api/v1/tools/",
+    "/api/v1/users/",
+    "/api/v1/permissions/",
+    "/api/v1/config/",
+    "/api/v1/jobs/",
+    "/api/v1/storage/"
+  ]
 }

@@ -1,75 +1,74 @@
 # Frame-Generator-API
 
-Plataforma web modular para **carregamento/análise de modelos de IA**, **geração e aprimoramento de quadros** (imagem/vídeo/jogo) e **administração unificada** (API lógica, geradores, engines, repacks, ferramentas, usuários e tarefas), projetada para execução estática no navegador e hospedagem no **GitHub Pages**.
+Plataforma web modular e estática para **análise/registro de modelos** (incl. metadados GGUF no navegador, com limites), inspeção de capacidades/engines/provedores e **integração unificada** por contrato lógico (`/api/v1/*`). Projetada para execução no navegador e hospedagem no **GitHub Pages**.
 
-- **Domínio:** https://kauan11-boop.github.io/Frame-Generator-API/
-- **Interface/Dashboard:** https://kauan11-boop.github.io/Frame-Generator-API/Public/dashboard.html
+- **Site:** https://kauan11-boop.github.io/Frame-Generator-API/
+- **Dashboard:** https://kauan11-boop.github.io/Frame-Generator-API/Public/dashboard.html
+- **Documentação:** https://kauan11-boop.github.io/Frame-Generator-API/Public/documentation/index.html
+- **Licença:** MIT (`LICENSE`)
 
-> **Hospedagem estática:** não há servidor REST no GitHub Pages. O frontend expõe uma **API lógica central** (`/api/v1/*` como contrato), opera em **modo demonstração/local** e pode ser conectado a **backend local/remoto** configurável. Processamento pesado/inferência real depende de engines, runtimes ou provedores compatíveis; operações indisponíveis retornam estado explícito (**sem simulação**).
+> **Hospedagem estática:** não há servidor REST nativo no GitHub Pages. O frontend expõe um **contrato lógico** `/api/v1/*` e opera em modos `demo`/`local`/`remote`. Operações de inferência, carregamento real de pesos, quantização efetiva e processamento pesado dependem de **runtime/engine/provedor compatível** configurado; quando indisponíveis, o sistema retorna estado explícito (**sem simulação de resultados**).
 
-## Estrutura
+## Interface web atual (estado real)
+O dashboard oferece:
+- **Visão geral:** status do núcleo, diagnóstico de configs, capacidades do navegador e resumo de recursos da sessão.
+- **Recursos e capacidades:** engines detectadas e provedores registrados/configurados.
+- **Modelos (sessão):** modelos analisados/registrados na sessão atual, com metadados/estado quando disponíveis (análise ≠ inferência).
+- **Geradores e presets:** geradores registrados, presets declarativos/públicos e template de tarefa.
+- **Tarefas:** lista/estados de tarefas da sessão (quando criadas via núcleo/integração).
+- **Integração e API:** contrato/namespaces, configuração de backend na sessão, exportação/cópia de payload e exemplos.
+- **Configurações e permissões:** acesso aos arquivos de configuração públicos e visão das permissões de UI.
+- **Documentação e recursos:** links para docs, master prompt, manifesto de exemplo e notas de limites/privacidade.
+
+> Não há fluxos completos de upload/execução/gerenciamento administrativo na UI sem runtime/provedor compatível. A interface prioriza transparência de estado e integração.
+
+## Estrutura (resumo)
 
 ```text
 Frame-Generator-API/
-├── index.html
-├── README.md
-├── LICENSE
-├── manifest.json
-├── src/                         (10 pastas)
-│   ├── core/                    ApiController.js, ModuleRegistry.js, EventBus.js, LifecycleManager.js
-│   ├── configuration/           JsonManager.js, SettingsManager.js
-│   ├── models/                  ModelLoader.js, MetadataLoader.js, ModelRegistry.js, ModelCompatibility.js
-│   ├── quantization/            QuantizationManager.js, QuantizationAnalyzer.js
-│   ├── generators/              FrameGenerator.js, ImageGenerator.js, VideoGenerator.js, GeneratorRegistry.js
-│   ├── processing/              ImageProcessor.js, VideoProcessor.js, FrameProcessor.js
-│   ├── engines/                 WebGPUEngine.js, WebCodecsEngine.js, ONNXEngine.js, BackendAdapter.js
-│   ├── repacks/                 RepackManager.js, ToolRegistry.js, ManifestLoader.js
-│   ├── security/                AuthenticationManager.js, PermissionManager.js, ValidationManager.js
-│   └── storage/                 IndexedDBManager.js, CacheManager.js, HistoryManager.js
-├── Public/                      (interface e recursos)
-│   ├── css/ js/ images/ icons/ components/ dashboard/ models/ generators/ tools/
-│   ├── repacks/ themes/ templates/ workers/ manifests/ presets/ documentation/
-│   └── locales/ assets/
-└── configs/
-    ├── api.json
-    ├── models.json
-    ├── generators.json
-    ├── repacks.json
-    ├── permissions.json
-    └── settings.json
+├── index.html                     # página inicial (entrada principal)
+├── Public/                        # UI, dashboard, documentação, assets e artefatos públicos
+│   ├── dashboard.html
+│   ├── js/ css/ icons/ images/
+│   ├── documentation/             # HTML e Markdown
+│   ├── workers/ manifests/ presets/ templates/ locales/
+├── src/                           # núcleo modular (10 pastas)
+│   ├── core/ configuration/ models/ quantization/ generators/
+│   ├── processing/ engines/ repacks/ security/ storage/
+├── configs/                       # configuração JSON (api, models, generators, repacks, permissions, settings)
+├── workers/                       # workers (protocolo unificado)
+├── archive/                       # conteúdo legado/arquivado (não é fonte de verdade do runtime ativo)
+├── tests/ scripts/ .github/workflows/
+└── manifest.json
 ```
 
-## Implementado (base funcional)
-
-- **Core unificado:** `EventBus`, `ModuleRegistry`, `LifecycleManager`, `ApiController` (contrato `/api/v1`, modos demo/local/remoto, adaptadores).
-- **Modelos:** detecção de formato, **parser GGUF real** no navegador (assinatura/cabeçalho, versão, metadados KV e índice de tensores/tipos/dimensões/offsets), registro, compatibilidade e carregamento condicionado a runtime/provedor.
-- **Quantização:** identificação, análise, estimativa e planejamento; conversão delegada a runtime/provedor compatível (arquivo original preservado, sem conversão fictícia).
-- **Geradores/Processamento:** `FrameGenerator`, `ImageGenerator`, `VideoGenerator`, processadores de imagem/vídeo/quadros, planejamento e análise local; execução de inferência/processamento avançado requer engine/provedor compatível.
-- **Engines:** detecção/estado de `WebGPU`, `WebCodecs`, adaptador `ONNX Runtime Web` (quando runtime carregado) e `BackendAdapter` configurável.
-- **Repacks/Ferramentas:** `ManifestLoader` (validação), `ToolRegistry`, `RepackManager` (importação/registro/validação).
-- **Segurança/Usuários (UI):** `AuthenticationManager`, `PermissionManager`, `ValidationManager` (validação de arquivos/JSON/endpoints; controle de UI em ambiente estático).
-- **Storage/Jobs:** `IndexedDBManager`, `CacheManager`, `HistoryManager` e gerenciador de tarefas/estados no núcleo.
-- **Dashboard (sidebar):** **Visão geral** com gráficos de informações do sistema (contagens, estados de tarefas, capacidades, engines/provedores/modelos) e **Integração** (aba dedicada para integrar informações e APIs em modelos de IA/projetos: contrato `/api/v1`, configuração de backend, exemplos, exportação/cópia de payload JSON).
-
-## Desenvolvimento local
+## Desenvolvimento e verificação
 
 ```bash
 npx serve .
+# abrir / ou /Public/dashboard.html
+
+npm run ci
+# executa: lint:syntax, check:json, test
 ```
-- Abrir `http://localhost:3000/` (bootstrap) ou `http://localhost:3000/Public/dashboard.html`.
 
-## Configuração e integração
+Scripts úteis:
+- `npm run lint:syntax` — checagem de sintaxe JS/MJS
+- `npm run check:json` — validação de JSONs (configs, manifests, presets, locales, templates)
+- `npm test` — testes automatizados (Node test runner)
 
-- Ajuste `configs/api.json` e `configs/settings.json` para apontar backend local/remoto quando disponível.
-- `/api/v1/*` representa o **contrato lógico** da plataforma; em GitHub Pages, sem backend, o cliente retorna estado indisponível explícito para operações remotas.
-- Modelos GGUF: análise/metadados no cliente; pesos/inferência dependem de runtime compatível. Arquivos originais não são modificados na inspeção.
+## Configuração e artefatos públicos
+- `configs/api.json`, `configs/settings.json`, `configs/models.json`, `configs/generators.json`, `configs/repacks.json`, `configs/permissions.json`
+- `Public/presets/default-presets.json`, `Public/templates/job-template.json`, `Public/manifests/sample-repack.json`
+- `Public/locales/pt-BR.json`, `Public/locales/en-US.json`
 
-## Limites e segurança
+> Em ambiente estático, aplique backend compatível para execução remota/local conforme seu cenário. Não armazene segredos em arquivos públicos.
 
-- Não há interceptação automática de pipeline gráfico de jogos, nem inferência/quantização “mágica” no navegador sem runtime compatível.
-- Resultados de IA/processamento pesado não são simulados; quando indisponíveis, o sistema informa requisito/provedor.
-- Autenticação/autorização confiáveis exigem backend; não armazenar credenciais/segredos em arquivos públicos. Arquivos de modelo são tratados como dados (não executáveis).
+## Limites reais (importante)
+- Sem backend em GitHub Pages: endpoints `/api/v1/*` são contrato lógico; chamadas remotas retornam indisponível quando não configuradas.
+- Não há inferência/quantização/conversão/processamento pesado no navegador sem runtime compatível.
+- Não há interceptação automática de pipeline gráfico de jogos; integrações devem ser autorizadas e providas por componentes compatíveis.
+- Controles de usuário/permissão no cliente são de UI apenas (não são fronteira de segurança).
 
-## Licença
-
-MIT — ver `LICENSE`.
+## Deploy
+O repositório inclui `.nojekyll` e workflow para publicação estática no GitHub Pages (`.github/workflows/jekyll-gh-pages.yml`) e workflow de CI (`.github/workflows/ci.yml`).

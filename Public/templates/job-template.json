@@ -1,7 +1,19 @@
 {
   "id": "template-basic",
-  "name": "Template Básico",
+  "name": "Template básico de tarefa",
   "type": "frame-job",
-  "fields": ["operation", "model", "engine", "input", "output", "preset"],
-  "defaults": { "engine": "auto", "preset": null }
+  "description": "Modelo de referência para estruturar solicitações de tarefa em integrações. Campos e execução dependem do runtime/provedor compatível.",
+  "fields": ["operation", "category", "model", "engine", "provider", "input", "output", "preset", "options"],
+  "defaults": {
+    "operation": "analyze",
+    "category": "image",
+    "engine": "auto",
+    "provider": null,
+    "preset": null,
+    "options": {}
+  },
+  "notes": [
+    "Este template não executa processamento por si só.",
+    "Estados devem ser tratados explicitamente (planned, unavailable, requires-provider/runtime, failed, cancelled, succeeded)."
+  ]
 }

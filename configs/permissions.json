@@ -1,9 +1,9 @@
-﻿{
+{
   "roles": {
     "Administrator": { "allow": ["*"] },
-    "Developer": { "allow": ["generators.*","models.*","tools.*","repacks.*","tasks.*","providers.*","config.*","logs.read"] },
-    "User": { "allow": ["generators.execute","generators.read","models.read","models.load","tasks.*","logs.read"] },
-    "Viewer": { "allow": ["*.read","status.read","logs.read"] }
+    "Developer": { "allow": ["generators.*", "models.*", "tools.*", "repacks.*", "tasks.*", "providers.*", "config.*", "logs.read", "status.read"] },
+    "User": { "allow": ["generators.execute", "generators.read", "models.read", "models.load", "tasks.*", "logs.read", "status.read"] },
+    "Viewer": { "allow": ["*.read", "status.read", "logs.read"] }
   },
-  "note": "Controle de UI em hospedagem estática; autorização confiável requer backend externo."
+  "note": "Controle de UI em hospedagem estática; autenticação/autorização confiáveis requerem backend."
 }

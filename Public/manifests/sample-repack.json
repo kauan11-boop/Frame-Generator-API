@@ -2,14 +2,15 @@
   "id": "sample-frame-pack",
   "name": "Sample Frame Pack",
   "version": "1.0.0",
+  "description": "Manifesto de exemplo para demonstrar a estrutura de repacks/módulos. Não garante disponibilidade de execução sem runtime, engine ou provedor compatível.",
   "enabled": true,
   "modules": [
-    { "id": "image-upscale-adapter", "type": "image-enhancement", "enabled": true },
-    { "id": "video-interpolation-adapter", "type": "frame-interpolation", "enabled": false }
+    { "id": "image-upscale-adapter", "type": "image-enhancement", "enabled": true, "description": "Exemplo de módulo de aprimoramento de imagem (requer implementação/runtime compatível)." },
+    { "id": "video-interpolation-adapter", "type": "frame-interpolation", "enabled": false, "description": "Exemplo de módulo de interpolação de vídeo (desativado por padrão)." }
   ],
   "dependencies": [],
   "permissions": ["models.read", "generators.execute"],
   "configuration": {
-    "note": "Manifesto de exemplo. Módulos sem runtime/backend compatível permanecem indisponíveis para execução."
+    "note": "Manifesto de exemplo. Estados e permissões devem ser validados pelo consumidor antes de qualquer uso."
   }
 }
