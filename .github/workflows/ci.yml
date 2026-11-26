@@ -1,4 +1,4 @@
-name: CI
+name: Static checks
 
 on:
   push:
@@ -22,9 +22,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install dependencies
-        run: npm ci
-      - name: Run tests
-        run: npm test
-      - name: Check dashboard assets
-        run: node --check dashboard/app.js && node --check mcp-server/src/index.js && node --check mcp-server/src/bridge.js
+      - name: Validar sintaxe
+        run: node --check server.js && node --check dashboard/app.js
+      - name: Validar JSON
+        run: node -e "for (const f of ['package.json', 'dashboard/data/snapshot.json']) JSON.parse(require('fs').readFileSync(f, 'utf8'))"

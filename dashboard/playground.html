@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FGUA · sandbox</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b0f14; color: #e6edf3; font: 12px/1.6 ui-monospace, Consolas, monospace; }
+    body { display: grid; place-items: center; text-align: center; padding: 16px; }
+    p { margin: 0; color: #7d8b99; }
+  </style>
+</head>
+<body>
+  <p>sandbox pronto · aguardando código</p>
+  <script>
+    const post = (type, payload = {}) => parent.postMessage({ type: `fgua:${type}`, ...payload }, '*');
+
+    function makeConsole() {
+      const send = (level) => (...args) => post('log', {
+        level,
+        text: args.map((arg) => {
+          if (typeof arg === 'string') return arg;
+          try { return JSON.stringify(arg); } catch { return String(arg); }
+        }).join(' '),
+      });
+      return { log: send('log'), info: send('info'), warn: send('warn'), error: send('error'), table: send('log') };
+    }
+
+    window.addEventListener('message', (event) => {
+      if (event.source !== parent || event.data?.type !== 'fgua:run') return;
+      const consoleProxy = makeConsole();
+      try {
+        const fn = new Function('console', '"use strict";\n' + String(event.data.code || ''));
+        const value = fn(consoleProxy);
+        post('done', { value: value === undefined ? null : String(value) });
+      } catch (error) {
+        post('log', { level: 'error', text: `${error.name}: ${error.message}` });
+        post('done', { value: null, failed: true });
+      }
+    });
+
+    post('ready');
+  </script>
+</body>
+</html>

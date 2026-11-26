@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="FGUA — painel de orquestração MCP sobre REA, reparo de código e engenharia reversa.">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="FGUA — console estático avançado no GitHub Pages: ferramentas locais, sandbox, catálogo REA e orquestração.">
   <title>FGUA · Console MCP</title>
   <link rel="stylesheet" href="dashboard/styles.css">
 </head>
@@ -12,63 +13,121 @@
   <aside class="sidebar" id="sidebar">
     <div class="brand">
       <span class="brand-mark">FG</span>
-      <div><strong>FGUA</strong><small>Frame Generator API</small></div>
+      <div class="brand-copy"><strong>FGUA</strong><small>Frame Generator API</small></div>
     </div>
-    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Recolher menu">☰</button>
     <nav class="nav">
-      <p class="nav-label">Operação</p>
+      <p class="nav-label">Painel</p>
       <button class="nav-item active" data-view="overview"><span>◉</span> Visão geral</button>
+      <button class="nav-item" data-view="tools"><span>▦</span> Ferramentas</button>
+      <button class="nav-item" data-view="playground"><span>⌘</span> Playground</button>
+      <p class="nav-label">Operação</p>
       <button class="nav-item" data-view="reverse"><span>⌕</span> Engenharia reversa</button>
-      <button class="nav-item" data-view="repair"><span>⌘</span> Reparo &amp; transpilação</button>
+      <button class="nav-item" data-view="repair"><span>⟳</span> Reparo &amp; transpilação</button>
       <button class="nav-item" data-view="jobs"><span>▤</span> Jobs</button>
       <button class="nav-item" data-view="rea"><span>⬡</span> Ferramentas REA</button>
-      <p class="nav-label">Administração</p>
+      <p class="nav-label">Sistema</p>
+      <button class="nav-item" data-view="guide"><span>◎</span> Guia rápido</button>
       <button class="nav-item" data-view="admin"><span>⚙</span> Admin &amp; integrações</button>
     </nav>
     <div class="sidebar-foot">
-      <div class="bridge-state" id="bridgeState"><i class="dot off"></i><span>bridge desconectado</span></div>
-      <small>v3.0.0 · painel estático</small>
+      <div class="bridge-state" id="bridgeState"><i class="dot"></i><span>modo estático</span></div>
+      <small>v4.0.0 · GitHub Pages</small>
     </div>
   </aside>
 
   <div class="main">
     <header class="topbar">
-      <div>
-        <h1 id="viewTitle">Visão geral</h1>
-        <p id="viewSubtitle">Estado do MCP, do REA e do provedor local de modelo.</p>
+      <div class="topbar-title">
+        <button class="icon-btn menu-btn" id="sidebarToggle" aria-label="Recolher menu">☰</button>
+        <div>
+          <h1 id="viewTitle">Visão geral</h1>
+          <p id="viewSubtitle">Estado do painel, do conteúdo sincronizado e das integrações.</p>
+        </div>
       </div>
       <div class="topbar-actions">
+        <button class="pill on" id="modePill" title="Ativar/desativar integração local opcional">estático · GH Pages</button>
         <span class="pill" id="reaPill">REA: —</span>
         <span class="pill" id="llmPill">LM Studio: —</span>
-        <button class="btn ghost" id="refreshBtn">Atualizar</button>
+        <button class="icon-btn" id="themeToggle" aria-label="Alternar tema" title="Alternar tema">◐</button>
+        <button class="btn ghost small" id="paletteBtn">Buscar <kbd>Ctrl K</kbd></button>
+        <button class="btn ghost small" id="refreshBtn">Atualizar</button>
       </div>
     </header>
 
     <main class="content">
       <section class="panel active" data-panel="overview">
-        <div class="grid-3">
-          <article class="card"><small>MCP FGUA</small><strong id="statVersion">—</strong><p id="statNode">—</p></article>
-          <article class="card"><small>REA MCP</small><strong id="statRea">—</strong><p id="statReaTools">—</p></article>
-          <article class="card"><small>LM Studio</small><strong id="statLlm">—</strong><p id="statModels">—</p></article>
-        </div>
-        <article class="card wide">
-          <div class="card-head"><h2>Instalação local</h2></div>
-          <p class="hint">O painel é estático (GitHub Pages). As ações exigem o bridge local; ele não roda no GitHub.</p>
-          <pre class="code">npm install
-npm run bridge     # http://127.0.0.1:4174
-npm run mcp        # servidor MCP stdio para o agente</pre>
-          <p class="hint">Registre o MCP no OpenCode apontando para <code>mcp-server/src/index.js</code>. Veja o README.</p>
+        <article class="hero">
+          <span class="eyebrow">FGUA v4 · static-first</span>
+          <h2>Todo o controle no navegador.</h2>
+          <p>Nenhum servidor, nenhuma etapa de build: o painel roda direto no GitHub Pages com ferramentas locais, sandbox isolado e o catálogo completo do REA.</p>
+          <div class="hero-actions">
+            <button class="btn primary" data-go="tools">Explorar ferramentas</button>
+            <button class="btn ghost" data-go="guide">Como funciona</button>
+          </div>
         </article>
+
+        <div class="grid-3">
+          <article class="card"><small>Painel</small><strong id="statVersion">—</strong><p id="statNode">GitHub Pages</p></article>
+          <article class="card"><small>REA MCP</small><strong id="statRea">—</strong><p id="statReaTools">catálogo sincronizado</p></article>
+          <article class="card"><small>Provedor local</small><strong id="statLlm">—</strong><p id="statModels">opcional</p></article>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <div class="card-head"><h2>Prévia local</h2><span class="tag">1 comando</span></div>
+            <p class="hint">O deploy é automático no GitHub Pages. Para ver a mesma página na sua máquina:</p>
+            <pre class="code">npm start</pre>
+            <p class="hint">Conteúdo sincronizado em <code id="snapshotDate">—</code>.</p>
+          </article>
+          <article class="card">
+            <div class="card-head"><h2>Recursos do painel</h2></div>
+            <div class="feature-list">
+              <button data-go="tools"><strong>Ferramentas</strong><span>JSON, Base64, hash, regex, UUID e mais — tudo no navegador.</span></button>
+              <button data-go="playground"><strong>Playground</strong><span>Execução de JavaScript em iframe isolado.</span></button>
+              <button data-go="rea"><strong>Catálogo REA</strong><span>Busca local e detalhes de centenas de ferramentas.</span></button>
+            </div>
+          </article>
+        </div>
+
         <article class="card wide">
-          <div class="card-head"><h2>Contadores do armazenamento local</h2></div>
+          <div class="card-head"><h2>Contadores do conteúdo sincronizado</h2></div>
           <div class="grid-3" id="storeCounters"><span class="muted">carregando…</span></div>
+        </article>
+      </section>
+
+      <section class="panel" data-panel="tools">
+        <article class="card wide">
+          <div class="card-head"><h2>Ferramentas de bolso</h2><span class="tag">100% local</span></div>
+          <p class="hint">Nada é enviado para servidor. Os resultados ficam apenas nesta aba e podem ser copiados.</p>
+          <div class="tool-tabs" id="toolTabs"></div>
+          <div class="tool-workspace" id="toolWorkspace"></div>
+        </article>
+      </section>
+
+      <section class="panel" data-panel="playground">
+        <article class="card wide">
+          <div class="card-head"><h2>Playground JavaScript</h2><span class="tag">iframe isolado</span></div>
+          <p class="hint">O código roda em um sandbox sem acesso à página, ao armazenamento local ou à rede. Use <code>console.log()</code> para inspecionar.</p>
+          <div class="sandbox-bar">
+            <button class="btn primary small" id="playgroundRun">Executar</button>
+            <button class="btn ghost small" id="playgroundClear">Limpar</button>
+            <span class="status-line" id="playgroundStatus"></span>
+          </div>
+          <div class="sandbox">
+            <div class="sandbox-pane"><label>Código</label><textarea id="playgroundInput" spellcheck="false">const soma = (a, b) =&gt; a + b;
+console.log('soma(2, 3) =', soma(2, 3));
+console.table([{ n: 2 }, { n: 3 }]);
+soma;</textarea></div>
+            <div class="sandbox-pane"><label>Saída</label><pre class="code" id="playgroundOutput">—</pre></div>
+          </div>
+          <iframe id="playgroundFrame" src="dashboard/playground.html" sandbox="allow-scripts" title="Sandbox JavaScript" hidden></iframe>
         </article>
       </section>
 
       <section class="panel" data-panel="reverse">
         <article class="card wide">
           <div class="card-head"><h2>Analisar arquivo</h2><span class="tag">orquestra REA</span></div>
-          <p class="hint">Aponte o arquivo e o destino do relatório. O FGUA abre a sessão no REA e grava Markdown + JSON.</p>
+          <p class="hint">Aponte o arquivo e o destino do relatório. Esta ação depende da integração local opcional; o restante do painel funciona sem ela.</p>
           <form id="reverseForm" class="form-grid">
             <label>Caminho do arquivo<input name="path" required placeholder="C:\caminho\alvo.exe ou .wasm"></label>
             <label>Diretório de destino<input name="outputDir" placeholder="vazio = .frame-data/reports"></label>
@@ -119,7 +178,7 @@ npm run mcp        # servidor MCP stdio para o agente</pre>
           <div class="table-wrap"><table><thead><tr><th>Ferramenta</th><th>Descrição</th></tr></thead><tbody id="reaTable"><tr><td colspan="2" class="muted">carregando…</td></tr></tbody></table></div>
         </article>
         <article class="card wide">
-          <div class="card-head"><h2>Chamada direta</h2></div>
+          <div class="card-head"><h2>Chamada direta</h2><span class="tag">integração local opcional</span></div>
           <form id="reaCallForm" class="form-grid">
             <label>Ferramenta<input name="tool" required placeholder="binary_session"></label>
             <label>Argumentos (JSON)<input name="args" value='{}'></label>
@@ -127,6 +186,28 @@ npm run mcp        # servidor MCP stdio para o agente</pre>
           </form>
           <pre class="code" id="reaResult">—</pre>
         </article>
+      </section>
+
+      <section class="panel" data-panel="guide">
+        <article class="hero compact">
+          <span class="eyebrow">Guia rápido</span>
+          <h2>Como o FGUA se encaixa no GitHub Pages.</h2>
+          <p>O GitHub Pages publica arquivos estáticos. Por isso o painel foi desenhado para fazer todo o trabalho útil no navegador e tratar processos locais como extensão opcional — nunca como pré-requisito.</p>
+        </article>
+        <div class="grid-2">
+          <article class="card"><div class="card-head"><h2>Fluxo recomendado</h2></div>
+            <ol class="list"><li>Abra o painel publicado ou a prévia local.</li><li>Use as ferramentas e o playground para tarefas do dia a dia.</li><li>Pesquise no catálogo do REA para planejar uma análise.</li><li>Execute etapas que exigem processos locais apenas no ambiente de trabalho.</li></ol>
+          </article>
+          <article class="card"><div class="card-head"><h2>Limites honestos</h2></div>
+            <ul class="list"><li>Página estática não inicia processos nem lê arquivos do disco.</li><li>O sandbox do playground não tem acesso à página nem à rede.</li><li>WASM é alvo de análise, não um interpretador universal.</li><li>Dados de exemplo vêm do snapshot versionado, sem segredos.</li></ul>
+          </article>
+          <article class="card"><div class="card-head"><h2>Atalhos</h2></div>
+            <ul class="list"><li><kbd>Ctrl K</kbd> / <kbd>⌘ K</kbd> — busca rápida de seções e ferramentas.</li><li><kbd>Esc</kbd> — fecha a busca.</li><li><kbd>Ctrl Enter</kbd> — executa o playground.</li></ul>
+          </article>
+          <article class="card"><div class="card-head"><h2>Estrutura publicada</h2></div>
+            <ul class="list"><li><code>index.html</code> — interface.</li><li><code>dashboard/styles.css</code> — tema claro/escuro.</li><li><code>dashboard/app.js</code> — lógica e ferramentas.</li><li><code>dashboard/data/snapshot.json</code> — conteúdo sincronizado.</li></ul>
+          </article>
+        </div>
       </section>
 
       <section class="panel" data-panel="admin">
@@ -141,8 +222,8 @@ npm run mcp        # servidor MCP stdio para o agente</pre>
         <div class="subpanel active" data-sub="info">
           <article class="card wide"><div class="card-head"><h2>Integrações e limites</h2></div>
             <div class="grid-2">
-              <div><h3>O que funciona</h3><ul class="list"><li>Orquestração de ferramentas do MCP REA por catálogo.</li><li>Relatórios de RE com Evidence IDs e hash do arquivo.</li><li>Reparo/transpilação com testes reais como reward.</li><li>Presets e prompts editáveis pelo painel.</li></ul></div>
-              <div><h3>Limites reais</h3><ul class="list"><li>GitHub Pages é estático: não hospeda MCP nem executa código.</li><li>WASM é alvo de compilação, não interpretador de C#/Python/NodeJS.</li><li>O bridge escuta apenas em 127.0.0.1.</li><li>Primeira execução de modelo exige LM Studio ativo (padrão :1234).</li></ul></div>
+              <div><h3>O que funciona</h3><ul class="list"><li>Ferramentas de transformação executadas no navegador.</li><li>Busca local no catálogo de ferramentas do REA.</li><li>Relatórios com Evidence IDs quando a integração local está presente.</li><li>Presets e prompts sincronizados no snapshot.</li></ul></div>
+              <div><h3>Limites reais</h3><ul class="list"><li>GitHub Pages é estático: não hospeda MCP nem executa código.</li><li>WASM é alvo de compilação, não interpretador de C#/Python/NodeJS.</li><li>Processos locais exigem o ambiente da máquina do usuário.</li><li>Primeira execução de modelo exige provedor local ativo.</li></ul></div>
             </div>
             <p class="hint">Nenhum segredo deve ser colocado aqui: o painel é público e o arquivo é versionado.</p>
           </article>
@@ -170,7 +251,7 @@ npm run mcp        # servidor MCP stdio para o agente</pre>
 
         <div class="subpanel" data-sub="tools">
           <article class="card wide"><div class="card-head"><h2>Ferramentas locais integradas</h2><span class="tag">somente leitura</span></div>
-            <p class="hint">Ferramentas descobertas via <code>fgua_rea_catalog</code> e capacidades do runtime FGUA.</p>
+            <p class="hint">Ferramentas descobertas via catálogo e capacidades do runtime FGUA.</p>
             <div class="table-wrap"><table><thead><tr><th>Ferramenta</th><th>Descrição</th></tr></thead><tbody id="localToolsTable"><tr><td colspan="2" class="muted">carregando…</td></tr></tbody></table></div>
           </article>
         </div>
@@ -192,9 +273,9 @@ npm run mcp        # servidor MCP stdio para o agente</pre>
         </div>
 
         <div class="subpanel" data-sub="config">
-          <article class="card wide"><div class="card-head"><h2>Configuração do bridge</h2></div>
+          <article class="card wide"><div class="card-head"><h2>Configuração da integração local</h2></div>
             <form id="settingsForm" class="form-grid">
-              <label>LM Studio URL<input name="lmStudioUrl" placeholder="http://localhost:1234/v1"></label>
+              <label>URL do provedor<input name="lmStudioUrl" placeholder="http://localhost:1234/v1"></label>
               <label>Modelo<input name="model" placeholder="vazio = primeiro modelo"></label>
               <label>Temperatura<input name="temperature" type="number" step="0.1" min="0" max="2"></label>
               <label>Iterações máx.<input name="maxIterations" type="number" min="1" max="12"></label>
@@ -204,6 +285,13 @@ npm run mcp        # servidor MCP stdio para o agente</pre>
         </div>
       </section>
     </main>
+  </div>
+</div>
+
+<div class="palette" id="palette" hidden>
+  <div class="palette-box">
+    <input id="paletteInput" placeholder="Buscar seções e ferramentas…" autocomplete="off">
+    <div class="palette-results" id="paletteResults"></div>
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>

@@ -8,19 +8,33 @@ const ALLOWED_ORIGIN = (origin) =>
   /^https:\/\/kauan11-boop\.github\.io$/i.test(origin) ||
   /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
 
-function json(res, status, payload, req) {
+function corsHeaders(req) {
   const origin = req?.headers?.origin || '';
-  const headers = {
-    'content-type': 'application/json; charset=utf-8',
-    'cache-control': 'no-store',
-    vary: 'Origin',
-  };
+  const headers = { vary: 'Origin' };
   if (ALLOWED_ORIGIN(origin)) {
     headers['access-control-allow-origin'] = origin;
     headers['access-control-allow-credentials'] = 'true';
+    headers['access-control-allow-headers'] = 'content-type';
+    headers['access-control-allow-methods'] = 'GET, POST, PATCH, DELETE, OPTIONS';
+    headers['access-control-allow-private-network'] = 'true';
+    headers['access-control-max-age'] = '600';
   }
+  return headers;
+}
+
+function json(res, status, payload, req) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    ...corsHeaders(req),
+  };
   res.writeHead(status, headers);
   res.end(JSON.stringify(payload, null, 2));
+}
+
+function preflight(req, res) {
+  res.writeHead(204, corsHeaders(req));
+  res.end();
 }
 
 function readBody(req) {
@@ -42,7 +56,7 @@ function readBody(req) {
 }
 
 async function handle(req, res) {
-  if (req.method === 'OPTIONS') return json(res, 204, {}, req);
+  if (req.method === 'OPTIONS') return preflight(req, res);
   const url = new URL(req.url, `http://${BRIDGE_HOST}:${BRIDGE_PORT}`);
   const route = `${req.method} ${url.pathname}`;
   const body = ['POST', 'PUT', 'PATCH'].includes(req.method) ? await readBody(req) : {};

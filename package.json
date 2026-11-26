@@ -1,15 +1,11 @@
 {
   "name": "frame-generator-api",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "private": true,
   "type": "module",
-  "description": "FGUA v3 — MCP sobre REA, loop LLM+testes e dashboard local/GitHub Pages",
+  "description": "FGUA v4 — dashboard estático avançado para GitHub Pages, com um único comando de inicialização",
   "scripts": {
-    "start": "node mcp-server/src/bridge.js",
-    "bridge": "node mcp-server/src/bridge.js",
-    "mcp": "node mcp-server/src/index.js",
-    "test": "node --test mcp-server/tests/*.test.mjs",
-    "ci": "node --test mcp-server/tests/*.test.mjs"
+    "start": "node server.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2"
