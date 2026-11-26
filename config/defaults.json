@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "settings": {
+    "lmStudioUrl": "http://localhost:1234/v1",
+    "model": "",
+    "temperature": 0.2,
+    "maxIterations": 4,
+    "bridgePort": 4174,
+    "defaultSourceLanguage": "javascript",
+    "defaultTargetLanguage": "typescript",
+    "testRunners": {
+      "javascript": "node",
+      "typescript": "node",
+      "python": "python"
+    }
+  },
+  "presets": [
+    {
+      "id": "reverse-binary",
+      "name": "RE de binário (genérico)",
+      "kind": "reverse",
+      "description": "Abre o arquivo no REA e inventaria procedimentos, strings e nomes.",
+      "tags": ["binario", "pe", "elf", "macho"],
+      "config": {
+        "steps": ["open_binary", "inspect_artifact", "list_procedures", "list_strings", "list_names"],
+        "detail": "summary",
+        "maxProcedures": 12
+      }
+    },
+    {
+      "id": "reverse-wasm",
+      "name": "RE de WebAssembly",
+      "kind": "reverse",
+      "description": "Inspeciona interface e bytes de um módulo .wasm sem executá-lo.",
+      "tags": ["wasm", "webassembly"],
+      "config": {
+        "steps": ["inspect_wasm_artifact"],
+        "detail": "complete",
+        "maxProcedures": 0
+      }
+    },
+    {
+      "id": "repair-fast",
+      "name": "Reparo rápido (LLM + testes)",
+      "kind": "repair",
+      "description": "Até 3 iterações; para no primeiro candidato que passa nos testes.",
+      "tags": ["repair", "fix", "tests"],
+      "config": {
+        "maxIterations": 3,
+        "temperature": 0.2,
+        "stopOnPass": true
+      }
+    },
+    {
+      "id": "transpile-preserving-tests",
+      "name": "Transpilação com testes",
+      "kind": "transpile",
+      "description": "Converte entre linguagens preservando o contrato validado por testes.",
+      "tags": ["transpile", "port", "tests"],
+      "config": {
+        "maxIterations": 4,
+        "temperature": 0.2,
+        "stopOnPass": true
+      }
+    }
+  ],
+  "prompts": [
+    {
+      "id": "repair-system",
+      "name": "Sistema: reparo de código",
+      "body": "Você é um engenheiro de software que corrige código com evidências. Responda APENAS com o código completo dentro de um bloco markdown cercado por ``` e uma linha 'MOTIVO: <frase curta>' depois do bloco. Nunca explique fora disso. Preserve a API pública, assinaturas e comportamento observável. Não introduza dependências novas. Use o erro de execução e os testes como evidência; não invente resultado de teste.",
+      "variables": []
+    },
+    {
+      "id": "transpile-system",
+      "name": "Sistema: transpilação",
+      "body": "Você traduz código entre linguagens preservando comportamento. Responda APENAS com o código completo dentro de um bloco cercado por ``` e uma linha 'MOTIVO: <frase curta>' depois do bloco. Preserve nomes públicos, contratos de entrada/saída e efeitos colaterais. Se a linguagem de destino não tiver equivalente direto, implemente o comportamento com os recursos nativos disponíveis e registre isso no MOTIVO. Não alegue que testes passaram sem execução real.",
+      "variables": []
+    },
+    {
+      "id": "reverse-report",
+      "name": "Sistema: relatório de engenharia reversa",
+      "body": "Você escreve relatórios técnicos a partir de evidências de engenharia reversa. Use apenas fatos presentes no JSON fornecido. Cite os IDs de evidência. Separe 'Fatos observados', 'Inferências' e 'Perguntas em aberto'. Nunca afirme ter executado código que não foi executado.",
+      "variables": []
+    },
+    {
+      "id": "dashboard-integrator",
+      "name": "Sistema: integração de ferramentas locais",
+      "body": "Você produz configurações JSON para integrar ferramentas locais ao FGUA. Valide schemas antes de sugerir. Nunca inclua segredos, tokens ou caminhos de credenciais. Prefira comandos explícitos e versionados.",
+      "variables": []
+    }
+  ]
+}

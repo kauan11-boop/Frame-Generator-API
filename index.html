@@ -1,26 +1,212 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Frame-Generator-API</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='2' width='9' height='9' rx='1' fill='%234cc2ff'/%3E%3Crect x='13' y='2' width='9' height='9' rx='1' fill='%234cc2ff'/%3E%3Crect x='2' y='13' width='9' height='9' rx='1' fill='%234cc2ff'/%3E%3Crect x='13' y='13' width='9' height='9' rx='1' fill='%234cc2ff'/%3E%3C/svg%3E">
-  <script>
-    // Boot: encaminha ao shell Windows 11 preservando caminhos relativos (GitHub Pages)
-    (function () {
-      var here = location.pathname.replace(/\/[^/]*$/, '/');
-      location.replace(here + 'Public/desktop/index.html');
-    })();
-  </script>
-  <style>
-    html, body { margin: 0; height: 100%; background: #000; color: #4cc2ff; font-family: 'Segoe UI', system-ui, sans-serif; display: grid; place-items: center; }
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="FGUA — painel de orquestração MCP sobre REA, reparo de código e engenharia reversa.">
+  <title>FGUA · Console MCP</title>
+  <link rel="stylesheet" href="dashboard/styles.css">
 </head>
 <body>
-  <noscript>
-    <p>O Frame-Generator-API precisa de JavaScript.<br>
-    Acesse diretamente: <a style="color:#4cc2ff" href="Public/desktop/index.html">Public/desktop/index.html</a></p>
-  </noscript>
-  <p>Carregando a área de trabalho…</p>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="brand-mark">FG</span>
+      <div><strong>FGUA</strong><small>Frame Generator API</small></div>
+    </div>
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Recolher menu">☰</button>
+    <nav class="nav">
+      <p class="nav-label">Operação</p>
+      <button class="nav-item active" data-view="overview"><span>◉</span> Visão geral</button>
+      <button class="nav-item" data-view="reverse"><span>⌕</span> Engenharia reversa</button>
+      <button class="nav-item" data-view="repair"><span>⌘</span> Reparo &amp; transpilação</button>
+      <button class="nav-item" data-view="jobs"><span>▤</span> Jobs</button>
+      <button class="nav-item" data-view="rea"><span>⬡</span> Ferramentas REA</button>
+      <p class="nav-label">Administração</p>
+      <button class="nav-item" data-view="admin"><span>⚙</span> Admin &amp; integrações</button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="bridge-state" id="bridgeState"><i class="dot off"></i><span>bridge desconectado</span></div>
+      <small>v3.0.0 · painel estático</small>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="viewTitle">Visão geral</h1>
+        <p id="viewSubtitle">Estado do MCP, do REA e do provedor local de modelo.</p>
+      </div>
+      <div class="topbar-actions">
+        <span class="pill" id="reaPill">REA: —</span>
+        <span class="pill" id="llmPill">LM Studio: —</span>
+        <button class="btn ghost" id="refreshBtn">Atualizar</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="panel active" data-panel="overview">
+        <div class="grid-3">
+          <article class="card"><small>MCP FGUA</small><strong id="statVersion">—</strong><p id="statNode">—</p></article>
+          <article class="card"><small>REA MCP</small><strong id="statRea">—</strong><p id="statReaTools">—</p></article>
+          <article class="card"><small>LM Studio</small><strong id="statLlm">—</strong><p id="statModels">—</p></article>
+        </div>
+        <article class="card wide">
+          <div class="card-head"><h2>Instalação local</h2></div>
+          <p class="hint">O painel é estático (GitHub Pages). As ações exigem o bridge local; ele não roda no GitHub.</p>
+          <pre class="code">npm install
+npm run bridge     # http://127.0.0.1:4174
+npm run mcp        # servidor MCP stdio para o agente</pre>
+          <p class="hint">Registre o MCP no OpenCode apontando para <code>mcp-server/src/index.js</code>. Veja o README.</p>
+        </article>
+        <article class="card wide">
+          <div class="card-head"><h2>Contadores do armazenamento local</h2></div>
+          <div class="grid-3" id="storeCounters"><span class="muted">carregando…</span></div>
+        </article>
+      </section>
+
+      <section class="panel" data-panel="reverse">
+        <article class="card wide">
+          <div class="card-head"><h2>Analisar arquivo</h2><span class="tag">orquestra REA</span></div>
+          <p class="hint">Aponte o arquivo e o destino do relatório. O FGUA abre a sessão no REA e grava Markdown + JSON.</p>
+          <form id="reverseForm" class="form-grid">
+            <label>Caminho do arquivo<input name="path" required placeholder="C:\caminho\alvo.exe ou .wasm"></label>
+            <label>Diretório de destino<input name="outputDir" placeholder="vazio = .frame-data/reports"></label>
+            <label>Preset<select name="preset" id="reversePresets"><option value="">automático</option></select></label>
+            <label class="full">Etapas (opcional, separadas por vírgula)<input name="steps" placeholder="open_binary, inspect_artifact, list_strings"></label>
+            <div class="full actions"><button class="btn primary" type="submit">Executar RE</button><span class="status-line" id="reverseStatus"></span></div>
+          </form>
+        </article>
+        <article class="card wide"><div class="card-head"><h2>Resultado</h2></div><pre class="code" id="reverseResult">—</pre></article>
+      </section>
+
+      <section class="panel" data-panel="repair">
+        <article class="card wide">
+          <div class="card-head"><h2>Corrigir ou converter código</h2><span class="tag">LLM + testes</span></div>
+          <p class="hint">Sem testes executáveis o estado será <code>requires-runtime</code>: o candidato é gerado, mas não validado.</p>
+          <div class="tabs" data-tabs="mode">
+            <button class="tab active" data-tab="repair">Reparo</button>
+            <button class="tab" data-tab="transpile">Transpilação</button>
+          </div>
+          <form id="repairForm" class="form-grid">
+            <label class="full">Código<textarea name="code" rows="9" required></textarea></label>
+            <label>Linguagem de origem<input name="language" value="javascript"></label>
+            <label class="target-lang hidden">Linguagem de destino<input name="targetLanguage" value="typescript"></label>
+            <label>Instrução<input name="instruction" placeholder="ex.: preservar assinatura pública"></label>
+            <label>Preset<select name="preset" id="repairPresets"><option value="">padrão</option></select></label>
+            <label class="full">Testes de aceitação<textarea name="tests" rows="5" placeholder="console.assert(...) ou asserts em Python"></textarea></label>
+            <label>Modelo (opcional)<input name="model" placeholder="vazio = primeiro modelo do LM Studio"></label>
+            <label>Iterações<input name="maxIterations" type="number" min="1" max="12" value="4"></label>
+            <label class="full">Arquivo de destino<input name="outputPath" placeholder="vazio = .frame-data/reports/"></label>
+            <div class="full actions"><button class="btn primary" type="submit">Executar loop</button><span class="status-line" id="repairStatus"></span></div>
+          </form>
+        </article>
+        <article class="card wide"><div class="card-head"><h2>Candidato final</h2></div><pre class="code" id="repairResult">—</pre></article>
+      </section>
+
+      <section class="panel" data-panel="jobs">
+        <article class="card wide">
+          <div class="card-head"><h2>Histórico de jobs</h2><button class="btn ghost small" id="jobsRefresh">Recarregar</button></div>
+          <div class="table-wrap"><table><thead><tr><th>ID</th><th>Tipo</th><th>Estado</th><th>Criado</th></tr></thead><tbody id="jobsTable"><tr><td colspan="4" class="muted">carregando…</td></tr></tbody></table></div>
+        </article>
+        <article class="card wide"><div class="card-head"><h2>Detalhe</h2></div><pre class="code" id="jobDetail">—</pre></article>
+      </section>
+
+      <section class="panel" data-panel="rea">
+        <article class="card wide">
+          <div class="card-head"><h2>Catálogo do REA</h2><span class="tag" id="reaCount">—</span></div>
+          <form id="reaSearchForm" class="inline-form"><input name="query" placeholder="buscar: decompile, wasm, strings…"><button class="btn primary" type="submit">Buscar</button></form>
+          <div class="table-wrap"><table><thead><tr><th>Ferramenta</th><th>Descrição</th></tr></thead><tbody id="reaTable"><tr><td colspan="2" class="muted">carregando…</td></tr></tbody></table></div>
+        </article>
+        <article class="card wide">
+          <div class="card-head"><h2>Chamada direta</h2></div>
+          <form id="reaCallForm" class="form-grid">
+            <label>Ferramenta<input name="tool" required placeholder="binary_session"></label>
+            <label>Argumentos (JSON)<input name="args" value='{}'></label>
+            <div class="full actions"><button class="btn primary" type="submit">Chamar</button><span class="status-line" id="reaCallStatus"></span></div>
+          </form>
+          <pre class="code" id="reaResult">—</pre>
+        </article>
+      </section>
+
+      <section class="panel" data-panel="admin">
+        <div class="tabs" data-tabs="admin">
+          <button class="tab active" data-tab="info">Informações</button>
+          <button class="tab" data-tab="prompts">Prompts</button>
+          <button class="tab" data-tab="tools">Ferramentas locais</button>
+          <button class="tab" data-tab="presets">Presets</button>
+          <button class="tab" data-tab="config">Configurações</button>
+        </div>
+
+        <div class="subpanel active" data-sub="info">
+          <article class="card wide"><div class="card-head"><h2>Integrações e limites</h2></div>
+            <div class="grid-2">
+              <div><h3>O que funciona</h3><ul class="list"><li>Orquestração de ferramentas do MCP REA por catálogo.</li><li>Relatórios de RE com Evidence IDs e hash do arquivo.</li><li>Reparo/transpilação com testes reais como reward.</li><li>Presets e prompts editáveis pelo painel.</li></ul></div>
+              <div><h3>Limites reais</h3><ul class="list"><li>GitHub Pages é estático: não hospeda MCP nem executa código.</li><li>WASM é alvo de compilação, não interpretador de C#/Python/NodeJS.</li><li>O bridge escuta apenas em 127.0.0.1.</li><li>Primeira execução de modelo exige LM Studio ativo (padrão :1234).</li></ul></div>
+            </div>
+            <p class="hint">Nenhum segredo deve ser colocado aqui: o painel é público e o arquivo é versionado.</p>
+          </article>
+          <article class="card wide"><div class="card-head"><h2>Registro de ferramentas locais</h2></div>
+            <div class="table-wrap"><table><thead><tr><th>Nome</th><th>Comando / origem</th><th>Estado</th></tr></thead><tbody id="toolsRegistry"><tr><td colspan="3" class="muted">carregando…</td></tr></tbody></table></div>
+          </article>
+        </div>
+
+        <div class="subpanel" data-sub="prompts">
+          <article class="card wide">
+            <div class="card-head"><h2>Prompts administráveis</h2><button class="btn ghost small" id="promptsRefresh">Recarregar</button></div>
+            <form id="promptForm" class="form-grid">
+              <label>ID<input name="id" required placeholder="meu-prompt"></label>
+              <label>Nome<input name="name" placeholder="Título legível"></label>
+              <label class="full">Corpo<textarea name="body" rows="7" required placeholder="Use {{variavel}} para variáveis"></textarea></label>
+              <div class="full actions"><button class="btn primary" type="submit">Salvar prompt</button><span class="status-line" id="promptStatus"></span></div>
+            </form>
+            <div class="table-wrap"><table><thead><tr><th>ID</th><th>Nome</th><th>Ações</th></tr></thead><tbody id="promptsTable"><tr><td colspan="3" class="muted">carregando…</td></tr></tbody></table></div>
+          </article>
+          <article class="card wide"><div class="card-head"><h2>Renderizar</h2></div>
+            <form id="renderForm" class="inline-form"><input name="id" placeholder="id do prompt"><input name="variables" value='{}' placeholder='{"chave":"valor"}'><button class="btn" type="submit">Renderizar</button></form>
+            <pre class="code" id="renderResult">—</pre>
+          </article>
+        </div>
+
+        <div class="subpanel" data-sub="tools">
+          <article class="card wide"><div class="card-head"><h2>Ferramentas locais integradas</h2><span class="tag">somente leitura</span></div>
+            <p class="hint">Ferramentas descobertas via <code>fgua_rea_catalog</code> e capacidades do runtime FGUA.</p>
+            <div class="table-wrap"><table><thead><tr><th>Ferramenta</th><th>Descrição</th></tr></thead><tbody id="localToolsTable"><tr><td colspan="2" class="muted">carregando…</td></tr></tbody></table></div>
+          </article>
+        </div>
+
+        <div class="subpanel" data-sub="presets">
+          <article class="card wide">
+            <div class="card-head"><h2>Presets</h2><button class="btn ghost small" id="presetsRefresh">Recarregar</button></div>
+            <form id="presetForm" class="form-grid">
+              <label>ID<input name="id" required></label>
+              <label>Nome<input name="name"></label>
+              <label>Tipo<select name="kind"><option value="reverse">reverse</option><option value="repair">repair</option><option value="transpile">transpile</option></select></label>
+              <label>Tags (vírgulas)<input name="tags"></label>
+              <label class="full">Descrição<input name="description"></label>
+              <label class="full">Config (JSON)<textarea name="config" rows="6" placeholder='{"maxIterations":3}'></textarea></label>
+              <div class="full actions"><button class="btn primary" type="submit">Salvar preset</button><span class="status-line" id="presetStatus"></span></div>
+            </form>
+            <div class="table-wrap"><table><thead><tr><th>ID</th><th>Tipo</th><th>Nome</th><th>Ações</th></tr></thead><tbody id="presetsTable"><tr><td colspan="4" class="muted">carregando…</td></tr></tbody></table></div>
+          </article>
+        </div>
+
+        <div class="subpanel" data-sub="config">
+          <article class="card wide"><div class="card-head"><h2>Configuração do bridge</h2></div>
+            <form id="settingsForm" class="form-grid">
+              <label>LM Studio URL<input name="lmStudioUrl" placeholder="http://localhost:1234/v1"></label>
+              <label>Modelo<input name="model" placeholder="vazio = primeiro modelo"></label>
+              <label>Temperatura<input name="temperature" type="number" step="0.1" min="0" max="2"></label>
+              <label>Iterações máx.<input name="maxIterations" type="number" min="1" max="12"></label>
+              <div class="full actions"><button class="btn primary" type="submit">Salvar configuração</button><span class="status-line" id="settingsStatus"></span></div>
+            </form>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script type="module" src="dashboard/app.js"></script>
 </body>
 </html>

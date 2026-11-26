@@ -1,33 +1,20 @@
 {
   "name": "frame-generator-api",
-  "version": "2.0.0",
-  "description": "FGUA v2 — núcleo web modular com shell Windows 11 para análise de modelos, quantização, geração/aprimoramento de quadros (jogos, imagem, vídeo) sob contrato lógico /api/v1.",
+  "version": "3.0.0",
+  "private": true,
   "type": "module",
-  "license": "MIT",
-  "author": "kauan11-boop",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/kauan11-boop/Frame-Generator-API"
+  "description": "FGUA v3 — MCP sobre REA, loop LLM+testes e dashboard local/GitHub Pages",
+  "scripts": {
+    "start": "node mcp-server/src/bridge.js",
+    "bridge": "node mcp-server/src/bridge.js",
+    "mcp": "node mcp-server/src/index.js",
+    "test": "node --test mcp-server/tests/*.test.mjs",
+    "ci": "node --test mcp-server/tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2"
   },
   "engines": {
-    "node": ">=18"
-  },
-  "scripts": {
-    "start": "node scripts/serve.mjs",
-    "serve": "node scripts/serve.mjs",
-    "test": "node tests/run-all.mjs",
-    "ci": "node scripts/ci.mjs",
-    "validate": "node tests/validate-configs.mjs",
-    "lint:syntax": "node scripts/lint-syntax.mjs",
-    "check:json": "node scripts/check-json.mjs"
-  },
-  "keywords": [
-    "gguf",
-    "webgpu",
-    "frames",
-    "quantization",
-    "lm-studio",
-    "transformers-js",
-    "tensorflow-js"
-  ]
+    "node": ">=20"
+  }
 }
