@@ -51,10 +51,11 @@ test('configurações: atualização parcial preserva demais campos', async () =
 });
 
 test('sandbox JavaScript: reward 1 em teste que passa e 0 em teste que falha', async () => {
-  const ok = await runCode({ code: 'export const soma = (a,b) => a+b;', tests: 'import { soma } from "./solution.mjs"; console.assert(soma(2,3) === 5);', language: 'javascript' });
+  const check = 'if (soma(2,3) !== 5) throw new Error("falhou");';
+  const ok = await runCode({ code: 'function soma(a,b){ return a+b; }', tests: check, language: 'javascript' });
   assert.equal(ok.passed, true);
   assert.equal(ok.reward, 1);
-  const fail = await runCode({ code: 'export const soma = (a,b) => a-b;', tests: 'import { soma } from "./solution.mjs"; console.assert(soma(2,3) === 5, "falhou");', language: 'javascript' });
+  const fail = await runCode({ code: 'function soma(a,b){ return a-b; }', tests: check, language: 'javascript' });
   assert.equal(fail.passed, false);
   assert.equal(fail.reward, 0);
 });

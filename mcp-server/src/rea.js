@@ -49,9 +49,9 @@ export function normalizeResult(result) {
   return { isError: Boolean(result?.isError), text, data, evidenceIds };
 }
 
-export async function getCatalog({ query = '', limit = 50, refresh = false } = {}) {
+async function allTools() {
   const instance = await ensureClient();
-  if (refresh || !catalog || Date.now() - catalogAt > CATALOG_TTL_MS) {
+  if (!catalog || Date.now() - catalogAt > CATALOG_TTL_MS) {
     const listed = await instance.listTools();
     catalog = (listed.tools || []).map((tool) => ({
       name: tool.name,
@@ -60,20 +60,25 @@ export async function getCatalog({ query = '', limit = 50, refresh = false } = {
     }));
     catalogAt = Date.now();
   }
+  return catalog;
+}
+
+export async function getCatalog({ query = '', limit = 50 } = {}) {
+  const all = await allTools();
   const needle = String(query).toLowerCase().trim();
   const matches = needle
-    ? catalog.filter((t) => t.name.toLowerCase().includes(needle) || t.description.toLowerCase().includes(needle))
-    : catalog;
-  return { total: catalog.length, matched: matches.length, tools: matches.slice(0, Math.min(limit, 200)) };
+    ? all.filter((t) => t.name.toLowerCase().includes(needle) || t.description.toLowerCase().includes(needle))
+    : all;
+  return { total: all.length, matched: matches.length, tools: matches.slice(0, Math.min(limit, 200)) };
 }
 
 export async function callTool(tool, args = {}) {
   if (!tool || typeof tool !== 'string') throw new Error('tool é obrigatório');
   const instance = await ensureClient();
-  const { tools } = await getCatalog();
-  if (!tools.some((t) => t.name === tool)) {
-    const catalog = await getCatalog({ query: tool, limit: 5 });
-    throw new Error(`Ferramenta REA desconhecida: ${tool}. Sugestões: ${catalog.tools.map((t) => t.name).join(', ') || 'nenhuma'}`);
+  const all = await allTools();
+  if (!all.some((t) => t.name === tool)) {
+    const suggestions = await getCatalog({ query: tool, limit: 5 });
+    throw new Error(`Ferramenta REA desconhecida: ${tool}. Sugestões: ${suggestions.tools.map((t) => t.name).join(', ') || 'nenhuma'}`);
   }
   return normalizeResult(await instance.callTool({ name: tool, arguments: args || {} }));
 }

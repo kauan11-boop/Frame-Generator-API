@@ -1,13 +1,24 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { MAX_OUTPUT_BYTES, RUN_TIMEOUT_MS, WORK_DIR, ensureDirs } from './config.js';
 
 const RUNNERS = {
-  javascript: { ext: 'mjs', command: 'node', args: ['--experimental-permission'] },
-  typescript: { ext: 'ts', command: 'node', args: ['--experimental-permission'] },
+  javascript: { ext: 'mjs', command: 'node' },
+  typescript: { ext: 'ts', command: 'node' },
   python: { ext: 'py', command: 'python', args: ['-I'] },
 };
+
+let permissionFlag = null;
+function getPermissionFlag() {
+  if (permissionFlag !== null) return permissionFlag;
+  for (const flag of ['--permission', '--experimental-permission']) {
+    const probe = spawnSync(process.execPath, [flag, '-e', ''], { stdio: 'ignore', windowsHide: true });
+    if (probe.status === 0) { permissionFlag = flag; return flag; }
+  }
+  permissionFlag = '';
+  return '';
+}
 
 export function supportedLanguages() {
   return Object.keys(RUNNERS);
@@ -27,17 +38,17 @@ export async function runCode({ code, language = 'javascript', tests = '', timeo
   const allow = `--allow-fs-read=${workDir}`;
   const allowWrite = `--allow-fs-write=${workDir}`;
   const args = language === 'python'
-    ? [...runner.args, file]
-    : [...runner.args, allow, allowWrite, file];
+    ? [...(runner.args || []), file]
+    : [getPermissionFlag(), allow, allowWrite, file].filter(Boolean);
   const env = language === 'python'
     ? { PATH: process.env.PATH || '', PYTHONDONTWRITEBYTECODE: '1', PYTHONIOENCODING: 'utf-8' }
     : { PATH: process.env.PATH || '', NODE_NO_WARNINGS: '1' };
 
   const started = Date.now();
+  let truncated = false;
   const result = await new Promise((resolve) => {
     const child = spawn(runner.command, args, { cwd: workDir, env, windowsHide: true });
     let bytes = 0;
-    let truncated = false;
     const append = (target, chunk) => {
       const text = String(chunk);
       if (bytes + text.length > MAX_OUTPUT_BYTES) { truncated = true; return; }
