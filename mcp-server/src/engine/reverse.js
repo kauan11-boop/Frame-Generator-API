@@ -14,7 +14,6 @@ const STEP_BUILDERS = {
   inspect_binary_layout: (ctx) => ({ path: ctx.path, detail: 'summary' }),
   inspect_model_artifact: (ctx) => ({ path: ctx.path, detail: 'summary', hash: 'header' }),
   binary_overview: () => ({}),
-  binary_session: () => ({ detail: 'summary' }),
 };
 
 function display(value, max = 8000) {

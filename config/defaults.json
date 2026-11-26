@@ -19,8 +19,20 @@
       "id": "reverse-binary",
       "name": "RE de binário (genérico)",
       "kind": "reverse",
-      "description": "Abre o arquivo no REA e inventaria procedimentos, strings e nomes.",
+      "description": "Abre o arquivo no REA e coleta inteligência de artefato e visão geral.",
       "tags": ["binario", "pe", "elf", "macho"],
+      "config": {
+        "steps": ["open_binary", "inspect_artifact", "binary_overview"],
+        "detail": "summary",
+        "maxProcedures": 12
+      }
+    },
+    {
+      "id": "reverse-deep",
+      "name": "RE profunda (requer provedor)",
+      "kind": "reverse",
+      "description": "Adiciona procedimentos, strings e nomes; exige provedor de análise configurado no REA.",
+      "tags": ["binario", "ghidra", "rizin", "deep"],
       "config": {
         "steps": ["open_binary", "inspect_artifact", "list_procedures", "list_strings", "list_names"],
         "detail": "summary",
