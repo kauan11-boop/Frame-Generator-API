@@ -1,0 +1,56 @@
+{
+  "schema": "https://kauan11-boop.github.io/Frame-Generator-API/mcp.json",
+  "name": "fgua",
+  "title": "FGUA · MCP por URL",
+  "version": "4.1.0",
+  "description": "Manifesto estático publicado no GitHub Pages. Descreve as ferramentas executáveis no navegador, as ferramentas do MCP stdio e os conteúdos disponíveis. Não é um endpoint que executa processos.",
+  "baseUrl": "https://kauan11-boop.github.io/Frame-Generator-API/",
+  "transport": {
+    "kind": "static-manifest",
+    "format": "json",
+    "execution": "browser-only",
+    "note": "O painel lê este arquivo pela URL e executa localmente as ferramentas marcadas como browser. Ferramentas mcp-stdio são usadas pelo agente por processo local."
+  },
+  "callFormat": {
+    "method": "tools/call",
+    "example": {
+      "jsonrpc": "2.0",
+      "method": "tools/call",
+      "params": { "name": "browser_json", "arguments": { "text": "{}", "option": "format" } }
+    }
+  },
+  "endpoints": {
+    "manifest": "mcp.json",
+    "snapshot": "dashboard/data/snapshot.json",
+    "playground": "dashboard/playground.html",
+    "dashboard": "index.html"
+  },
+  "tools": [
+    { "name": "browser_json", "runtime": "browser", "description": "Formata, minifica ou valida JSON.", "arguments": ["text", "option"] },
+    { "name": "browser_base64", "runtime": "browser", "description": "Codifica e decodifica Base64 UTF-8.", "arguments": ["text", "option"] },
+    { "name": "browser_url", "runtime": "browser", "description": "Codifica e decodifica componentes de URL.", "arguments": ["text", "option"] },
+    { "name": "browser_hash", "runtime": "browser", "description": "Calcula SHA-256, SHA-384 ou SHA-512.", "arguments": ["text", "option"] },
+    { "name": "browser_uuid", "runtime": "browser", "description": "Gera UUIDs v4.", "arguments": ["text"] },
+    { "name": "browser_regex", "runtime": "browser", "description": "Testa expressões regulares e lista correspondências.", "arguments": ["pattern", "flags", "text"] },
+    { "name": "browser_text", "runtime": "browser", "description": "Conta caracteres, palavras, linhas e bytes.", "arguments": ["text"] },
+    { "name": "browser_date", "runtime": "browser", "description": "Converte epoch e ISO para datas legíveis.", "arguments": ["text"] },
+    { "name": "browser_color", "runtime": "browser", "description": "Converte entre HEX, RGB e HSL.", "arguments": ["text"] },
+    { "name": "fgua_status", "runtime": "mcp-stdio", "description": "Estado de REA, provedor local, presets, prompts e jobs." },
+    { "name": "fgua_presets", "runtime": "mcp-stdio", "description": "CRUD de presets de RE, reparo e transpilação." },
+    { "name": "fgua_prompts", "runtime": "mcp-stdio", "description": "CRUD e renderização de prompts locais." },
+    { "name": "fgua_settings", "runtime": "mcp-stdio", "description": "Leitura e atualização de configurações." },
+    { "name": "fgua_rea_catalog", "runtime": "mcp-stdio", "description": "Descoberta de ferramentas do REA com schemas." },
+    { "name": "fgua_rea_call", "runtime": "mcp-stdio", "description": "Chamada validada de qualquer ferramenta do REA." },
+    { "name": "fgua_reverse_file", "runtime": "mcp-stdio", "description": "Pipeline de engenharia reversa com relatório." },
+    { "name": "fgua_run_tests", "runtime": "mcp-stdio", "description": "Execução limitada com reward binário." },
+    { "name": "fgua_repair_code", "runtime": "mcp-stdio", "description": "Correção iterativa com LLM e testes." },
+    { "name": "fgua_transpile_code", "runtime": "mcp-stdio", "description": "Adaptação entre linguagens com testes." },
+    { "name": "fgua_jobs", "runtime": "mcp-stdio", "description": "Histórico e exportação de jobs." }
+  ],
+  "resources": [
+    { "name": "snapshot", "uri": "dashboard/data/snapshot.json", "description": "Presets, prompts, jobs e catálogo do REA sincronizados." },
+    { "name": "playground", "uri": "dashboard/playground.html", "description": "Página isolada usada como sandbox JavaScript." },
+    { "name": "dashboard", "uri": "index.html", "description": "Interface do painel estático." },
+    { "name": "manifest", "uri": "mcp.json", "description": "Este arquivo." }
+  ]
+}

@@ -1,5 +1,5 @@
-const VERSION = '4.0.0';
-const BASE = localStorage.getItem('fgua.bridgeUrl') || 'http://127.0.0.1:4174';
+const VERSION = '4.1.0';
+const DEFAULT_MCP_URL = 'https://kauan11-boop.github.io/Frame-Generator-API/';
 const SNAPSHOT_URL = 'dashboard/data/snapshot.json';
 const TITLES = {
   overview: ['Visão geral', 'Estado do painel, do conteúdo sincronizado e das integrações.'],
@@ -9,6 +9,7 @@ const TITLES = {
   repair: ['Reparo & transpilação', 'Loop LLM local com testes reais como sinal de recompensa.'],
   jobs: ['Jobs', 'Histórico das execuções de RE, reparo e transpilação.'],
   rea: ['Ferramentas REA', 'Busque e inspecione o catálogo de ferramentas do MCP REA.'],
+  mcp: ['MCP por URL', 'Manifesto publicado no GitHub Pages com ferramentas e conteúdos utilizáveis.'],
   guide: ['Guia rápido', 'Arquitetura estática, fluxo recomendado e limites honestos.'],
   admin: ['Admin & integrações', 'Informações, prompts, ferramentas locais, presets e configuração.'],
 };
@@ -29,8 +30,8 @@ const FGUA_TOOLS = [
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 let toastTimer = null;
-let bridgeOnline = false;
-let bridgeEnabled = localStorage.getItem('fgua.bridgeEnabled') === '1';
+let manifest = null;
+let mcpSource = '';
 let snapshot = null;
 let activeTool = 'json';
 let reaQuery = '';
@@ -46,43 +47,53 @@ function toast(message, error = false) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
 }
 
-function setBridgeState(online) {
-  bridgeOnline = online;
-  const state = $('#bridgeState');
-  state.querySelector('.dot').classList.toggle('off', !bridgeEnabled && !snapshot);
-  state.querySelector('span').textContent = bridgeEnabled
-    ? (online ? 'integração local ativa' : 'integração local indisponível')
-    : (snapshot ? 'sincronizado · GH Pages' : 'modo estático');
-  renderModePill();
+function manifestUrl(raw) {
+  const value = (raw || '').trim();
+  if (!value) return new URL('mcp.json', location.href).href;
+  const base = /^https?:\/\//i.test(value) ? value : new URL(value, location.href).href;
+  return new URL('mcp.json', `${base.replace(/\/+$/, '')}/`).href;
 }
 
-function renderModePill() {
-  const pill = $('#modePill');
-  pill.textContent = bridgeEnabled ? 'integração local ativa' : 'estático · GH Pages';
-  pill.classList.toggle('on', !bridgeEnabled || bridgeOnline);
-  pill.classList.toggle('off', bridgeEnabled && !bridgeOnline);
+function setMcpState(loaded) {
+  const state = $('#mcpState');
+  state.querySelector('.dot').classList.toggle('off', !loaded);
+  state.querySelector('span').textContent = loaded ? 'MCP por URL · ativo' : 'MCP por URL';
+  const pill = $('#mcpPill');
+  pill.textContent = loaded ? 'MCP: pronto' : 'MCP: —';
+  pill.classList.toggle('on', loaded);
 }
 
-async function api(path, options = {}, quiet = true) {
-  if (!bridgeEnabled) {
-    setBridgeState(false);
-    throw new Error('Integração local desativada.');
-  }
-  let response;
-  const headers = options.body !== undefined
-    ? { 'content-type': 'application/json', ...(options.headers || {}) }
-    : (options.headers || {});
+async function fetchManifest(url) {
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  if (!Array.isArray(data.tools)) throw new Error('mcp.json sem lista de ferramentas');
+  return data;
+}
+
+async function connectMcp(raw) {
+  const localUrl = manifestUrl('');
+  const isLocalPreview = ['localhost', '127.0.0.1'].includes(location.hostname);
+  let sameOrigin = false;
+  try { sameOrigin = !!raw && new URL(raw, location.href).origin === location.origin; } catch { /* URL inválida */ }
+  const url = !raw || isLocalPreview || sameOrigin ? localUrl : manifestUrl(raw);
+  mcpSource = url;
   try {
-    response = await fetch(`${BASE}${path}`, { ...options, headers });
+    manifest = await fetchManifest(url);
   } catch (error) {
-    setBridgeState(false);
-    if (!quiet) toast('Integração local indisponível. As demais funções seguem ativas.', true);
-    throw new Error(`integração local offline: ${error.message}`);
+    if (url === localUrl) throw error;
+    manifest = await fetchManifest(localUrl);
+    toast('URL remota inacessível; manifesto local carregado.', true);
   }
-  setBridgeState(true);
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload.error) throw new Error(payload.error || `HTTP ${response.status}`);
-  return payload;
+  localStorage.setItem('fgua.mcpUrl', (raw || '').trim() || DEFAULT_MCP_URL);
+  renderManifest();
+  setMcpState(true);
+  staticStatus();
+  return manifest;
+}
+
+function showPayload(selector, tool, args) {
+  show(selector, { jsonrpc: '2.0', method: 'tools/call', params: { name: tool, arguments: args } });
 }
 
 function show(selector, value) {
@@ -129,7 +140,6 @@ async function loadSnapshot() {
     if (!response.ok) return false;
     snapshot = await response.json();
     renderSnapshot();
-    setBridgeState(false);
     return true;
   } catch {
     return false;
@@ -203,48 +213,57 @@ function staticStatus() {
   $('#statNode').textContent = 'GitHub Pages · estático';
   show('#statRea', snapshot ? 'catálogo' : '—');
   $('#statReaTools').textContent = snapshot ? `${snapshot.reaTools?.length || 0} ferramentas no snapshot` : 'snapshot indisponível';
-  show('#statLlm', 'opcional');
-  $('#statModels').textContent = 'provedor local';
+  show('#statLlm', 'MCP stdio');
+  $('#statModels').textContent = 'agente local · sem servidor web';
   setPill('#reaPill', 'REA', 'snapshot');
-  setPill('#llmPill', 'LM Studio', 'opcional');
+  setPill('#llmPill', 'MCP', manifest ? 'ok' : 'off');
 }
 
-async function refreshStatus() {
-  try {
-    const data = await api('/api/status');
-    setPill('#reaPill', 'REA', data.rea?.available ? 'ok' : 'off');
-    setPill('#llmPill', 'LM Studio', data.llm?.available ? 'ok' : 'off');
-    show('#statVersion', `v${data.version || VERSION}`);
-    $('#statNode').textContent = `Node ${data.node} · ${data.platform} · integração local`;
-    show('#statRea', data.rea?.available ? 'online' : 'offline');
-    $('#statReaTools').textContent = data.rea?.available ? `${data.rea.toolCount} ferramentas` : (data.rea?.error || '');
-    show('#statLlm', data.llm?.available ? 'online' : 'offline');
-    $('#statModels').textContent = data.llm?.available
-      ? (data.llm.models?.join(', ') || 'nenhum modelo carregado')
-      : (data.llm?.error || '');
-    const counters = $('#storeCounters');
-    counters.replaceChildren();
-    for (const [label, count] of Object.entries(data.store || {})) {
-      const card = document.createElement('article');
-      card.className = 'card';
-      const small = document.createElement('small');
-      small.textContent = label;
-      const strong = document.createElement('strong');
-      strong.textContent = String(count);
-      card.append(small, strong);
-      counters.appendChild(card);
-    }
-    fillTable($('#toolsRegistry'), [
-      ['Conteúdo sincronizado', SNAPSHOT_URL, 'ativo'],
-      ['MCP REA (stdio)', (data.rea?.command || []).join(' ') || 'origem desconhecida', data.rea?.available ? 'online' : 'offline'],
-      ['Bridge FGUA (HTTP)', BASE, 'online'],
-      ...FGUA_TOOLS.map(([name, description]) => [name, description, 'registrado']),
-    ].map(([name, command, state]) => ({ name, command, state })), [
-      { get: (r) => r.name }, { get: (r) => r.command }, { get: (r) => r.state },
-    ]);
-  } catch {
-    staticStatus();
+function renderManifest() {
+  if (!manifest) return;
+  const tools = manifest.tools || [];
+  const resources = manifest.resources || [];
+  const source = mcpSource || manifestUrl('');
+  $('#mcpVersion').textContent = `v${manifest.version || '—'}`;
+  $('#mcpDescription').textContent = manifest.description || '';
+  show('#mcpInfo', {
+    name: manifest.name,
+    baseUrl: manifest.baseUrl,
+    source,
+    transport: manifest.transport,
+    endpoints: manifest.endpoints,
+    callFormat: manifest.callFormat,
+  });
+  $('#mcpMeta').textContent = `Manifesto: ${manifest.name} v${manifest.version || '—'} · ferramentas: ${tools.length} · conteúdos: ${resources.length}`;
+  $('#mcpToolCount').textContent = `${tools.length} ferramentas`;
+  fillTable($('#mcpToolsTable'), tools, [
+    { get: (r) => r.name }, { get: (r) => r.runtime }, { get: (r) => r.description },
+  ]);
+  const body = $('#mcpResourcesTable');
+  body.replaceChildren();
+  for (const resource of resources) {
+    const tr = document.createElement('tr');
+    const name = document.createElement('td');
+    name.textContent = resource.name;
+    const uri = document.createElement('td');
+    const link = document.createElement('a');
+    link.href = new URL(resource.uri, source).href;
+    link.textContent = resource.uri;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    uri.appendChild(link);
+    const desc = document.createElement('td');
+    desc.textContent = resource.description || '—';
+    tr.append(name, uri, desc);
+    body.appendChild(tr);
   }
+  fillTable($('#toolsRegistry'), [
+    ['Manifesto MCP', source, 'ativo'],
+    ['Snapshot', SNAPSHOT_URL, 'ativo'],
+    ...tools.map((tool) => [tool.name, tool.runtime, 'disponível']),
+  ].map(([name, command, state]) => ({ name, command, state })), [
+    { get: (r) => r.name }, { get: (r) => r.command }, { get: (r) => r.state },
+  ]);
 }
 
 function localReaSearch(query) {
@@ -259,64 +278,29 @@ function localReaSearch(query) {
   ]);
 }
 
-async function refreshRea(query) {
+function refreshRea(query) {
   reaQuery = query;
-  try {
-    const data = await api(`/api/rea/catalog?query=${encodeURIComponent(query)}&limit=100`);
-    $('#reaCount').textContent = `${data.matched}/${data.total}`;
-    fillTable($('#reaTable'), data.tools, [
-      { get: (r) => r.name }, { get: (r) => r.description },
-    ]);
-  } catch {
-    localReaSearch(query);
-  }
+  localReaSearch(query);
 }
 
-async function refreshPresets() {
-  try {
-    const { presets } = await api('/api/presets');
-    fillTable($('#presetsTable'), presets, [
-      { get: (r) => r.id }, { get: (r) => r.kind }, { get: (r) => r.name },
-      { label: 'remover', action: (r) => async () => {
-        try { await api(`/api/presets/${encodeURIComponent(r.id)}`, { method: 'DELETE' }); toast('Preset removido.'); refreshPresets(); }
-        catch (error) { toast(error.message, true); }
-      } },
-    ]);
-  } catch {
-    if (snapshot) renderSnapshot();
-  }
+function refreshPresets() {
+  fillTable($('#presetsTable'), snapshot?.presets || [], [
+    { get: (r) => r.id }, { get: (r) => r.kind }, { get: (r) => r.name }, { get: () => 'snapshot' },
+  ]);
 }
 
-async function refreshPrompts() {
-  try {
-    const { prompts } = await api('/api/prompts');
-    fillTable($('#promptsTable'), prompts, [
-      { get: (r) => r.id }, { get: (r) => r.name },
-      { label: 'remover', action: (r) => async () => {
-        try { await api(`/api/prompts/${encodeURIComponent(r.id)}`, { method: 'DELETE' }); toast('Prompt removido.'); refreshPrompts(); }
-        catch (error) { toast(error.message, true); }
-      } },
-    ]);
-  } catch {
-    if (snapshot) renderSnapshot();
-  }
+function refreshPrompts() {
+  fillTable($('#promptsTable'), snapshot?.prompts || [], [
+    { get: (r) => r.id }, { get: (r) => r.name }, { get: () => 'snapshot' },
+  ]);
 }
 
-async function refreshJobs() {
-  try {
-    const { jobs } = await api('/api/jobs');
-    fillTable($('#jobsTable'), jobs, [
-      { get: (r) => r.id }, { get: (r) => r.type }, { get: (r) => r.status }, { get: (r) => r.createdAt },
-    ]);
-    bindJobRows(jobs);
-  } catch {
-    if (snapshot) {
-      fillTable($('#jobsTable'), snapshot.jobs || [], [
-        { get: (r) => r.id }, { get: (r) => r.type }, { get: (r) => r.status }, { get: (r) => r.createdAt },
-      ]);
-      bindJobRows(snapshot.jobs || []);
-    }
-  }
+function refreshJobs() {
+  const jobs = snapshot?.jobs || [];
+  fillTable($('#jobsTable'), jobs, [
+    { get: (r) => r.id }, { get: (r) => r.type }, { get: (r) => r.status }, { get: (r) => r.createdAt },
+  ]);
+  bindJobRows(jobs);
 }
 
 function bindJobRows(jobs) {
@@ -324,14 +308,7 @@ function bindJobRows(jobs) {
     const id = tr.firstElementChild?.textContent;
     if (!id || id === '—') return;
     tr.style.cursor = 'pointer';
-    tr.addEventListener('click', async () => {
-      const job = jobs.find((item) => item.id === id);
-      if (bridgeOnline) {
-        try { show('#jobDetail', await api(`/api/jobs/${encodeURIComponent(id)}`)); return; }
-        catch { /* usa o snapshot */ }
-      }
-      show('#jobDetail', job || { id });
-    });
+    tr.addEventListener('click', () => show('#jobDetail', jobs.find((item) => item.id === id) || { id }));
   });
 }
 
@@ -344,7 +321,8 @@ function setView(name) {
   $('#viewSubtitle').textContent = subtitle;
   if (name === 'jobs') refreshJobs();
   if (name === 'rea') refreshRea(reaQuery);
-  if (name === 'admin') { refreshPresets(); refreshPrompts(); refreshStatus(); }
+  if (name === 'admin') { refreshPresets(); refreshPrompts(); }
+  if (name === 'mcp') renderManifest();
 }
 
 /* ---------- Ferramentas locais ---------- */
@@ -678,32 +656,37 @@ function formObject(form) {
 }
 
 function bindForms() {
-  $('#reverseForm').addEventListener('submit', async (event) => {
+  $('#mcpForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      await connectMcp($('#mcpUrlInput').value);
+      toast('Manifesto MCP carregado.');
+    } catch (error) {
+      toast(`Falha ao carregar mcp.json: ${error.message}`, true);
+    }
+  });
+
+  $('#reverseForm').addEventListener('submit', (event) => {
     event.preventDefault();
     const values = formObject(event.target);
     if (values.steps) values.steps = values.steps.split(',').map((s) => s.trim()).filter(Boolean);
     else delete values.steps;
     for (const key of ['outputDir', 'preset']) if (!values[key]) delete values[key];
-    $('#reverseStatus').textContent = 'executando…';
-    try { show('#reverseResult', await api('/api/reverse', { method: 'POST', body: JSON.stringify(values) }, false)); toast('RE concluído.'); }
-    catch (error) { toast(error.message, true); show('#reverseResult', error.message); }
-    finally { $('#reverseStatus').textContent = ''; }
+    showPayload('#reverseResult', 'fgua_reverse_file', values);
+    $('#reverseStatus').textContent = 'pronto para copiar';
+    toast('Chamada MCP gerada.');
   });
 
-  $('#repairForm').addEventListener('submit', async (event) => {
+  $('#repairForm').addEventListener('submit', (event) => {
     event.preventDefault();
     const values = formObject(event.target);
     const mode = document.querySelector('[data-tabs="mode"] .tab.active')?.dataset.tab || 'repair';
     values.maxIterations = Number(values.maxIterations || 4);
     for (const key of ['instruction', 'preset', 'model', 'outputPath']) if (!values[key]) delete values[key];
     if (mode === 'repair') delete values.targetLanguage;
-    $('#repairStatus').textContent = 'executando…';
-    try {
-      const result = await api(`/api/${mode}`, { method: 'POST', body: JSON.stringify(values) }, false);
-      show('#repairResult', result);
-      toast(`Loop finalizado: ${result.status}`);
-    } catch (error) { toast(error.message, true); show('#repairResult', error.message); }
-    finally { $('#repairStatus').textContent = ''; }
+    showPayload('#repairResult', mode === 'repair' ? 'fgua_repair_code' : 'fgua_transpile_code', values);
+    $('#repairStatus').textContent = 'pronto para copiar';
+    toast('Chamada MCP gerada.');
   });
 
   $('#reaSearchForm').addEventListener('submit', (event) => {
@@ -711,57 +694,64 @@ function bindForms() {
     refreshRea(formObject(event.target).query || '');
   });
 
-  $('#reaCallForm').addEventListener('submit', async (event) => {
+  $('#reaCallForm').addEventListener('submit', (event) => {
     event.preventDefault();
     const values = formObject(event.target);
     let args = {};
     try { args = JSON.parse(values.args || '{}'); } catch { toast('Argumentos JSON inválidos.', true); return; }
-    $('#reaCallStatus').textContent = 'chamando…';
-    try { show('#reaResult', await api('/api/rea/call', { method: 'POST', body: JSON.stringify({ tool: values.tool, args }) }, false)); }
-    catch (error) { toast(error.message, true); show('#reaResult', error.message); }
-    finally { $('#reaCallStatus').textContent = ''; }
+    showPayload('#reaResult', 'fgua_rea_call', { tool: values.tool, args });
+    $('#reaCallStatus').textContent = 'pronto para copiar';
+    toast('Chamada MCP gerada.');
   });
 
-  $('#promptForm').addEventListener('submit', async (event) => {
+  $('#promptForm').addEventListener('submit', (event) => {
     event.preventDefault();
     const values = formObject(event.target);
-    try {
-      await api('/api/prompts', { method: 'POST', body: JSON.stringify({ prompt: { id: values.id, name: values.name, body: values.body, variables: [] } }) }, false);
-      toast('Prompt salvo.'); event.target.reset(); refreshPrompts();
-    } catch (error) { toast(error.message, true); }
+    showPayload('#promptResult', 'fgua_prompts', {
+      action: 'save',
+      prompt: { id: values.id, name: values.name, body: values.body, variables: [] },
+    });
+    $('#promptStatus').textContent = 'pronto para copiar';
+    toast('Chamada MCP gerada.');
   });
 
-  $('#renderForm').addEventListener('submit', async (event) => {
+  $('#renderForm').addEventListener('submit', (event) => {
     event.preventDefault();
     const values = formObject(event.target);
     try {
       const variables = JSON.parse(values.variables || '{}');
-      show('#renderResult', await api('/api/prompts/render', { method: 'POST', body: JSON.stringify({ id: values.id, variables }) }, false));
+      const prompt = (snapshot?.prompts || []).find((item) => item.id === values.id);
+      if (!prompt) throw new Error('Prompt não encontrado no snapshot.');
+      show('#renderResult', prompt.body.replace(/\{\{(\w+)\}\}/g, (_, key) => variables[key] ?? `{{${key}}}`));
     } catch (error) { toast(error.message, true); }
   });
 
-  $('#presetForm').addEventListener('submit', async (event) => {
+  $('#presetForm').addEventListener('submit', (event) => {
     event.preventDefault();
     const values = formObject(event.target);
     let config = {};
     try { config = JSON.parse(values.config || '{}'); } catch { toast('Config JSON inválido.', true); return; }
-    try {
-      await api('/api/presets', { method: 'POST', body: JSON.stringify({ preset: {
+    showPayload('#presetResult', 'fgua_presets', {
+      action: 'save',
+      preset: {
         id: values.id, name: values.name, kind: values.kind, description: values.description,
         tags: values.tags.split(',').map((t) => t.trim()).filter(Boolean), config,
-      } }) }, false);
-      toast('Preset salvo.'); event.target.reset(); refreshPresets(); refreshStatus();
-    } catch (error) { toast(error.message, true); }
+      },
+    });
+    $('#presetStatus').textContent = 'pronto para copiar';
+    toast('Chamada MCP gerada.');
   });
 
-  $('#settingsForm').addEventListener('submit', async (event) => {
+  $('#settingsForm').addEventListener('submit', (event) => {
     event.preventDefault();
     const values = formObject(event.target);
     const patch = { lmStudioUrl: values.lmStudioUrl, model: values.model };
     if (values.temperature !== '') patch.temperature = Number(values.temperature);
     if (values.maxIterations !== '') patch.maxIterations = Number(values.maxIterations);
-    try { await api('/api/settings', { method: 'PATCH', body: JSON.stringify({ patch }) }, false); toast('Configuração salva.'); }
-    catch (error) { toast(error.message, true); }
+    const current = JSON.parse(localStorage.getItem('fgua.settings') || '{}');
+    localStorage.setItem('fgua.settings', JSON.stringify({ ...current, ...patch }));
+    $('#settingsStatus').textContent = 'salvo localmente';
+    toast('Configuração salva neste navegador.');
   });
 }
 
@@ -783,21 +773,24 @@ $$('[data-tabs]').forEach((group) => {
 });
 
 $('#sidebarToggle').addEventListener('click', () => $('#sidebar').classList.toggle('collapsed'));
-$('#modePill').addEventListener('click', async () => {
-  bridgeEnabled = !bridgeEnabled;
-  localStorage.setItem('fgua.bridgeEnabled', bridgeEnabled ? '1' : '0');
-  if (bridgeEnabled) {
-    toast('Integração local ativada.');
-    await refreshStatus();
-  } else {
-    setBridgeState(false);
-    staticStatus();
-    toast('Modo estático ativado.');
-  }
-  renderModePill();
-});
 $('#themeToggle').addEventListener('click', () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
-$('#refreshBtn').addEventListener('click', refreshStatus);
+$('#refreshBtn').addEventListener('click', async () => {
+  await loadSnapshot();
+  try { await connectMcp($('#mcpUrlInput').value); }
+  catch (error) { toast(`Falha ao carregar mcp.json: ${error.message}`, true); }
+  staticStatus();
+});
+$$('[data-copy]').forEach((button) => button.addEventListener('click', async () => {
+  const target = $(button.dataset.copy);
+  if (!target) return;
+  try { await navigator.clipboard.writeText(target.textContent); toast('Copiado.'); }
+  catch { toast('Não foi possível copiar neste navegador.', true); }
+}));
+$('#mcpToolsTable').addEventListener('click', (event) => {
+  const name = event.target.closest('tr')?.firstElementChild?.textContent;
+  if (!name || !manifest) return;
+  show('#mcpToolDetail', manifest.tools.find((tool) => tool.name === name) || { name });
+});
 $('#jobsRefresh').addEventListener('click', refreshJobs);
 $('#presetsRefresh').addEventListener('click', refreshPresets);
 $('#promptsRefresh').addEventListener('click', refreshPrompts);
@@ -827,9 +820,15 @@ document.addEventListener('keydown', (event) => {
 });
 
 applyTheme(localStorage.getItem('fgua.theme') || 'dark');
+$('#mcpUrlInput').value = localStorage.getItem('fgua.mcpUrl') || DEFAULT_MCP_URL;
+for (const [key, value] of Object.entries(JSON.parse(localStorage.getItem('fgua.settings') || '{}'))) {
+  const input = $(`#settingsForm [name="${key}"]`);
+  if (input && value !== undefined) input.value = value;
+}
 renderTools();
 bindForms();
 resetSandbox();
 staticStatus();
 await loadSnapshot();
-await refreshStatus();
+try { await connectMcp($('#mcpUrlInput').value); }
+catch (error) { toast(`Falha ao carregar mcp.json: ${error.message}`, true); }

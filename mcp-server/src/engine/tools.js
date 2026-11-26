@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { BRIDGE_PORT, DASHBOARD_URL, REPORTS_DIR, ROOT, VERSION, ensureDirs } from '../config.js';
+import { DASHBOARD_URL, MCP_URL, REPORTS_DIR, ROOT, VERSION, ensureDirs } from '../config.js';
 import { status as llmStatus } from '../llm.js';
 import { callTool, getCatalog, status as reaStatus } from '../rea.js';
 import { runCode, supportedLanguages } from '../sandbox.js';
@@ -39,7 +39,7 @@ export const TOOLS = [
         store: db,
         runnableLanguages: supportedLanguages(),
         reverseSteps,
-        bridge: `http://127.0.0.1:${BRIDGE_PORT}`,
+        mcpUrl: MCP_URL,
         dashboard: DASHBOARD_URL,
         root: ROOT,
       };

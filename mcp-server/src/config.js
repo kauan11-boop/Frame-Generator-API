@@ -7,8 +7,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 
 export const ROOT = path.resolve(here, '..', '..');
 export const SERVER_DIR = path.join(ROOT, 'mcp-server');
-export const VERSION = '3.0.0';
+export const VERSION = '4.1.0';
 export const DASHBOARD_URL = 'https://kauan11-boop.github.io/Frame-Generator-API/';
+export const MCP_URL = `${DASHBOARD_URL}mcp.json`;
 
 export const DATA_DIR = path.resolve(process.env.FGUA_DATA_DIR || path.join(ROOT, '.frame-data'));
 export const STORE_FILE = path.join(DATA_DIR, 'store.json');
@@ -19,9 +20,6 @@ export const DEFAULTS_FILE = path.join(ROOT, 'config', 'defaults.json');
 export const LM_STUDIO_URL = (process.env.FGUA_LM_URL || 'http://localhost:1234/v1').replace(/\/+$/, '');
 export const LM_MODEL = process.env.FGUA_LM_MODEL || '';
 export const LM_TIMEOUT_MS = Number(process.env.FGUA_LM_TIMEOUT_MS || 60000);
-
-export const BRIDGE_PORT = Number(process.env.FGUA_BRIDGE_PORT || 4174);
-export const BRIDGE_HOST = process.env.FGUA_BRIDGE_HOST || '127.0.0.1';
 
 export const MAX_ITERATIONS = Math.min(Number(process.env.FGUA_MAX_ITERATIONS || 4), 12);
 export const MAX_OUTPUT_BYTES = 200_000;

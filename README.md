@@ -1,8 +1,7 @@
-# FGUA v4 — console estático para GitHub Pages
+# FGUA v4.1 — console estático com MCP por URL
 
-Painel avançado que roda **diretamente no GitHub Pages**, sem servidor, build ou etapas intermediárias.
-Ferramentas de transformação, playground isolado, busca no catálogo do REA e conteúdo sincronizado
-funcionam inteiramente no navegador.
+Painel que roda **diretamente no GitHub Pages**, sem bridge, servidor ou etapa de build.
+O catálogo de ferramentas e conteúdos vem de um manifesto JSON publicado na própria URL do site.
 
 ## Um único comando
 
@@ -10,60 +9,76 @@ funcionam inteiramente no navegador.
 npm start
 ```
 
-Ele abre a prévia local do site em `http://localhost:4173` — a mesma página publicada em
-`https://kauan11-boop.github.io/Frame-Generator-API/`. Não é preciso instalar dependências nem
-executar qualquer outro comando: o servidor de prévia usa apenas a biblioteca padrão do Node.
-
-O deploy é automático: cada push em `main` publica `index.html` e `dashboard/` via
+Abre a prévia local em `http://localhost:4173` — a mesma página de
+`https://kauan11-boop.github.io/Frame-Generator-API/`. O deploy é automático a cada push em
+`main`; `index.html`, `mcp.json` e `dashboard/` são publicados por
 `.github/workflows/jekyll-gh-pages.yml`.
 
-## O que funciona no navegador
+## MCP por URL
 
-- **Ferramentas locais** — JSON (formatar/minificar/validar), Base64, URL, hash SHA, UUID v4,
-  regex, estatísticas de texto, conversão de datas e cores. Nada sai do navegador.
-- **Playground** — execução de JavaScript em iframe com `sandbox="allow-scripts"`, sem acesso à
-  página, ao armazenamento local ou à rede; saída via `console.*` e timeout de 3 segundos.
-- **Catálogo do REA** — busca instantânea nos nomes e descrições do snapshot, com detalhe de cada
-  ferramenta ao clicar na linha.
-- **Conteúdo sincronizado** — presets, prompts, jobs e catálogo carregados de
-  `dashboard/data/snapshot.json`, servido pelo próprio GitHub Pages.
-- **Interface** — tema claro/escuro, layout responsivo, busca rápida (`Ctrl/⌘ + K`) e navegação
-  por seções.
-- **Operação opcional** — engenharia reversa, reparo/transpilação e chamadas ao REA continuam
-  disponíveis quando um integrador local está ativo; basta clicar no indicador de modo no topo.
-  Nunca são pré-requisito para abrir o painel.
+A URL base configurável no painel (`https://kauan11-boop.github.io/Frame-Generator-API/`) aponta
+para `mcp.json`. Esse manifesto declara:
+
+- `tools` — 9 ferramentas executadas no navegador (`runtime: browser`) e 11 ferramentas do
+  MCP stdio (`runtime: mcp-stdio`, usadas pelo agente).
+- `resources` — URLs dos conteúdos: snapshot, playground, interface e o próprio manifesto.
+- `endpoints`, `transport` e `callFormat` — formato único de chamada.
+
+Formato de chamada gerado pelos formulários do painel:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": { "name": "fgua_repair_code", "arguments": { "language": "javascript" } }
+}
+```
+
+A página não executa processos: as ferramentas `browser` rodam localmente no cliente e as
+`mcp-stdio` são chamadas pelo agente através do servidor `mcp-server/src/index.js`, que foi mantido.
+Se a URL informada for inacessível (por CORS ou rede), o painel usa automaticamente o `mcp.json`
+da mesma origem.
+
+## Ferramentas e conteúdos
+
+- **Locais** — JSON, Base64, URL, hash SHA, UUID v4, regex, texto, datas e cores.
+- **Playground** — JavaScript em iframe `sandbox="allow-scripts"`, sem acesso à página ou à rede.
+- **REA** — busca no catálogo do snapshot e gerador de chamadas `fgua_rea_call`.
+- **MCP** — manifesto, tabela de ferramentas com runtime e links para os recursos publicados.
+- **Interface** — tema claro/escuro, responsivo, busca rápida (`Ctrl/⌘ + K`).
+
+Os formulários de engenharia reversa, reparo, presets e prompts **geram chamadas MCP copiáveis**;
+nenhuma ação é enviada para servidor algum.
 
 ## Arquitetura
 
 ```
-GitHub Pages ──▶ index.html + dashboard/*
+GitHub Pages ──▶ index.html + mcp.json + dashboard/*
                     │
-                    ├─▶ dashboard/app.js (lógica e ferramentas)
-                    ├─▶ dashboard/data/snapshot.json (conteúdo versionado)
-                    └─▶ dashboard/playground.html (iframe isolado)
+                    ├─▶ mcp.json (manifesto: ferramentas + conteúdos)
+                    ├─▶ dashboard/data/snapshot.json (dados sincronizados)
+                    └─▶ dashboard/app.js (ferramentas locais e gerador de chamadas)
 
- prévia local: npm start ──▶ server.js (arquivos estáticos, zero dependências)
- integração local opcional ──▶ mcp-server/* (fora do escopo do GitHub Pages)
+prévia local: npm start ──▶ server.js (arquivos estáticos, zero dependências)
+agente:       mcp-server/src/index.js (stdio, mantido)
 ```
 
-Páginas estáticas não iniciam processos nem leem arquivos do disco. Por isso todas as ações
-necessárias ao dia a dia foram trazidas para o cliente, e as operações que exigem runtime local
-são tratadas como extensão — nunca como dependência de inicialização.
+O bridge HTTP foi removido: não há mais `127.0.0.1:4174` nem sondas automáticas no navegador.
 
 ## Estrutura
 
-- `index.html` — interface e seções do painel.
-- `dashboard/styles.css` — design system claro/escuro.
-- `dashboard/app.js` — estado, snapshot, ferramentas, playground e busca.
-- `dashboard/playground.html` — página isolada do sandbox.
+- `index.html` — interface do painel.
+- `mcp.json` — manifesto MCP por URL.
+- `dashboard/styles.css` — tema claro/escuro.
+- `dashboard/app.js` — lógica, ferramentas locais e gerador de chamadas.
+- `dashboard/playground.html` — sandbox isolado.
 - `dashboard/data/snapshot.json` — conteúdo sincronizado.
-- `server.js` — servidor estático usado pelo `npm start`.
-- `mcp-server/` e `config/` — runtime opcional de MCP, REA e LLM (não publicado no site).
+- `server.js` — servidor estático do `npm start`.
+- `mcp-server/` e `config/` — MCP stdio para o agente (não publicado).
 
 ## Limites honestos
 
-- O playground não tem acesso à rede nem à página principal; ainda assim, execute apenas código
-  de origem confiável.
-- O snapshot é um ponto no tempo: novos jobs e alterações locais não aparecem até ser sincronizado.
-- WASM é alvo de análise, não um interpretador universal de outras linguagens.
-- Nenhum segredo deve ser versionado: o conteúdo do snapshot é público.
+- `mcp.json` é declarativo: descreve e aponta ferramentas/conteúdos, mas não executa processos.
+- O playground não acessa a rede nem a página principal; execute apenas código confiável.
+- O snapshot é um ponto no tempo: novos jobs e alterações locais não aparecem até a sincronização.
+- Nenhum segredo deve ser versionado: o manifesto e o snapshot são públicos.

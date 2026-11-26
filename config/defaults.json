@@ -5,7 +5,6 @@
     "model": "",
     "temperature": 0.2,
     "maxIterations": 4,
-    "bridgePort": 4174,
     "defaultSourceLanguage": "javascript",
     "defaultTargetLanguage": "typescript",
     "testRunners": {

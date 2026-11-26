@@ -19,6 +19,7 @@
       <p class="nav-label">Painel</p>
       <button class="nav-item active" data-view="overview"><span>◉</span> Visão geral</button>
       <button class="nav-item" data-view="tools"><span>▦</span> Ferramentas</button>
+      <button class="nav-item" data-view="mcp"><span>⬢</span> MCP por URL</button>
       <button class="nav-item" data-view="playground"><span>⌘</span> Playground</button>
       <p class="nav-label">Operação</p>
       <button class="nav-item" data-view="reverse"><span>⌕</span> Engenharia reversa</button>
@@ -30,8 +31,8 @@
       <button class="nav-item" data-view="admin"><span>⚙</span> Admin &amp; integrações</button>
     </nav>
     <div class="sidebar-foot">
-      <div class="bridge-state" id="bridgeState"><i class="dot"></i><span>modo estático</span></div>
-      <small>v4.0.0 · GitHub Pages</small>
+      <div class="mcp-state" id="mcpState"><i class="dot"></i><span>MCP por URL</span></div>
+      <small>v4.1.0 · GitHub Pages</small>
     </div>
   </aside>
 
@@ -45,7 +46,7 @@
         </div>
       </div>
       <div class="topbar-actions">
-        <button class="pill on" id="modePill" title="Ativar/desativar integração local opcional">estático · GH Pages</button>
+        <span class="pill" id="mcpPill">MCP: —</span>
         <span class="pill" id="reaPill">REA: —</span>
         <span class="pill" id="llmPill">LM Studio: —</span>
         <button class="icon-btn" id="themeToggle" aria-label="Alternar tema" title="Alternar tema">◐</button>
@@ -74,20 +75,31 @@
 
         <div class="grid-2">
           <article class="card">
+            <div class="card-head"><h2>Conexão MCP</h2><span class="tag">por URL</span></div>
+            <p class="hint">Informe a URL base do GitHub Pages. O painel lê <code>mcp.json</code> e usa o manifesto para listar ferramentas e conteúdos disponíveis.</p>
+            <form id="mcpForm" class="inline-form">
+              <input id="mcpUrlInput" value="https://kauan11-boop.github.io/Frame-Generator-API/" placeholder="https://…/Frame-Generator-API/">
+              <button class="btn primary" type="submit">Conectar</button>
+            </form>
+            <p class="hint" id="mcpMeta">Manifesto: — · ferramentas: — · conteúdos: —</p>
+          </article>
+          <article class="card">
             <div class="card-head"><h2>Prévia local</h2><span class="tag">1 comando</span></div>
             <p class="hint">O deploy é automático no GitHub Pages. Para ver a mesma página na sua máquina:</p>
             <pre class="code">npm start</pre>
             <p class="hint">Conteúdo sincronizado em <code id="snapshotDate">—</code>.</p>
           </article>
-          <article class="card">
-            <div class="card-head"><h2>Recursos do painel</h2></div>
-            <div class="feature-list">
-              <button data-go="tools"><strong>Ferramentas</strong><span>JSON, Base64, hash, regex, UUID e mais — tudo no navegador.</span></button>
-              <button data-go="playground"><strong>Playground</strong><span>Execução de JavaScript em iframe isolado.</span></button>
-              <button data-go="rea"><strong>Catálogo REA</strong><span>Busca local e detalhes de centenas de ferramentas.</span></button>
-            </div>
-          </article>
         </div>
+
+        <article class="card wide">
+          <div class="card-head"><h2>Recursos do painel</h2></div>
+          <div class="feature-list">
+            <button data-go="tools"><strong>Ferramentas</strong><span>JSON, Base64, hash, regex, UUID e mais — tudo no navegador.</span></button>
+            <button data-go="mcp"><strong>MCP por URL</strong><span>Manifesto com ferramentas e conteúdos utilizáveis.</span></button>
+            <button data-go="playground"><strong>Playground</strong><span>Execução de JavaScript em iframe isolado.</span></button>
+            <button data-go="rea"><strong>Catálogo REA</strong><span>Busca local e detalhes de centenas de ferramentas.</span></button>
+          </div>
+        </article>
 
         <article class="card wide">
           <div class="card-head"><h2>Contadores do conteúdo sincronizado</h2></div>
@@ -102,6 +114,23 @@
           <div class="tool-tabs" id="toolTabs"></div>
           <div class="tool-workspace" id="toolWorkspace"></div>
         </article>
+      </section>
+
+      <section class="panel" data-panel="mcp">
+        <article class="card wide">
+          <div class="card-head"><h2>Manifesto MCP</h2><span class="tag" id="mcpVersion">—</span></div>
+          <p class="hint" id="mcpDescription">Conecte uma URL base na Visão geral para carregar o manifesto.</p>
+          <pre class="code" id="mcpInfo">—</pre>
+        </article>
+        <article class="card wide">
+          <div class="card-head"><h2>Ferramentas disponíveis</h2><span class="tag" id="mcpToolCount">—</span></div>
+          <div class="table-wrap"><table><thead><tr><th>Ferramenta</th><th>Runtime</th><th>Descrição</th></tr></thead><tbody id="mcpToolsTable"><tr><td colspan="3" class="muted">carregando…</td></tr></tbody></table></div>
+        </article>
+        <article class="card wide">
+          <div class="card-head"><h2>Conteúdos</h2><span class="tag">recursos</span></div>
+          <div class="table-wrap"><table><thead><tr><th>Nome</th><th>URL</th><th>Descrição</th></tr></thead><tbody id="mcpResourcesTable"><tr><td colspan="3" class="muted">carregando…</td></tr></tbody></table></div>
+        </article>
+        <article class="card wide"><div class="card-head"><h2>Detalhe da ferramenta</h2><button class="btn ghost small" data-copy="#mcpToolDetail">Copiar</button></div><pre class="code" id="mcpToolDetail">—</pre></article>
       </section>
 
       <section class="panel" data-panel="playground">
@@ -127,16 +156,16 @@ soma;</textarea></div>
       <section class="panel" data-panel="reverse">
         <article class="card wide">
           <div class="card-head"><h2>Analisar arquivo</h2><span class="tag">orquestra REA</span></div>
-          <p class="hint">Aponte o arquivo e o destino do relatório. Esta ação depende da integração local opcional; o restante do painel funciona sem ela.</p>
+          <p class="hint">Preencha os campos para gerar uma chamada MCP pronta para usar com o servidor stdio. Nada é executado pela página.</p>
           <form id="reverseForm" class="form-grid">
             <label>Caminho do arquivo<input name="path" required placeholder="C:\caminho\alvo.exe ou .wasm"></label>
             <label>Diretório de destino<input name="outputDir" placeholder="vazio = .frame-data/reports"></label>
             <label>Preset<select name="preset" id="reversePresets"><option value="">automático</option></select></label>
             <label class="full">Etapas (opcional, separadas por vírgula)<input name="steps" placeholder="open_binary, inspect_artifact, list_strings"></label>
-            <div class="full actions"><button class="btn primary" type="submit">Executar RE</button><span class="status-line" id="reverseStatus"></span></div>
+            <div class="full actions"><button class="btn primary" type="submit">Gerar chamada MCP</button><span class="status-line" id="reverseStatus"></span></div>
           </form>
         </article>
-        <article class="card wide"><div class="card-head"><h2>Resultado</h2></div><pre class="code" id="reverseResult">—</pre></article>
+        <article class="card wide"><div class="card-head"><h2>Chamada gerada</h2><button class="btn ghost small" data-copy="#reverseResult">Copiar</button></div><pre class="code" id="reverseResult">—</pre></article>
       </section>
 
       <section class="panel" data-panel="repair">
@@ -157,10 +186,10 @@ soma;</textarea></div>
             <label>Modelo (opcional)<input name="model" placeholder="vazio = primeiro modelo do LM Studio"></label>
             <label>Iterações<input name="maxIterations" type="number" min="1" max="12" value="4"></label>
             <label class="full">Arquivo de destino<input name="outputPath" placeholder="vazio = .frame-data/reports/"></label>
-            <div class="full actions"><button class="btn primary" type="submit">Executar loop</button><span class="status-line" id="repairStatus"></span></div>
+            <div class="full actions"><button class="btn primary" type="submit">Gerar chamada MCP</button><span class="status-line" id="repairStatus"></span></div>
           </form>
         </article>
-        <article class="card wide"><div class="card-head"><h2>Candidato final</h2></div><pre class="code" id="repairResult">—</pre></article>
+        <article class="card wide"><div class="card-head"><h2>Chamada gerada</h2><button class="btn ghost small" data-copy="#repairResult">Copiar</button></div><pre class="code" id="repairResult">—</pre></article>
       </section>
 
       <section class="panel" data-panel="jobs">
@@ -178,11 +207,11 @@ soma;</textarea></div>
           <div class="table-wrap"><table><thead><tr><th>Ferramenta</th><th>Descrição</th></tr></thead><tbody id="reaTable"><tr><td colspan="2" class="muted">carregando…</td></tr></tbody></table></div>
         </article>
         <article class="card wide">
-          <div class="card-head"><h2>Chamada direta</h2><span class="tag">integração local opcional</span></div>
+          <div class="card-head"><h2>Gerador de chamada</h2><span class="tag">MCP stdio</span><button class="btn ghost small" data-copy="#reaResult">Copiar</button></div>
           <form id="reaCallForm" class="form-grid">
             <label>Ferramenta<input name="tool" required placeholder="binary_session"></label>
             <label>Argumentos (JSON)<input name="args" value='{}'></label>
-            <div class="full actions"><button class="btn primary" type="submit">Chamar</button><span class="status-line" id="reaCallStatus"></span></div>
+            <div class="full actions"><button class="btn primary" type="submit">Gerar chamada</button><span class="status-line" id="reaCallStatus"></span></div>
           </form>
           <pre class="code" id="reaResult">—</pre>
         </article>
@@ -205,7 +234,7 @@ soma;</textarea></div>
             <ul class="list"><li><kbd>Ctrl K</kbd> / <kbd>⌘ K</kbd> — busca rápida de seções e ferramentas.</li><li><kbd>Esc</kbd> — fecha a busca.</li><li><kbd>Ctrl Enter</kbd> — executa o playground.</li></ul>
           </article>
           <article class="card"><div class="card-head"><h2>Estrutura publicada</h2></div>
-            <ul class="list"><li><code>index.html</code> — interface.</li><li><code>dashboard/styles.css</code> — tema claro/escuro.</li><li><code>dashboard/app.js</code> — lógica e ferramentas.</li><li><code>dashboard/data/snapshot.json</code> — conteúdo sincronizado.</li></ul>
+            <ul class="list"><li><code>index.html</code> — interface.</li><li><code>mcp.json</code> — manifesto de ferramentas e conteúdos.</li><li><code>dashboard/app.js</code> — lógica e ferramentas.</li><li><code>dashboard/data/snapshot.json</code> — conteúdo sincronizado.</li></ul>
           </article>
         </div>
       </section>
@@ -239,11 +268,12 @@ soma;</textarea></div>
               <label>ID<input name="id" required placeholder="meu-prompt"></label>
               <label>Nome<input name="name" placeholder="Título legível"></label>
               <label class="full">Corpo<textarea name="body" rows="7" required placeholder="Use {{variavel}} para variáveis"></textarea></label>
-              <div class="full actions"><button class="btn primary" type="submit">Salvar prompt</button><span class="status-line" id="promptStatus"></span></div>
+              <div class="full actions"><button class="btn primary" type="submit">Gerar chamada MCP</button><span class="status-line" id="promptStatus"></span></div>
             </form>
             <div class="table-wrap"><table><thead><tr><th>ID</th><th>Nome</th><th>Ações</th></tr></thead><tbody id="promptsTable"><tr><td colspan="3" class="muted">carregando…</td></tr></tbody></table></div>
           </article>
-          <article class="card wide"><div class="card-head"><h2>Renderizar</h2></div>
+          <article class="card wide"><div class="card-head"><h2>Chamada do prompt</h2><button class="btn ghost small" data-copy="#promptResult">Copiar</button></div><pre class="code" id="promptResult">—</pre></article>
+          <article class="card wide"><div class="card-head"><h2>Renderizar</h2><button class="btn ghost small" data-copy="#renderResult">Copiar</button></div>
             <form id="renderForm" class="inline-form"><input name="id" placeholder="id do prompt"><input name="variables" value='{}' placeholder='{"chave":"valor"}'><button class="btn" type="submit">Renderizar</button></form>
             <pre class="code" id="renderResult">—</pre>
           </article>
@@ -266,10 +296,11 @@ soma;</textarea></div>
               <label>Tags (vírgulas)<input name="tags"></label>
               <label class="full">Descrição<input name="description"></label>
               <label class="full">Config (JSON)<textarea name="config" rows="6" placeholder='{"maxIterations":3}'></textarea></label>
-              <div class="full actions"><button class="btn primary" type="submit">Salvar preset</button><span class="status-line" id="presetStatus"></span></div>
+              <div class="full actions"><button class="btn primary" type="submit">Gerar chamada MCP</button><span class="status-line" id="presetStatus"></span></div>
             </form>
             <div class="table-wrap"><table><thead><tr><th>ID</th><th>Tipo</th><th>Nome</th><th>Ações</th></tr></thead><tbody id="presetsTable"><tr><td colspan="4" class="muted">carregando…</td></tr></tbody></table></div>
           </article>
+          <article class="card wide"><div class="card-head"><h2>Chamada do preset</h2><button class="btn ghost small" data-copy="#presetResult">Copiar</button></div><pre class="code" id="presetResult">—</pre></article>
         </div>
 
         <div class="subpanel" data-sub="config">
@@ -279,7 +310,7 @@ soma;</textarea></div>
               <label>Modelo<input name="model" placeholder="vazio = primeiro modelo"></label>
               <label>Temperatura<input name="temperature" type="number" step="0.1" min="0" max="2"></label>
               <label>Iterações máx.<input name="maxIterations" type="number" min="1" max="12"></label>
-              <div class="full actions"><button class="btn primary" type="submit">Salvar configuração</button><span class="status-line" id="settingsStatus"></span></div>
+              <div class="full actions"><button class="btn primary" type="submit">Salvar localmente</button><span class="status-line" id="settingsStatus"></span></div>
             </form>
           </article>
         </div>

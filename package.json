@@ -1,9 +1,9 @@
 {
   "name": "frame-generator-api",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "private": true,
   "type": "module",
-  "description": "FGUA v4 — dashboard estático avançado para GitHub Pages, com um único comando de inicialização",
+  "description": "FGUA v4.1 — dashboard estático com MCP por URL e um único comando de inicialização",
   "scripts": {
     "start": "node server.js"
   },
